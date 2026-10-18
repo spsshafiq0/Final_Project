@@ -1,10 +1,10 @@
 import type { VercelResponse } from "@vercel/node";
-import prisma from "../../lib/prisma";
-import { hashPassword } from "../../lib/auth";
-import { apiHandler, AuthenticatedRequest } from "../../lib/middleware";
+import prisma from "../../prisma";
+import { hashPassword } from "../../auth";
+import { apiHandler, AuthenticatedRequest } from "../../middleware";
 
 export default apiHandler(
-  async (req: AuthenticatedRequest, res: VercelResponse, currentUser) => {
+  async (req: AuthenticatedRequest, res: VercelResponse, currentUser: any) => {
     const id = (req.query.id as string) || (req.body?.id as string);
 
     if (!id) {

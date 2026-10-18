@@ -1,10 +1,10 @@
 import type { VercelResponse } from "@vercel/node";
-import prisma from "../../lib/prisma";
-import { hashPassword } from "../../lib/auth";
-import { apiHandler, AuthenticatedRequest } from "../../lib/middleware";
+import prisma from "../../prisma";
+import { hashPassword } from "../../auth";
+import { apiHandler, AuthenticatedRequest } from "../../middleware";
 
 export default apiHandler(
-  async (req: AuthenticatedRequest, res: VercelResponse, currentUser) => {
+  async (req: AuthenticatedRequest, res: VercelResponse, currentUser: any) => {
     if (req.method === "GET") {
       if (!currentUser || !["SUPER_ADMIN", "CITY_ADMIN", "WARD_ADMIN"].includes(currentUser.role)) {
         return res.status(403).json({ error: "Access denied" });

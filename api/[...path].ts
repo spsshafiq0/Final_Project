@@ -1,0 +1,131 @@
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+
+import authLogin from "../lib/handlers/auth/login";
+import authRegister from "../lib/handlers/auth/register";
+import authMe from "../lib/handlers/auth/me";
+
+import citiesIndex from "../lib/handlers/cities/index";
+import citiesId from "../lib/handlers/cities/[id]";
+
+import wardsIndex from "../lib/handlers/wards/index";
+import wardsId from "../lib/handlers/wards/[id]";
+
+import binsIndex from "../lib/handlers/bins/index";
+import binsId from "../lib/handlers/bins/[id]";
+
+import tracksIndex from "../lib/handlers/tracks/index";
+import tracksId from "../lib/handlers/tracks/[id]";
+
+import usersIndex from "../lib/handlers/users/index";
+import usersId from "../lib/handlers/users/[id]";
+
+import withdrawalsIndex from "../lib/handlers/withdrawals/index";
+import withdrawalsId from "../lib/handlers/withdrawals/[id]";
+
+import pickupsIndex from "../lib/handlers/pickups/index";
+import pickupsId from "../lib/handlers/pickups/[id]";
+
+import alertsIndex from "../lib/handlers/alerts/index";
+import dashboardStats from "../lib/handlers/dashboard/stats";
+import seedDatabase from "../lib/handlers/seed";
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Extract path components
+  const urlClean = (req.url || "").split("?")[0];
+  const urlPath = urlClean.replace(/^\/api\/?/, "").replace(/^\//, "");
+  
+  const segments = Array.isArray(req.query.path)
+    ? req.query.path
+    : typeof req.query.path === "string"
+    ? req.query.path.split("/").filter(Boolean)
+    : urlPath.split("/").filter(Boolean);
+
+  const [resource, subResource] = segments;
+
+  // 1. Auth routes
+  if (resource === "auth") {
+    if (subResource === "login") return authLogin(req, res);
+    if (subResource === "register") return authRegister(req, res);
+    if (subResource === "me") return authMe(req, res);
+  }
+
+  // 2. Dashboard
+  if (resource === "dashboard") {
+    if (subResource === "stats") return dashboardStats(req, res);
+  }
+
+  // 3. Seed
+  if (resource === "seed") {
+    return seedDatabase(req, res);
+  }
+
+  // 4. Alerts
+  if (resource === "alerts") {
+    return alertsIndex(req, res);
+  }
+
+  // 5. Cities
+  if (resource === "cities") {
+    if (subResource) {
+      req.query.id = subResource;
+      return citiesId(req, res);
+    }
+    return citiesIndex(req, res);
+  }
+
+  // 6. Wards
+  if (resource === "wards") {
+    if (subResource) {
+      req.query.id = subResource;
+      return wardsId(req, res);
+    }
+    return wardsIndex(req, res);
+  }
+
+  // 7. Bins
+  if (resource === "bins") {
+    if (subResource) {
+      req.query.id = subResource;
+      return binsId(req, res);
+    }
+    return binsIndex(req, res);
+  }
+
+  // 8. Tracks
+  if (resource === "tracks") {
+    if (subResource) {
+      req.query.id = subResource;
+      return tracksId(req, res);
+    }
+    return tracksIndex(req, res);
+  }
+
+  // 9. Users
+  if (resource === "users") {
+    if (subResource) {
+      req.query.id = subResource;
+      return usersId(req, res);
+    }
+    return usersIndex(req, res);
+  }
+
+  // 10. Withdrawals
+  if (resource === "withdrawals") {
+    if (subResource) {
+      req.query.id = subResource;
+      return withdrawalsId(req, res);
+    }
+    return withdrawalsIndex(req, res);
+  }
+
+  // 11. Pickups
+  if (resource === "pickups") {
+    if (subResource) {
+      req.query.id = subResource;
+      return pickupsId(req, res);
+    }
+    return pickupsIndex(req, res);
+  }
+
+  return res.status(404).json({ error: `API route /api/${segments.join("/")} not found` });
+}

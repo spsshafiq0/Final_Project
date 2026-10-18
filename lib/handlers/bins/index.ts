@@ -1,9 +1,9 @@
 import type { VercelResponse } from "@vercel/node";
-import prisma from "../../lib/prisma";
-import { apiHandler, AuthenticatedRequest } from "../../lib/middleware";
+import prisma from "../../prisma";
+import { apiHandler, AuthenticatedRequest } from "../../middleware";
 
 export default apiHandler(
-  async (req: AuthenticatedRequest, res: VercelResponse, currentUser) => {
+  async (req: AuthenticatedRequest, res: VercelResponse, currentUser: any) => {
     if (req.method === "GET") {
       let wardId = req.query.wardId as string | undefined;
       let cityCorpId = req.query.cityCorpId as string | undefined;

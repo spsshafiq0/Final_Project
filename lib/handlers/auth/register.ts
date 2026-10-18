@@ -1,10 +1,10 @@
 import type { VercelResponse } from "@vercel/node";
-import prisma from "../../lib/prisma";
-import { hashPassword, signToken } from "../../lib/auth";
-import { apiHandler, AuthenticatedRequest } from "../../lib/middleware";
+import prisma from "../../prisma";
+import { hashPassword, signToken } from "../../auth";
+import { apiHandler, AuthenticatedRequest } from "../../middleware";
 
 export default apiHandler(
-  async (req: AuthenticatedRequest, res: VercelResponse, currentUser) => {
+  async (req: AuthenticatedRequest, res: VercelResponse, currentUser: any) => {
     const {
       username,
       password,

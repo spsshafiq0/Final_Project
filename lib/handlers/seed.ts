@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import prisma from "../lib/prisma";
-import { hashPassword } from "../lib/auth";
-import { apiHandler } from "../lib/middleware";
+import prisma from "../prisma";
+import { hashPassword } from "../auth";
+import { apiHandler } from "../middleware";
 
 export default apiHandler(
   async (req: VercelRequest, res: VercelResponse) => {
