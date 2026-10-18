@@ -115,15 +115,16 @@ export interface WithdrawalItem {
   verificationCode: string;
   points: number;
   amount: number;
+  pointRate?: number;
   status: "pending" | "approved" | "paid" | "rejected";
   citizenId: string;
-  citizen?: { id: string; fullName: string; phone?: string | null; username: string };
+  citizen?: { id: string; fullName: string; phone?: string | null; username?: string };
   citizenName?: string;
   citizenPhone?: string;
   wardId: string;
   ward?: { id: string; name: string; area: string; cityCorp?: { name: string; code: string; pointRate?: number } };
   processedById?: string | null;
-  processedBy?: { id: string; fullName: string; username: string } | null;
+  processedBy?: { id: string; fullName: string; username?: string } | null;
   paidAt?: string | null;
   notes?: string | null;
   createdAt: string;
@@ -392,22 +393,40 @@ export const api = {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    process: (id: string, data: { status: "paid" | "rejected" | "approved"; verificationCode?: string; notes?: string }) =>
-      request<{ message: string; withdrawal: WithdrawalItem }>(`/withdrawals/${id}`, {
+    process: (
+      id: string,
+      actionOrData: "pay" | "reject" | { status: "paid" | "rejected" | "approved"; verificationCode?: string; notes?: string },
+      verificationCode?: string
+    ) => {
+      const body = typeof actionOrData === "string"
+        ? { status: actionOrData === "pay" ? "paid" : "rejected", verificationCode }
+        : actionOrData;
+      return request<{ message: string; withdrawal: WithdrawalItem }>(`/withdrawals/${id}`, {
         method: "PUT",
-        body: JSON.stringify(data),
-      }),
+        body: JSON.stringify(body),
+      });
+    },
   },
 
   // Reward Policy (Point to Money Rate set by City Corporation Admin)
   rewards: {
-    getPolicy: async (cityCorpId: string) => {
-      const city = await request<CityCorporationItem>(`/cities/${cityCorpId}`);
-      return {
-        pointRate: city.pointRate ?? 0.20,
-        minWithdrawPoints: city.minWithdrawPoints ?? 100,
-        rewardActive: city.rewardActive ?? true,
-      };
+    getPolicy: async (cityCorpId?: string) => {
+      try {
+        const path = cityCorpId ? `/cities/${cityCorpId}` : "/cities";
+        const res = await request<any>(path);
+        const city = Array.isArray(res) ? res[0] : res;
+        return {
+          pointRate: city?.pointRate ?? 0.20,
+          minWithdrawPoints: city?.minWithdrawPoints ?? 100,
+          rewardActive: city?.rewardActive ?? true,
+        };
+      } catch {
+        return {
+          pointRate: 0.20,
+          minWithdrawPoints: 100,
+          rewardActive: true,
+        };
+      }
     },
     updatePolicy: (cityCorpId: string, data: { pointRate?: number; minWithdrawPoints?: number; rewardActive?: boolean }) =>
       request<CityCorporationItem>(`/cities/${cityCorpId}`, {

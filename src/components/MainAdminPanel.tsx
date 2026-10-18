@@ -738,23 +738,46 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
   };
 
   // Save Track
-  const saveTrack = async (updated: Track) => {
+  const saveTrack = async (updated: Partial<Track>) => {
     try {
-      await api.tracks.create({
-        truckId: updated.truckId,
-        route: updated.route,
-        stops: updated.stops,
-        wardId: String(updated.wardId),
-        mapsRouteUrl: updated.mapsRouteUrl,
-        gpsLat: updated.gpsLat,
-        gpsLng: updated.gpsLng,
-      }).catch(() => null);
+      if (updated.truckId && updated.route) {
+        await api.tracks.create({
+          truckId: updated.truckId,
+          route: updated.route,
+          stops: updated.stops || 6,
+          wardId: String(updated.wardId || 1),
+          mapsRouteUrl: updated.mapsRouteUrl || "",
+          gpsLat: updated.gpsLat || 23.78,
+          gpsLng: updated.gpsLng || 90.40,
+        }).catch(() => null);
+      }
     } catch {}
 
     setLocalTracks(prev => {
       const idx = prev.findIndex(t => t.id === updated.id);
-      if (idx >= 0) { const n = [...prev]; n[idx] = updated; return n; }
-      return [...prev, updated];
+      if (idx >= 0) {
+        const n = [...prev];
+        n[idx] = { ...n[idx], ...updated } as Track;
+        return n;
+      }
+      const newTrack: Track = {
+        id: updated.id || `TR-${String(prev.length + 1).padStart(3, "0")}`,
+        truckId: updated.truckId || "DNCC-T00",
+        driver: updated.driver || "Assigned Driver",
+        phone: updated.phone || "01700-000000",
+        route: updated.route || "Local Route",
+        stops: updated.stops || 6,
+        status: updated.status || "active",
+        progress: updated.progress || 0,
+        load: updated.load || "0%",
+        fuel: updated.fuel || 100,
+        startTime: updated.startTime || "07:00 AM",
+        wardId: updated.wardId || 1,
+        gpsLat: updated.gpsLat || 23.78,
+        gpsLng: updated.gpsLng || 90.40,
+        mapsRouteUrl: updated.mapsRouteUrl || "",
+      };
+      return [...prev, newTrack];
     });
   };
 
