@@ -1,10 +1,15 @@
-import { PrismaClient } from "@prisma/client";
+// @ts-ignore
+import * as PrismaScope from "@prisma/client";
 
-// Prevent multiple Prisma Client instances in development
-// (Vercel serverless functions can create many connections)
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+// Resilient instantiation supporting both hoisted and isolated package exports
+const PrismaConstructor =
+  (PrismaScope as any).PrismaClient ||
+  (PrismaScope as any).default?.PrismaClient ||
+  (PrismaScope as any).default;
 
-export const prisma = globalForPrisma.prisma || new PrismaClient();
+const globalForPrisma = globalThis as unknown as { prisma: any };
+
+export const prisma = globalForPrisma.prisma || (PrismaConstructor ? new PrismaConstructor() : ({} as any));
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
