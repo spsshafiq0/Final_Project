@@ -15,7 +15,18 @@ export default defineConfig(({ mode }) => {
     build: {
       sourcemap: emitSourcemaps ? 'inline' : false,
       minify: !emitSourcemaps,
-      chunkSizeWarningLimit: 2000,
+      chunkSizeWarningLimit: 3000,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('recharts') || id.includes('d3')) return 'charts'
+              if (id.includes('lucide-react')) return 'icons'
+              if (id.includes('react') || id.includes('scheduler')) return 'vendor'
+            }
+          },
+        },
+      },
     },
     plugins: [
       react(),
