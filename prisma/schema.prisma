@@ -1,0 +1,260 @@
+// IntelliWaste — Prisma Schema
+// Hierarchy: SuperAdmin → CityCorporation → Ward → Bin / Track / Withdrawal
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  CITY_ADMIN
+  WARD_ADMIN
+  CITIZEN
+  DRIVER
+  BUSINESS
+}
+
+enum BinStatus {
+  normal
+  warning
+  critical
+  fire
+}
+
+enum TrackStatus {
+  active
+  idle
+  maintenance
+}
+
+enum PickupStatus {
+  open
+  accepted
+  completed
+}
+
+enum WithdrawalStatus {
+  pending
+  approved
+  paid
+  rejected
+}
+
+// ─── City Corporation ──────────────────────────────────────────────────
+model CityCorporation {
+  id        String   @id @default(cuid())
+  name      String   // e.g. "Dhaka North City Corporation"
+  code      String   @unique // e.g. "DNCC"
+  address   String?
+  phone     String?
+  email     String?
+  active    Boolean  @default(true)
+
+  // Points & Rewards Configuration (Managed by City Corporation Admin)
+  pointRate         Float   @default(0.20) // e.g. 1 point = 0.20 BDT (100 pts = 20 BDT)
+  minWithdrawPoints Int     @default(100)  // Minimum points required for cash withdrawal
+  rewardActive      Boolean @default(true) // Program active / suspended
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wards  Ward[]
+  admins User[]   @relation("CityCorpAdmins")
+
+  @@map("city_corporations")
+}
+
+// ─── Ward ──────────────────────────────────────────────────────────────
+model Ward {
+  id         String @id @default(cuid())
+  name       String // e.g. "Ward 01"
+  area       String // e.g. "Uttara North"
+  population Int    @default(0)
+  councilor  String @default("")
+
+  cityCorpId String
+  cityCorp   CityCorporation @relation(fields: [cityCorpId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bins        Bin[]
+  tracks      Track[]
+  admins      User[]              @relation("WardAdmins")
+  alerts      Alert[]
+  withdrawals WithdrawalRequest[]
+
+  @@map("wards")
+}
+
+// ─── Smart Bin ─────────────────────────────────────────────────────────
+model Bin {
+  id            String    @id @default(cuid())
+  binCode       String    @unique // e.g. "B-001"
+  location      String
+  capacity      String    @default("120L")
+  fill          Int       @default(0)
+  weight        Int       @default(0)
+  temp          String    @default("Normal")
+  gas           String    @default("Normal")
+  fire          Boolean   @default(false)
+  status        BinStatus @default(normal)
+  qr            String?
+  lastCollected DateTime?
+  lat           Float     @default(0)
+  lng           Float     @default(0)
+
+  wardId String
+  ward   Ward   @relation(fields: [wardId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  alerts Alert[]
+
+  @@map("bins")
+}
+
+// ─── Collection Track ──────────────────────────────────────────────────
+model Track {
+  id           String      @id @default(cuid())
+  truckId      String      // e.g. "DNCC-T01"
+  route        String
+  stops        Int         @default(0)
+  status       TrackStatus @default(idle)
+  progress     Int         @default(0)
+  load         String      @default("0t")
+  fuel         Int         @default(100)
+  startTime    String      @default("07:00 AM")
+  gpsLat       Float       @default(0)
+  gpsLng       Float       @default(0)
+  mapsRouteUrl String?
+
+  wardId   String
+  ward     Ward   @relation(fields: [wardId], references: [id], onDelete: Cascade)
+
+  driverId String?
+  driver   User?  @relation("DriverTracks", fields: [driverId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tracks")
+}
+
+// ─── User ──────────────────────────────────────────────────────────────
+model User {
+  id       String  @id @default(cuid())
+  username String  @unique
+  password String  // bcrypt hashed
+  fullName String
+  email    String?
+  phone    String?
+  nid      String?
+  address  String?
+  role     Role
+  active   Boolean @default(true)
+
+  // Points balance for gamification & cash withdrawals
+  points   Int     @default(0)
+
+  // A CITY_ADMIN belongs to one city corporation
+  cityCorpId String?
+  cityCorp   CityCorporation? @relation("CityCorpAdmins", fields: [cityCorpId], references: [id], onDelete: SetNull)
+
+  // A WARD_ADMIN belongs to one ward
+  wardId String?
+  ward   Ward?   @relation("WardAdmins", fields: [wardId], references: [id], onDelete: SetNull)
+
+  // A DRIVER can have tracks
+  driverTracks Track[] @relation("DriverTracks")
+
+  // Pickup requests as requester or driver
+  pickupsMade    PickupRequest[] @relation("PickupRequester")
+  pickupsHandled PickupRequest[] @relation("PickupDriver")
+
+  // Cash withdrawals requested by citizen or processed by ward admin
+  withdrawalsMade      WithdrawalRequest[] @relation("CitizenWithdrawals")
+  withdrawalsProcessed WithdrawalRequest[] @relation("WardAdminProcessed")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+// ─── Pickup Request ────────────────────────────────────────────────────
+model PickupRequest {
+  id            String       @id @default(cuid())
+  requesterType String       // "citizen" | "business"
+  area          String
+  address       String
+  wasteType     String
+  date          String
+  amount        Int          @default(0)
+  status        PickupStatus @default(open)
+  securityCode  String?
+
+  requesterId String
+  requester   User   @relation("PickupRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+
+  driverId String?
+  driver   User?  @relation("PickupDriver", fields: [driverId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("pickup_requests")
+}
+
+// ─── Cash Withdrawal Request ───────────────────────────────────────────
+model WithdrawalRequest {
+  id               String           @id @default(cuid())
+  verificationCode String           @unique // e.g. "WDR-8421"
+  points           Int              // Points to deduct
+  amount           Float            // BDT amount to disburse
+  status           WithdrawalStatus @default(pending)
+
+  citizenId   String
+  citizen     User   @relation("CitizenWithdrawals", fields: [citizenId], references: [id], onDelete: Cascade)
+  citizenName String?
+  citizenPhone String?
+
+  wardId String
+  ward   Ward   @relation(fields: [wardId], references: [id], onDelete: Cascade)
+
+  processedById String?
+  processedBy   User?   @relation("WardAdminProcessed", fields: [processedById], references: [id], onDelete: SetNull)
+
+  notes  String?
+  paidAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("withdrawal_requests")
+}
+
+// ─── Alert ─────────────────────────────────────────────────────────────
+model Alert {
+  id       String  @id @default(cuid())
+  type     String  // "fire" | "overflow" | "gas" | "maintenance"
+  message  String
+  priority String  // "critical" | "high" | "medium"
+  resolved Boolean @default(false)
+
+  wardId String?
+  ward   Ward?  @relation(fields: [wardId], references: [id], onDelete: SetNull)
+
+  binId String?
+  bin   Bin?   @relation(fields: [binId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@map("alerts")
+}

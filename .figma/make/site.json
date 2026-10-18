@@ -1,0 +1,10 @@
+{
+  "description": "This responsive web application offers a modern design and comprehensive features for users seeking an intuitive interface for both desktop and mobile devices.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

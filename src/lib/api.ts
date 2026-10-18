@@ -1,0 +1,439 @@
+// IntelliWaste Unified API Client
+// Handles JWT authentication, CRUD for City Corps, Wards, Bins, Tracks, Users, and Fallback Mock Data
+
+const API_BASE = "/api";
+
+export interface UserProfile {
+  id: string;
+  username: string;
+  fullName: string;
+  email?: string | null;
+  phone?: string | null;
+  role: "SUPER_ADMIN" | "CITY_ADMIN" | "WARD_ADMIN" | "CITIZEN" | "DRIVER" | "BUSINESS";
+  cityCorpId?: string | null;
+  cityCorp?: { id: string; name: string; code: string } | null;
+  wardId?: string | null;
+  ward?: { id: string; name: string; area: string } | null;
+}
+
+export interface CityCorporationItem {
+  id: string;
+  name: string;
+  code: string;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  active: boolean;
+  pointRate?: number;
+  minWithdrawPoints?: number;
+  rewardActive?: boolean;
+  wards?: { id: string; name: string; area: string }[];
+  _count?: { wards: number; admins: number };
+}
+
+export interface WardItem {
+  id: string;
+  name: string;
+  area: string;
+  population: number;
+  councilor: string;
+  cityCorpId: string;
+  cityCorp?: { id: string; name: string; code: string };
+  _count?: { bins: number; tracks: number; alerts?: number };
+}
+
+export interface BinItem {
+  id: string;
+  binCode: string;
+  location: string;
+  capacity: string;
+  fill: number;
+  weight: number;
+  temp: string;
+  gas: string;
+  fire: boolean;
+  status: "normal" | "warning" | "critical" | "fire";
+  qr?: string | null;
+  lastCollected?: string | null;
+  lat: number;
+  lng: number;
+  wardId: string;
+  ward?: WardItem;
+}
+
+export interface TrackItem {
+  id: string;
+  truckId: string;
+  route: string;
+  stops: number;
+  status: "active" | "idle" | "maintenance";
+  progress: number;
+  load: string;
+  fuel: number;
+  startTime?: string;
+  gpsLat: number;
+  gpsLng: number;
+  mapsRouteUrl?: string | null;
+  wardId: string;
+  ward?: WardItem;
+  driverId?: string | null;
+  driver?: { id: string; fullName: string; phone?: string | null } | null;
+}
+
+export interface PickupItem {
+  id: string;
+  requesterType: string;
+  area: string;
+  address: string;
+  wasteType: string;
+  date: string;
+  amount: number;
+  status: "open" | "accepted" | "completed";
+  securityCode?: string | null;
+  requesterId?: string;
+  requester?: { id: string; fullName: string; phone?: string | null };
+  driverId?: string | null;
+  driver?: { id: string; fullName: string; phone?: string | null } | null;
+  createdAt: string;
+}
+
+export interface AlertItem {
+  id: string;
+  type: string;
+  message: string;
+  priority: "critical" | "high" | "medium";
+  resolved: boolean;
+  wardId?: string | null;
+  ward?: { id: string; name: string; area: string } | null;
+  binId?: string | null;
+  bin?: BinItem | null;
+  createdAt: string;
+}
+
+export interface WithdrawalItem {
+  id: string;
+  verificationCode: string;
+  points: number;
+  amount: number;
+  status: "pending" | "approved" | "paid" | "rejected";
+  citizenId: string;
+  citizen?: { id: string; fullName: string; phone?: string | null; username: string };
+  citizenName?: string;
+  citizenPhone?: string;
+  wardId: string;
+  ward?: { id: string; name: string; area: string; cityCorp?: { name: string; code: string; pointRate?: number } };
+  processedById?: string | null;
+  processedBy?: { id: string; fullName: string; username: string } | null;
+  paidAt?: string | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
+// ─── Token Management ──────────────────────────────────────────────────
+export const tokenStorage = {
+  get: (): string | null => localStorage.getItem("intelliwaste_token"),
+  set: (token: string) => localStorage.setItem("intelliwaste_token", token),
+  remove: () => localStorage.removeItem("intelliwaste_token"),
+};
+
+export const userStorage = {
+  get: (): UserProfile | null => {
+    try {
+      const data = localStorage.getItem("intelliwaste_user");
+      return data ? JSON.parse(data) : null;
+    } catch {
+      return null;
+    }
+  },
+  set: (user: UserProfile) => localStorage.setItem("intelliwaste_user", JSON.stringify(user)),
+  remove: () => localStorage.removeItem("intelliwaste_user"),
+};
+
+// ─── Fetch Helper ──────────────────────────────────────────────────────
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = tokenStorage.get();
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...options.headers,
+  };
+
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  const contentType = response.headers.get("content-type");
+  const isJson = contentType && contentType.includes("application/json");
+  const data = isJson ? await response.json() : await response.text();
+
+  if (!response.ok) {
+    const errorMsg = (isJson && data?.error) || response.statusText || "Request failed";
+    throw new Error(errorMsg);
+  }
+
+  return data as T;
+}
+
+// ─── API Endpoints ─────────────────────────────────────────────────────
+
+export const api = {
+  // Auth
+  auth: {
+    login: async (username: string, password: string) => {
+      const result = await request<{ token: string; user: UserProfile }>("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+      });
+      tokenStorage.set(result.token);
+      userStorage.set(result.user);
+      return result;
+    },
+    register: async (userData: any) => {
+      return request<{ message: string; token: string; user: UserProfile }>("/auth/register", {
+        method: "POST",
+        body: JSON.stringify(userData),
+      });
+    },
+    me: async () => {
+      const result = await request<{ user: UserProfile }>("/auth/me");
+      userStorage.set(result.user);
+      return result.user;
+    },
+    logout: () => {
+      tokenStorage.remove();
+      userStorage.remove();
+    },
+  },
+
+  // City Corporations
+  cities: {
+    getAll: () => request<CityCorporationItem[]>("/cities"),
+    getById: (id: string) => request<CityCorporationItem>(`/cities/${id}`),
+    create: (data: Partial<CityCorporationItem>) =>
+      request<CityCorporationItem>("/cities", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Partial<CityCorporationItem>) =>
+      request<CityCorporationItem>(`/cities/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      request<{ message: string }>(`/cities/${id}`, {
+        method: "DELETE",
+      }),
+  },
+
+  // Wards
+  wards: {
+    getAll: (cityCorpId?: string) => {
+      const query = cityCorpId ? `?cityCorpId=${encodeURIComponent(cityCorpId)}` : "";
+      return request<WardItem[]>(`/wards${query}`);
+    },
+    getById: (id: string) => request<WardItem>(`/wards/${id}`),
+    create: (data: { name: string; area: string; cityCorpId: string; population?: number; councilor?: string }) =>
+      request<WardItem>("/wards", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Partial<WardItem>) =>
+      request<WardItem>(`/wards/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      request<{ message: string }>(`/wards/${id}`, {
+        method: "DELETE",
+      }),
+  },
+
+  // Smart Bins
+  bins: {
+    getAll: (filters?: { wardId?: string; cityCorpId?: string; status?: string }) => {
+      const params = new URLSearchParams();
+      if (filters?.wardId) params.append("wardId", filters.wardId);
+      if (filters?.cityCorpId) params.append("cityCorpId", filters.cityCorpId);
+      if (filters?.status) params.append("status", filters.status);
+      const query = params.toString() ? `?${params.toString()}` : "";
+      return request<BinItem[]>(`/bins${query}`);
+    },
+    getById: (id: string) => request<BinItem>(`/bins/${id}`),
+    create: (data: Partial<BinItem>) =>
+      request<BinItem>("/bins", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Partial<BinItem>) =>
+      request<BinItem>(`/bins/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      request<{ message: string }>(`/bins/${id}`, {
+        method: "DELETE",
+      }),
+  },
+
+  // Tracks / Trucks
+  tracks: {
+    getAll: (filters?: { wardId?: string; driverId?: string; status?: string }) => {
+      const params = new URLSearchParams();
+      if (filters?.wardId) params.append("wardId", filters.wardId);
+      if (filters?.driverId) params.append("driverId", filters.driverId);
+      if (filters?.status) params.append("status", filters.status);
+      const query = params.toString() ? `?${params.toString()}` : "";
+      return request<TrackItem[]>(`/tracks${query}`);
+    },
+    getById: (id: string) => request<TrackItem>(`/tracks/${id}`),
+    create: (data: Partial<TrackItem>) =>
+      request<TrackItem>("/tracks", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Partial<TrackItem>) =>
+      request<TrackItem>(`/tracks/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      request<{ message: string }>(`/tracks/${id}`, {
+        method: "DELETE",
+      }),
+  },
+
+  // Users
+  users: {
+    getAll: (filters?: { role?: string; cityCorpId?: string; wardId?: string }) => {
+      const params = new URLSearchParams();
+      if (filters?.role) params.append("role", filters.role);
+      if (filters?.cityCorpId) params.append("cityCorpId", filters.cityCorpId);
+      if (filters?.wardId) params.append("wardId", filters.wardId);
+      const query = params.toString() ? `?${params.toString()}` : "";
+      return request<UserProfile[]>(`/users${query}`);
+    },
+    create: (data: any) =>
+      request<UserProfile>("/users", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: any) =>
+      request<UserProfile>(`/users/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      request<{ message: string }>(`/users/${id}`, {
+        method: "DELETE",
+      }),
+  },
+
+  // Pickup Requests
+  pickups: {
+    getAll: (filters?: { status?: string; requesterType?: string; driverId?: string }) => {
+      const params = new URLSearchParams();
+      if (filters?.status) params.append("status", filters.status);
+      if (filters?.requesterType) params.append("requesterType", filters.requesterType);
+      if (filters?.driverId) params.append("driverId", filters.driverId);
+      const query = params.toString() ? `?${params.toString()}` : "";
+      return request<PickupItem[]>(`/pickups${query}`);
+    },
+    create: (data: Partial<PickupItem> & { contactName?: string; contactPhone?: string }) =>
+      request<PickupItem>("/pickups", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Partial<PickupItem>) =>
+      request<PickupItem>(`/pickups/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      request<{ message: string }>(`/pickups/${id}`, {
+        method: "DELETE",
+      }),
+  },
+
+  // Alerts
+  alerts: {
+    getAll: (filters?: { wardId?: string; resolved?: boolean }) => {
+      const params = new URLSearchParams();
+      if (filters?.wardId) params.append("wardId", filters.wardId);
+      if (filters?.resolved !== undefined) params.append("resolved", String(filters.resolved));
+      const query = params.toString() ? `?${params.toString()}` : "";
+      return request<AlertItem[]>(`/alerts${query}`);
+    },
+    create: (data: Partial<AlertItem>) =>
+      request<AlertItem>("/alerts", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    resolve: (id: string) =>
+      request<AlertItem>("/alerts", {
+        method: "PUT",
+        body: JSON.stringify({ id, resolved: true }),
+      }),
+  },
+
+  // Cash Withdrawals (Citizens withdraw cash from Ward Admin)
+  withdrawals: {
+    getAll: (filters?: { wardId?: string; status?: string; citizenId?: string }) => {
+      const params = new URLSearchParams();
+      if (filters?.wardId) params.append("wardId", filters.wardId);
+      if (filters?.status) params.append("status", filters.status);
+      if (filters?.citizenId) params.append("citizenId", filters.citizenId);
+      const query = params.toString() ? `?${params.toString()}` : "";
+      return request<WithdrawalItem[]>(`/withdrawals${query}`);
+    },
+    getById: (id: string) => request<WithdrawalItem>(`/withdrawals/${id}`),
+    create: (data: { points: number; wardId: string; citizenName?: string; citizenPhone?: string; notes?: string }) =>
+      request<{ message: string; withdrawal: WithdrawalItem; instructions: string }>("/withdrawals", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    process: (id: string, data: { status: "paid" | "rejected" | "approved"; verificationCode?: string; notes?: string }) =>
+      request<{ message: string; withdrawal: WithdrawalItem }>(`/withdrawals/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+  },
+
+  // Reward Policy (Point to Money Rate set by City Corporation Admin)
+  rewards: {
+    getPolicy: async (cityCorpId: string) => {
+      const city = await request<CityCorporationItem>(`/cities/${cityCorpId}`);
+      return {
+        pointRate: city.pointRate ?? 0.20,
+        minWithdrawPoints: city.minWithdrawPoints ?? 100,
+        rewardActive: city.rewardActive ?? true,
+      };
+    },
+    updatePolicy: (cityCorpId: string, data: { pointRate?: number; minWithdrawPoints?: number; rewardActive?: boolean }) =>
+      request<CityCorporationItem>(`/cities/${cityCorpId}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+  },
+
+  // Live Dashboard Stats
+  dashboard: {
+    getStats: (filters?: { cityCorpId?: string; wardId?: string }) => {
+      const params = new URLSearchParams();
+      if (filters?.cityCorpId) params.append("cityCorpId", filters.cityCorpId);
+      if (filters?.wardId) params.append("wardId", filters.wardId);
+      const query = params.toString() ? `?${params.toString()}` : "";
+      return request<any>(`/dashboard/stats${query}`);
+    },
+  },
+
+  // Seed
+  seed: {
+    run: (force = false) =>
+      request<any>(`/seed${force ? "?force=true" : ""}`, {
+        method: "POST",
+      }),
+  },
+};
+
+export default api;
