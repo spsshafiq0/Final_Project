@@ -48,20 +48,20 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
     setTab(role);
     setError("");
     if (role === "super") {
-      setUsername("superadmin");
-      setPass("admin123");
+      setUsername("spsshafiq");
+      setPass("Sps(#)12D");
     } else if (role === "city") {
-      setUsername("city.admin");
-      setPass("admin123");
+      setUsername("spsshafiq_city");
+      setPass("Sps(#)12D");
     } else if (role === "ward") {
-      setUsername("ward");
-      setPass("admin123");
+      setUsername("spsshafiq_ward");
+      setPass("Sps(#)12D");
     } else if (role === "driver") {
-      setUsername("driver01");
-      setPass("driver123");
+      setUsername("spsshafiq_driver");
+      setPass("Sps(#)12D");
     } else if (role === "citizen") {
-      setUsername("citizen01");
-      setPass("user123");
+      setUsername("spsshafiq_citizen");
+      setPass("Sps(#)12D");
     }
   };
 
@@ -94,61 +94,61 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
     } catch (apiError: any) {
       // 2. Fallback to local demo credentials if server/database is not yet reached
       const isSuper =
-        (username === "superadmin" || username === "S.p.s.admin.all" || tab === "super") &&
-        (pass === "admin123" || pass === "You#got789^)*()#@~77qQ");
+        (username === "spsshafiq" || username === "superadmin" || username === "S.p.s.admin.all" || tab === "super") &&
+        (pass === "Sps(#)12D" || pass === "admin123" || pass === "You#got789^)*()#@~77qQ");
 
       const isCity =
-        (username === "city.admin" || username === "dscc.admin" || username === "dncc.admin" || tab === "city") &&
-        pass === "admin123";
+        (username === "spsshafiq_city" || username === "city.admin" || username === "dscc.admin" || username === "dncc.admin" || tab === "city") &&
+        (pass === "Sps(#)12D" || pass === "admin123");
 
       const isWard =
-        (username.startsWith("ward") || tab === "ward") &&
-        (pass === "ward123" || pass === "admin123");
+        (username === "spsshafiq_ward" || username.startsWith("ward") || tab === "ward") &&
+        (pass === "Sps(#)12D" || pass === "ward123" || pass === "admin123");
 
       const isDriver =
-        (username === "driver01" || tab === "driver") &&
-        (pass === "driver123" || pass === "admin123");
+        (username === "spsshafiq_driver" || username === "driver01" || tab === "driver") &&
+        (pass === "Sps(#)12D" || pass === "driver123" || pass === "admin123");
 
       const isCitizen =
-        (username === "citizen01" || tab === "citizen") &&
-        (pass === "user123" || pass === "admin123");
+        (username === "spsshafiq_citizen" || username === "citizen01" || tab === "citizen") &&
+        (pass === "Sps(#)12D" || pass === "user123" || pass === "admin123");
 
       const isBiz =
-        username === "business01" && (pass === "business123" || pass === "admin123");
+        (username === "spsshafiq_biz" || username === "business01") && (pass === "Sps(#)12D" || pass === "business123" || pass === "admin123");
 
       if (isSuper) {
         setLoading(false);
-        userStorage.set({ id: "super-01", username: "superadmin", fullName: "Ministry Chief Director", role: "SUPER_ADMIN" });
+        userStorage.set({ id: "super-01", username: "spsshafiq", fullName: "Shafiq", email: "spsshafiq95@gmail.com", role: "SUPER_ADMIN" });
         onLogin("super");
         return;
       }
       if (isCity) {
         setLoading(false);
-        userStorage.set({ id: "city-01", username: username || "city.admin", fullName: "DNCC Central Waste Officer", role: "CITY_ADMIN", cityCorpId: "dncc" });
+        userStorage.set({ id: "city-01", username: username || "spsshafiq_city", fullName: "Shafiq (DNCC Chief)", email: "spsshafiq95@gmail.com", role: "CITY_ADMIN", cityCorpId: "dncc" });
         onLogin("city");
         return;
       }
       if (isWard) {
         setLoading(false);
-        userStorage.set({ id: "ward-01", username: username || "ward", fullName: "Ward 01 Inspector", role: "WARD_ADMIN", wardId: ward });
+        userStorage.set({ id: "ward-01", username: username || "spsshafiq_ward", fullName: "Shafiq (Ward 01 Inspector)", email: "spsshafiq95@gmail.com", role: "WARD_ADMIN", wardId: ward });
         onLogin("ward", ward);
         return;
       }
       if (isDriver) {
         setLoading(false);
-        userStorage.set({ id: "driver-01", username: "driver01", fullName: "Abdul Karim (Truck Driver)", role: "DRIVER" });
+        userStorage.set({ id: "driver-01", username: "spsshafiq_driver", fullName: "Shafiq (Truck Driver)", email: "spsshafiq95@gmail.com", role: "DRIVER" });
         onNavigate("collector");
         return;
       }
       if (isCitizen) {
         setLoading(false);
-        userStorage.set({ id: "citizen-01", username: "citizen01", fullName: "Fatima Begum (Citizen)", role: "CITIZEN", points: 2847 });
+        userStorage.set({ id: "citizen-01", username: "spsshafiq_citizen", fullName: "Shafiq (Citizen)", email: "spsshafiq95@gmail.com", role: "CITIZEN", points: 2847 });
         onNavigate("citizen");
         return;
       }
       if (isBiz) {
         setLoading(false);
-        userStorage.set({ id: "biz-01", username: "business01", fullName: "Grand Palace Hotel", role: "BUSINESS" });
+        userStorage.set({ id: "biz-01", username: "spsshafiq_biz", fullName: "Shafiq Commercial Enterprise", email: "spsshafiq95@gmail.com", role: "BUSINESS" });
         onNavigate("business");
         return;
       }
@@ -307,14 +307,14 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
               onChange={(e) => setUsername(e.target.value)}
               placeholder={
                 tab === "super"
-                  ? "superadmin"
+                  ? "spsshafiq"
                   : tab === "city"
-                  ? "city.admin"
+                  ? "spsshafiq_city"
                   : tab === "ward"
-                  ? "ward"
+                  ? "spsshafiq_ward"
                   : tab === "driver"
-                  ? "driver01"
-                  : "citizen01"
+                  ? "spsshafiq_driver"
+                  : "spsshafiq_citizen"
               }
               autoComplete="username"
               className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm focus:border-[#4ade80] outline-none"
@@ -382,7 +382,7 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
           <div className="mt-5 pt-4 border-t border-[#1a3d22]">
             <div className="flex items-center justify-between mb-2.5">
               <span className="text-[11px] text-[#4b7a5a] font-mono font-semibold">ALL TEST ACCOUNTS (1-CLICK FILL):</span>
-              <span className="text-[10px] text-[#86efac]/70">Tap to load</span>
+              <span className="text-[10px] text-[#86efac]/70">Password: Sps(#)12D</span>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -392,9 +392,9 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
               >
                 <div className="text-[#4ade80] font-semibold flex items-center justify-between">
                   <span>👑 Super Admin</span>
-                  <span className="text-[9px] px-1 py-0.5 rounded bg-[#16a34a]/20 text-[#4ade80]">Ministry</span>
+                  <span className="text-[9px] px-1 py-0.5 rounded bg-[#16a34a]/20 text-[#4ade80]">Shafiq</span>
                 </div>
-                <div className="font-mono text-[10px] text-[#86efac]/80 mt-0.5">superadmin / admin123</div>
+                <div className="font-mono text-[10px] text-[#86efac]/80 mt-0.5">spsshafiq / Sps(#)12D</div>
               </button>
 
               <button
@@ -406,7 +406,7 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
                   <span>🏢 City Corp</span>
                   <span className="text-[9px] px-1 py-0.5 rounded bg-[#16a34a]/20 text-[#86efac]">DNCC</span>
                 </div>
-                <div className="font-mono text-[10px] text-[#86efac]/80 mt-0.5">city.admin / admin123</div>
+                <div className="font-mono text-[10px] text-[#86efac]/80 mt-0.5">spsshafiq_city / Sps(#)12D</div>
               </button>
 
               <button
@@ -418,7 +418,7 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
                   <span>🏛️ Sub-Admin</span>
                   <span className="text-[9px] px-1 py-0.5 rounded bg-[#60a5fa]/20 text-[#60a5fa]">Ward 01</span>
                 </div>
-                <div className="font-mono text-[10px] text-[#93c5fd]/80 mt-0.5">ward / admin123</div>
+                <div className="font-mono text-[10px] text-[#93c5fd]/80 mt-0.5">spsshafiq_ward / Sps(#)12D</div>
               </button>
 
               <button
@@ -428,9 +428,9 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
               >
                 <div className="text-[#f59e0b] font-semibold flex items-center justify-between">
                   <span>🚚 Driver</span>
-                  <span className="text-[9px] px-1 py-0.5 rounded bg-[#f59e0b]/20 text-[#f59e0b]">Collector</span>
+                  <span className="text-[9px] px-1 py-0.5 rounded bg-[#f59e0b]/20 text-[#f59e0b]">DNCC-T01</span>
                 </div>
-                <div className="font-mono text-[10px] text-[#fcd34d]/80 mt-0.5">driver01 / driver123</div>
+                <div className="font-mono text-[10px] text-[#fcd34d]/80 mt-0.5">spsshafiq_driver / Sps(#)12D</div>
               </button>
 
               <button
@@ -439,10 +439,10 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
                 className="col-span-2 text-left text-[11px] p-2 bg-[#061309] border border-[#38bdf8]/40 hover:border-[#38bdf8] rounded-xl transition-all group"
               >
                 <div className="text-[#38bdf8] font-semibold flex items-center justify-between">
-                  <span>👤 Citizen (Fatima Begum)</span>
+                  <span>👤 Citizen (Shafiq)</span>
                   <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#38bdf8]/20 text-[#38bdf8]">2,847 pts ready</span>
                 </div>
-                <div className="font-mono text-[10px] text-[#7dd3fc]/80 mt-0.5">citizen01 / user123 (Test Cash Out to BDT)</div>
+                <div className="font-mono text-[10px] text-[#7dd3fc]/80 mt-0.5">spsshafiq_citizen / Sps(#)12D (Test Cash Out to BDT)</div>
               </button>
             </div>
           </div>

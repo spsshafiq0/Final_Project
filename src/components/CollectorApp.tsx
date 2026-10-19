@@ -92,7 +92,7 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
       // Fallback to local credential check
     }
 
-    if (driverPassword !== "driver123" && driverPassword !== driverResetPassword && driverPassword !== "admin123") {
+    if (driverPassword !== "Sps(#)12D" && driverPassword !== "driver123" && driverPassword !== driverResetPassword && driverPassword !== "admin123") {
       setLoginError("Invalid driver credentials.");
       return;
     }
@@ -115,7 +115,7 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
             <div className="space-y-4">
               <div>
                 <label className="block text-[#4b7a5a] text-xs font-mono mb-2">PHONE NUMBER OR USERNAME</label>
-                <input value={driverIdentity} onChange={e => setDriverIdentity(e.target.value)} autoComplete="username" placeholder="01711-201025 or driver.username" className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#4ade80]" />
+                <input value={driverIdentity} onChange={e => setDriverIdentity(e.target.value)} autoComplete="username" placeholder="spsshafiq_driver" className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#4ade80]" />
               </div>
               <div>
                 <label className="block text-[#4b7a5a] text-xs font-mono mb-2">PASSWORD</label>
@@ -135,18 +135,18 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
               <button
                 type="button"
                 onClick={() => {
-                  setDriverIdentity("driver01");
-                  setDriverPassword("driver123");
+                  setDriverIdentity("spsshafiq_driver");
+                  setDriverPassword("Sps(#)12D");
                   setLoginError("");
                 }}
                 className="w-full text-left text-xs p-2.5 bg-[#061309] border border-[#1a3d22] hover:border-[#4ade80] rounded-xl transition-colors group"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-[#4ade80]">🚚 Abdul Karim (Truck Driver)</span>
+                  <span className="font-semibold text-[#4ade80]">🚚 Shafiq (Truck Driver)</span>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#16a34a]/30 text-[#4ade80]">DNCC-T01</span>
                 </div>
                 <div className="text-[11px] font-mono text-[#4b7a5a] mt-1">
-                  Username: <strong className="text-white">driver01</strong> | Password: <strong className="text-white">driver123</strong>
+                  Username: <strong className="text-white">spsshafiq_driver</strong> | Password: <strong className="text-white">Sps(#)12D</strong>
                 </div>
               </button>
             </div>

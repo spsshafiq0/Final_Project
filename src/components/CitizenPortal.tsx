@@ -243,9 +243,9 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
       setAuthenticated(true);
       fetchMyWithdrawals();
     } catch (err: any) {
-      if (authForm.username === "citizen01") {
-        setCitizenName("Fatima Begum");
-        setCitizenPhone("01711-889900");
+      if (authForm.username === "spsshafiq_citizen" || authForm.username === "citizen01") {
+        setCitizenName("Shafiq");
+        setCitizenPhone("01711-950004");
         setUserPoints(2847);
         setAuthenticated(true);
         fetchMyWithdrawals();
@@ -288,17 +288,17 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
                 type="button"
                 onClick={() => {
                   setAuthMode("login");
-                  setAuthForm({ contact: "", username: "citizen01", email: "", password: "user123" });
+                  setAuthForm({ contact: "", username: "spsshafiq_citizen", email: "spsshafiq95@gmail.com", password: "Sps(#)12D" });
                   setAuthError("");
                 }}
                 className="w-full text-left text-xs p-2.5 bg-[#f0fdf4] border border-[#86efac] hover:bg-[#dcfce7] rounded-xl transition-colors group"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-[#15803d]">👤 Fatima Begum (Citizen)</span>
+                  <span className="font-semibold text-[#15803d]">👤 Shafiq (Citizen)</span>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#16a34a] text-white">2,847 pts</span>
                 </div>
                 <div className="text-[11px] font-mono text-[#4b7a5a] mt-1">
-                  Username: <strong className="text-[#052e16]">citizen01</strong> | Password: <strong className="text-[#052e16]">user123</strong>
+                  Username: <strong className="text-[#052e16]">spsshafiq_citizen</strong> | Password: <strong className="text-[#052e16]">Sps(#)12D</strong>
                 </div>
               </button>
             </div>

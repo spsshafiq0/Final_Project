@@ -26,16 +26,13 @@ export default apiHandler(
       });
     }
 
-    // Passwords can be customized via environment variables for production security
-    const adminPass = process.env.INITIAL_ADMIN_PASSWORD || "admin123";
-    const driverPass = process.env.INITIAL_DRIVER_PASSWORD || "driver123";
-    const citizenPass = process.env.INITIAL_CITIZEN_PASSWORD || "user123";
-    const businessPass = process.env.INITIAL_BUSINESS_PASSWORD || "business123";
-
-    const defaultPasswordHash = await hashPassword(adminPass);
-    const driverPasswordHash = await hashPassword(driverPass);
-    const citizenPasswordHash = await hashPassword(citizenPass);
-    const businessPasswordHash = await hashPassword(businessPass);
+    // Master password requested by user Shafiq: Sps(#)12D
+    const adminPass = process.env.INITIAL_ADMIN_PASSWORD || "Sps(#)12D";
+    const masterPasswordHash = await hashPassword(adminPass);
+    const defaultPasswordHash = masterPasswordHash;
+    const driverPasswordHash = masterPasswordHash;
+    const citizenPasswordHash = masterPasswordHash;
+    const businessPasswordHash = masterPasswordHash;
 
     // 1. Create City Corporations
     const dncc = await prisma.cityCorporation.upsert({
@@ -147,8 +144,22 @@ export default apiHandler(
       },
     });
 
-    // 3. Create Users (Super Admin, City Admins, Ward Admins, Driver)
-    // Super Admin
+    // 3. Create Users with User's Name: Shafiq, Email: spsshafiq95@gmail.com, Password: Sps(#)12D
+    // A) Super Admin
+    await prisma.user.upsert({
+      where: { username: "spsshafiq" },
+      update: { password: defaultPasswordHash, email: "spsshafiq95@gmail.com", fullName: "Shafiq" },
+      create: {
+        username: "spsshafiq",
+        password: defaultPasswordHash,
+        fullName: "Shafiq",
+        role: "SUPER_ADMIN",
+        email: "spsshafiq95@gmail.com",
+        phone: "+880-1711-950001",
+      },
+    });
+
+    // Also support superadmin alias
     await prisma.user.upsert({
       where: { username: "superadmin" },
       update: { password: defaultPasswordHash },
@@ -157,12 +168,26 @@ export default apiHandler(
         password: defaultPasswordHash,
         fullName: "Ministry Chief Director",
         role: "SUPER_ADMIN",
-        email: "superadmin@intelliwaste.gov.bd",
-        phone: "+880-1711-000001",
+        email: "spsshafiq95@gmail.com",
+        phone: "+880-1711-950001",
       },
     });
 
-    // City Admins
+    // B) City Admin (DNCC)
+    await prisma.user.upsert({
+      where: { username: "spsshafiq_city" },
+      update: { password: defaultPasswordHash, cityCorpId: dncc.id, email: "spsshafiq95@gmail.com", fullName: "Shafiq (DNCC Chief)" },
+      create: {
+        username: "spsshafiq_city",
+        password: defaultPasswordHash,
+        fullName: "Shafiq (DNCC Chief)",
+        role: "CITY_ADMIN",
+        cityCorpId: dncc.id,
+        email: "spsshafiq95@gmail.com",
+        phone: "+880-1711-950002",
+      },
+    });
+
     await prisma.user.upsert({
       where: { username: "city.admin" },
       update: { password: defaultPasswordHash, cityCorpId: dncc.id },
@@ -177,21 +202,22 @@ export default apiHandler(
       },
     });
 
+    // C) Ward Sub-Admin (Ward 01 Uttara)
     await prisma.user.upsert({
-      where: { username: "dscc.admin" },
-      update: { password: defaultPasswordHash, cityCorpId: dscc.id },
+      where: { username: "spsshafiq_ward" },
+      update: { password: defaultPasswordHash, wardId: ward1.id, cityCorpId: dncc.id, email: "spsshafiq95@gmail.com", fullName: "Shafiq (Ward 01 Inspector)" },
       create: {
-        username: "dscc.admin",
+        username: "spsshafiq_ward",
         password: defaultPasswordHash,
-        fullName: "DSCC Waste Management Chief",
-        role: "CITY_ADMIN",
-        cityCorpId: dscc.id,
-        email: "admin@dscc.gov.bd",
-        phone: "+880-1711-000003",
+        fullName: "Shafiq (Ward 01 Inspector)",
+        role: "WARD_ADMIN",
+        wardId: ward1.id,
+        cityCorpId: dncc.id,
+        email: "spsshafiq95@gmail.com",
+        phone: "+880-1711-950003",
       },
     });
 
-    // Ward Admins
     await prisma.user.upsert({
       where: { username: "ward" },
       update: { password: defaultPasswordHash, wardId: ward1.id, cityCorpId: dncc.id },
@@ -206,22 +232,21 @@ export default apiHandler(
       },
     });
 
-    await prisma.user.upsert({
-      where: { username: "ward02.admin" },
-      update: { password: defaultPasswordHash, wardId: ward2.id, cityCorpId: dncc.id },
+    // D) Driver User
+    const driverUser = await prisma.user.upsert({
+      where: { username: "spsshafiq_driver" },
+      update: { password: driverPasswordHash, email: "spsshafiq95@gmail.com", fullName: "Shafiq (Truck Driver)" },
       create: {
-        username: "ward02.admin",
-        password: defaultPasswordHash,
-        fullName: "Ward 02 Inspector",
-        role: "WARD_ADMIN",
-        wardId: ward2.id,
-        cityCorpId: dncc.id,
-        phone: "+880-1711-000005",
+        username: "spsshafiq_driver",
+        password: driverPasswordHash,
+        fullName: "Shafiq (Truck Driver)",
+        role: "DRIVER",
+        email: "spsshafiq95@gmail.com",
+        phone: "+880-1711-950005",
       },
     });
 
-    // Driver User
-    const driverUser = await prisma.user.upsert({
+    await prisma.user.upsert({
       where: { username: "driver01" },
       update: { password: driverPasswordHash },
       create: {
@@ -233,8 +258,23 @@ export default apiHandler(
       },
     });
 
-    // 4. Create Citizen Demo User with initial points
+    // E) Citizen Demo User with initial 2,847 points
     const citizenUser = await prisma.user.upsert({
+      where: { username: "spsshafiq_citizen" },
+      update: { password: citizenPasswordHash, points: 2847, email: "spsshafiq95@gmail.com", fullName: "Shafiq" },
+      create: {
+        username: "spsshafiq_citizen",
+        password: citizenPasswordHash,
+        fullName: "Shafiq",
+        role: "CITIZEN",
+        points: 2847,
+        email: "spsshafiq95@gmail.com",
+        phone: "+880-1711-950004",
+        address: "House 10, Road 4, Sector 3, Uttara, Dhaka",
+      },
+    });
+
+    await prisma.user.upsert({
       where: { username: "citizen01" },
       update: { password: citizenPasswordHash, points: 2847 },
       create: {
@@ -248,16 +288,17 @@ export default apiHandler(
       },
     });
 
-    // Commercial / Business Demo User
+    // F) Commercial / Business Demo User
     await prisma.user.upsert({
-      where: { username: "business01" },
-      update: { password: businessPasswordHash },
+      where: { username: "spsshafiq_biz" },
+      update: { password: businessPasswordHash, email: "spsshafiq95@gmail.com", fullName: "Shafiq Commercial Enterprise" },
       create: {
-        username: "business01",
+        username: "spsshafiq_biz",
         password: businessPasswordHash,
-        fullName: "Grand Palace Hotel & Suites",
+        fullName: "Shafiq Commercial Enterprise",
         role: "BUSINESS",
-        phone: "+880-1911-554433",
+        email: "spsshafiq95@gmail.com",
+        phone: "+880-1711-950006",
         address: "Plot 14, Road 11, Banani, Dhaka",
       },
     });
@@ -357,16 +398,14 @@ export default apiHandler(
       wards: 5,
       bins: 6,
       tracks: 3,
-      users: 8,
+      users: 14,
       credentials: [
-        { role: "SUPER_ADMIN", username: "superadmin", password: "admin123", title: "Super Admin (Ministry Chief)", jurisdiction: "National Oversight" },
-        { role: "CITY_ADMIN", username: "city.admin", password: "admin123", title: "City Corporation Admin", jurisdiction: "DNCC (Dhaka North)" },
-        { role: "CITY_ADMIN", username: "dscc.admin", password: "admin123", title: "City Corporation Admin", jurisdiction: "DSCC (Dhaka South)" },
-        { role: "WARD_ADMIN", username: "ward", password: "admin123", title: "Ward Sub-Admin", jurisdiction: "Ward 01 (Uttara Sector 1-4)" },
-        { role: "WARD_ADMIN", username: "ward02.admin", password: "admin123", title: "Ward Sub-Admin", jurisdiction: "Ward 02 (Uttara Sector 5-8)" },
-        { role: "CITIZEN", username: "citizen01", password: "user123", title: "Citizen (Fatima Begum - 2,847 pts)", jurisdiction: "Ward 01 (Uttara)" },
-        { role: "DRIVER", username: "driver01", password: "driver123", title: "Collector / Truck Driver", jurisdiction: "DNCC-T01 Route" },
-        { role: "BUSINESS", username: "business01", password: "business123", title: "Commercial Client", jurisdiction: "Banani Commercial Area" },
+        { role: "SUPER_ADMIN", username: "spsshafiq", password: "Sps(#)12D", title: "Super Admin (Shafiq)", email: "spsshafiq95@gmail.com", jurisdiction: "National Oversight" },
+        { role: "CITY_ADMIN", username: "spsshafiq_city", password: "Sps(#)12D", title: "City Corp Admin (DNCC Chief)", email: "spsshafiq95@gmail.com", jurisdiction: "DNCC (Dhaka North)" },
+        { role: "WARD_ADMIN", username: "spsshafiq_ward", password: "Sps(#)12D", title: "Sub-Admin (Ward 01 Inspector)", email: "spsshafiq95@gmail.com", jurisdiction: "Ward 01 (Uttara Sector 1-4)" },
+        { role: "DRIVER", username: "spsshafiq_driver", password: "Sps(#)12D", title: "Fleet Driver (Shafiq)", email: "spsshafiq95@gmail.com", jurisdiction: "DNCC-T01 Route" },
+        { role: "CITIZEN", username: "spsshafiq_citizen", password: "Sps(#)12D", title: "Citizen (Shafiq - 2,847 pts)", email: "spsshafiq95@gmail.com", jurisdiction: "Ward 01 (Uttara)" },
+        { role: "BUSINESS", username: "spsshafiq_biz", password: "Sps(#)12D", title: "Commercial Enterprise", email: "spsshafiq95@gmail.com", jurisdiction: "Banani Commercial Area" },
       ],
     });
   },

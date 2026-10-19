@@ -145,6 +145,32 @@ export default function BusinessPortal({ onNavigate }: BusinessPortalProps) {
             </div>
             {authError && <div className="text-red-400 bg-red-500/10 rounded-lg px-3 py-2 text-xs mt-3">{authError}</div>}
             <button onClick={login} className="w-full bg-[#16a34a] text-white rounded-xl py-3 mt-5 font-semibold flex items-center justify-center gap-2">{authMode === "login" ? <LogIn size={16} /> : <UserPlus size={16} />}{authMode === "login" ? "Login" : "Create business account"}</button>
+
+            {/* Quick Demo Fill for Business */}
+            <div className="mt-4 pt-4 border-t border-[#1a3d22]">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] text-[#4b7a5a] font-mono font-semibold">TEST BUSINESS ACCOUNT:</span>
+                <span className="text-[10px] text-[#4ade80]">1-Click load</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("login");
+                  setEmail("spsshafiq95@gmail.com");
+                  setPassword("Sps(#)12D");
+                  setAuthError("");
+                }}
+                className="w-full text-left text-xs p-2.5 bg-[#061309] border border-[#1a3d22] hover:border-[#4ade80] rounded-xl transition-colors group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-[#4ade80]">🏢 Shafiq Commercial Enterprise</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#16a34a]/30 text-[#4ade80]">Banani</span>
+                </div>
+                <div className="text-[11px] font-mono text-[#4b7a5a] mt-1">
+                  Email: <strong className="text-white">spsshafiq95@gmail.com</strong> | Password: <strong className="text-white">Sps(#)12D</strong>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       </div>
