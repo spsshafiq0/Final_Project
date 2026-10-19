@@ -193,10 +193,13 @@ export const api = {
       return result;
     },
     register: async (userData: any) => {
-      return request<{ message: string; token: string; user: UserProfile }>("/auth/register", {
+      const result = await request<{ message: string; token: string; user: UserProfile }>("/auth/register", {
         method: "POST",
         body: JSON.stringify(userData),
       });
+      if (result.token) tokenStorage.set(result.token);
+      if (result.user) userStorage.set(result.user);
+      return result;
     },
     me: async () => {
       const result = await request<{ user: UserProfile }>("/auth/me");

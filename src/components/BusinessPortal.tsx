@@ -13,6 +13,8 @@ interface BusinessProfile {
   password: string;
 }
 
+import api from "../lib/api";
+
 const PROFILE_KEY = "intelliwaste-business-profile";
 
 export default function BusinessPortal({ onNavigate }: BusinessPortalProps) {
@@ -28,28 +30,53 @@ export default function BusinessPortal({ onNavigate }: BusinessPortalProps) {
   const [codes, setCodes] = useState<Record<number, string>>({});
   const [message, setMessage] = useState("");
 
-  const login = () => {
+  const login = async () => {
     if (!email || !password || (authMode === "register" && !shopName)) {
       setAuthError("Complete all required fields.");
       return;
     }
-    if (authMode === "register") {
-      const profile: BusinessProfile = { shopName, email, password };
-      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-      localStorage.setItem("intelliwaste-business-balance", "6000");
-      setBalance(6000);
-    } else {
-      const stored = localStorage.getItem(PROFILE_KEY);
-      const profile = stored ? JSON.parse(stored) as BusinessProfile : null;
-      if (!profile || profile.email !== email || profile.password !== password) {
-        setAuthError("No matching business account. Register your shop first.");
-        return;
-      }
-      setShopName(profile.shopName);
-      setBalance(Number(localStorage.getItem("intelliwaste-business-balance") ?? "6000"));
-    }
     setAuthError("");
-    setAuthenticated(true);
+
+    try {
+      if (authMode === "register") {
+        const username = email.split("@")[0] || `biz_${Date.now()}`;
+        const res = await api.auth.register({
+          username,
+          password,
+          fullName: shopName,
+          email,
+          role: "BUSINESS",
+        });
+        if (res?.user) {
+          setShopName(res.user.fullName);
+        }
+      } else {
+        const username = email.includes("@") ? email.split("@")[0] : email;
+        const res = await api.auth.login(username, password);
+        if (res?.user) {
+          setShopName(res.user.fullName);
+        }
+      }
+      setAuthenticated(true);
+    } catch (err: any) {
+      // Local fallback
+      if (authMode === "register") {
+        const profile: BusinessProfile = { shopName, email, password };
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+        localStorage.setItem("intelliwaste-business-balance", "6000");
+        setBalance(6000);
+        setAuthenticated(true);
+      } else {
+        const stored = localStorage.getItem(PROFILE_KEY);
+        const profile = stored ? (JSON.parse(stored) as BusinessProfile) : null;
+        if (profile && profile.email === email && profile.password === password) {
+          setShopName(profile.shopName);
+          setAuthenticated(true);
+          return;
+        }
+        setAuthError(err?.message || "Invalid business credentials");
+      }
+    }
   };
 
   const refreshRequests = () => setRequests(getPickupRequests());

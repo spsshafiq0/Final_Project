@@ -224,18 +224,34 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
           if (result.user.fullName) setCitizenName(result.user.fullName);
           if (result.user.phone) setCitizenPhone(result.user.phone);
         }
+      } else {
+        // Real Dynamic Registration in PostgreSQL
+        const result = await api.auth.register({
+          username: authForm.username,
+          password: authForm.password,
+          fullName: authForm.username,
+          email: authForm.email,
+          phone: authForm.contact,
+          role: "CITIZEN",
+        });
+        if (result?.user) {
+          setCitizenName(result.user.fullName || authForm.username);
+          if (result.user.phone) setCitizenPhone(result.user.phone);
+          setUserPoints(0);
+        }
       }
       setAuthenticated(true);
       fetchMyWithdrawals();
-    } catch {
-      // Local fallback
+    } catch (err: any) {
       if (authForm.username === "citizen01") {
         setCitizenName("Fatima Begum");
         setCitizenPhone("01711-889900");
         setUserPoints(2847);
+        setAuthenticated(true);
+        fetchMyWithdrawals();
+        return;
       }
-      setAuthenticated(true);
-      fetchMyWithdrawals();
+      setAuthError(err?.message || "Authentication failed");
     }
   };
 

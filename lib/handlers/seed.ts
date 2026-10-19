@@ -5,19 +5,37 @@ import { apiHandler } from "../middleware";
 
 export default apiHandler(
   async (req: VercelRequest, res: VercelResponse) => {
-    // Check if Super Admin already exists
+    // NOTE: In enterprise architecture, this seeder is an idempotent initial provisioning script.
+    // Its purpose is to populate the root Super Admin and initial jurisdictional hierarchy into PostgreSQL
+    // when an empty database is deployed for the first time.
+    // Subsequent users, admins, wards, and citizens are created dynamically in the database via /api/users and /api/auth/register.
     const superAdminExists = await prisma.user.findFirst({
       where: { role: "SUPER_ADMIN" },
     });
 
+    // In production, prevent accidental re-seeding unless authorized with a secret
+    const isProduction = process.env.NODE_ENV === "production";
+    const seedSecret = process.env.SEED_SECRET;
+    if (isProduction && seedSecret && req.headers["x-seed-secret"] !== seedSecret) {
+      return res.status(403).json({ error: "Unauthorized: Seeding is restricted in production" });
+    }
+
     if (superAdminExists && req.query.force !== "true") {
       return res.status(200).json({
-        message: "Database already seeded. Use ?force=true to re-seed or update.",
+        message: "Database already provisioned. Real data persists in PostgreSQL. Use ?force=true to re-sync initial fixtures.",
       });
     }
 
-    const defaultPasswordHash = await hashPassword("admin123");
-    const driverPasswordHash = await hashPassword("driver123");
+    // Passwords can be customized via environment variables for production security
+    const adminPass = process.env.INITIAL_ADMIN_PASSWORD || "admin123";
+    const driverPass = process.env.INITIAL_DRIVER_PASSWORD || "driver123";
+    const citizenPass = process.env.INITIAL_CITIZEN_PASSWORD || "user123";
+    const businessPass = process.env.INITIAL_BUSINESS_PASSWORD || "business123";
+
+    const defaultPasswordHash = await hashPassword(adminPass);
+    const driverPasswordHash = await hashPassword(driverPass);
+    const citizenPasswordHash = await hashPassword(citizenPass);
+    const businessPasswordHash = await hashPassword(businessPass);
 
     // 1. Create City Corporations
     const dncc = await prisma.cityCorporation.upsert({
@@ -216,7 +234,6 @@ export default apiHandler(
     });
 
     // 4. Create Citizen Demo User with initial points
-    const citizenPasswordHash = await hashPassword("user123");
     const citizenUser = await prisma.user.upsert({
       where: { username: "citizen01" },
       update: { password: citizenPasswordHash, points: 2847 },
@@ -232,7 +249,6 @@ export default apiHandler(
     });
 
     // Commercial / Business Demo User
-    const businessPasswordHash = await hashPassword("business123");
     await prisma.user.upsert({
       where: { username: "business01" },
       update: { password: businessPasswordHash },
