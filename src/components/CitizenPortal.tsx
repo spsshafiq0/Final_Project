@@ -562,12 +562,11 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
                       <div className="text-[#4b7a5a] text-sm">{slot.time}</div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className={`text-xs px-3 py-1 rounded-full font-medium ${
-                        slot.type === "Organic" ? "bg-green-100 text-green-700" :
+                      <span className={`text-xs px-3 py-1 rounded-full font-medium ${slot.type === "Organic" ? "bg-green-100 text-green-700" :
                         slot.type === "Recyclable" ? "bg-blue-100 text-blue-700" :
-                        slot.type === "Hazardous" ? "bg-red-100 text-red-700" :
-                        "bg-gray-100 text-gray-700"
-                      }`}>{slot.type}</span>
+                          slot.type === "Hazardous" ? "bg-red-100 text-red-700" :
+                            "bg-gray-100 text-gray-700"
+                        }`}>{slot.type}</span>
                       {slot.available ? (
                         <button
                           onClick={() => setBookedSlot(bookedSlot === i ? null : i)}
@@ -592,41 +591,41 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
                 <div className="text-[#4b7a5a] text-sm mt-1">A {pickupForm.area} driver can now accept this ৳{pickupForm.deposit} job.</div>
                 <button onClick={() => setPickupRequested(false)} className="text-[#16a34a] text-sm font-semibold mt-4">Create another request</button>
               </div> : <>
-              <div className="grid sm:grid-cols-2 gap-3 mb-3">
-                <select value={pickupForm.area} onChange={e => setPickupForm(f => ({ ...f, area: e.target.value }))} className="border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm text-[#052e16] focus:border-[#16a34a] outline-none">
-                  {["Mohammadpur", "Dhanmondi", "Gulshan", "Banani", "Uttara", "Mirpur-10"].map(area => <option key={area}>{area}</option>)}
-                </select>
-                <select value={pickupForm.waste} onChange={e => setPickupForm(f => ({ ...f, waste: e.target.value }))} className="border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm text-[#052e16] focus:border-[#16a34a] outline-none">
-                  <option value="">Select Waste Type</option>
-                  <option>Bulky Items</option>
-                  <option>Restaurant Mixed Waste</option>
-                  <option>Hotel Mixed Waste</option>
-                  <option>Construction Debris</option>
-                  <option>General Extra Waste</option>
-                </select>
-              </div>
-              <input value={pickupForm.address} onChange={e => setPickupForm(f => ({ ...f, address: e.target.value }))} placeholder="Complete pickup address" className="w-full border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm focus:border-[#16a34a] outline-none mb-3" />
-              <div className="grid sm:grid-cols-2 gap-3 mb-4">
-                <input type="date" value={pickupForm.date} onChange={e => setPickupForm(f => ({ ...f, date: e.target.value }))} className="border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm text-[#052e16] focus:border-[#16a34a] outline-none" />
-                <div className="relative">
-                  <Wallet size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#16a34a]" />
-                  <input type="number" min="100" value={pickupForm.deposit} onChange={e => setPickupForm(f => ({ ...f, deposit: e.target.value }))} className="w-full border border-[#e2f5e9] rounded-xl pl-9 pr-4 py-3 text-sm text-[#052e16] focus:border-[#16a34a] outline-none" aria-label="Deposit amount" />
+                <div className="grid sm:grid-cols-2 gap-3 mb-3">
+                  <select value={pickupForm.area} onChange={e => setPickupForm(f => ({ ...f, area: e.target.value }))} className="border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm text-[#052e16] focus:border-[#16a34a] outline-none">
+                    {["Mohammadpur", "Dhanmondi", "Gulshan", "Banani", "Uttara", "Mirpur-10"].map(area => <option key={area}>{area}</option>)}
+                  </select>
+                  <select value={pickupForm.waste} onChange={e => setPickupForm(f => ({ ...f, waste: e.target.value }))} className="border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm text-[#052e16] focus:border-[#16a34a] outline-none">
+                    <option value="">Select Waste Type</option>
+                    <option>Bulky Items</option>
+                    <option>Restaurant Mixed Waste</option>
+                    <option>Hotel Mixed Waste</option>
+                    <option>Construction Debris</option>
+                    <option>General Extra Waste</option>
+                  </select>
                 </div>
-              </div>
-              <button disabled={!pickupForm.address || !pickupForm.waste || !pickupForm.date || Number(pickupForm.deposit) < 100} onClick={() => {
-                addPickupRequest({
-                  requesterType: "citizen",
-                  requesterName: authForm.username || authForm.contact || "Citizen Account",
-                  area: pickupForm.area,
-                  address: pickupForm.address,
-                  wasteType: pickupForm.waste,
-                  date: pickupForm.date,
-                  amount: Number(pickupForm.deposit),
-                });
-                setPickupRequests(getPickupRequests());
-                setPickupRequested(true);
-              }} className="w-full bg-[#052e16] disabled:opacity-40 text-white rounded-xl py-3 text-sm font-semibold hover:bg-[#0a3d1e] transition-colors">Deposit ৳{pickupForm.deposit || "0"} & Request Pickup</button>
-              <div className="text-center text-[#4b7a5a] text-xs mt-2">Deposit is released after pickup confirmation.</div>
+                <input value={pickupForm.address} onChange={e => setPickupForm(f => ({ ...f, address: e.target.value }))} placeholder="Complete pickup address" className="w-full border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm focus:border-[#16a34a] outline-none mb-3" />
+                <div className="grid sm:grid-cols-2 gap-3 mb-4">
+                  <input type="date" value={pickupForm.date} onChange={e => setPickupForm(f => ({ ...f, date: e.target.value }))} className="border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm text-[#052e16] focus:border-[#16a34a] outline-none" />
+                  <div className="relative">
+                    <Wallet size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#16a34a]" />
+                    <input type="number" min="100" value={pickupForm.deposit} onChange={e => setPickupForm(f => ({ ...f, deposit: e.target.value }))} className="w-full border border-[#e2f5e9] rounded-xl pl-9 pr-4 py-3 text-sm text-[#052e16] focus:border-[#16a34a] outline-none" aria-label="Deposit amount" />
+                  </div>
+                </div>
+                <button disabled={!pickupForm.address || !pickupForm.waste || !pickupForm.date || Number(pickupForm.deposit) < 100} onClick={() => {
+                  addPickupRequest({
+                    requesterType: "citizen",
+                    requesterName: authForm.username || authForm.contact || "Citizen Account",
+                    area: pickupForm.area,
+                    address: pickupForm.address,
+                    wasteType: pickupForm.waste,
+                    date: pickupForm.date,
+                    amount: Number(pickupForm.deposit),
+                  });
+                  setPickupRequests(getPickupRequests());
+                  setPickupRequested(true);
+                }} className="w-full bg-[#052e16] disabled:opacity-40 text-white rounded-xl py-3 text-sm font-semibold hover:bg-[#0a3d1e] transition-colors">Deposit ৳{pickupForm.deposit || "0"} & Request Pickup</button>
+                <div className="text-center text-[#4b7a5a] text-xs mt-2">Deposit is released after pickup confirmation.</div>
               </>}
             </div>
 
@@ -651,11 +650,10 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
                           <div className="font-semibold text-sm text-[#052e16]">{request.wasteType}</div>
                           <div className="text-[#4b7a5a] text-xs mt-1">{request.address} · ৳{request.amount} · {request.date}</div>
                         </div>
-                        <span className={`text-xs rounded-full px-2.5 py-1 font-semibold ${
-                          request.status === "completed" ? "bg-green-100 text-green-700" :
+                        <span className={`text-xs rounded-full px-2.5 py-1 font-semibold ${request.status === "completed" ? "bg-green-100 text-green-700" :
                           request.status === "accepted" ? "bg-blue-100 text-blue-700" :
-                          "bg-yellow-100 text-yellow-700"
-                        }`}>
+                            "bg-yellow-100 text-yellow-700"
+                          }`}>
                           {request.status.toUpperCase()}
                         </span>
                       </div>
