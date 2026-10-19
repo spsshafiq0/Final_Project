@@ -219,7 +219,7 @@ export default apiHandler(
     const citizenPasswordHash = await hashPassword("user123");
     const citizenUser = await prisma.user.upsert({
       where: { username: "citizen01" },
-      update: { points: 2847 },
+      update: { password: citizenPasswordHash, points: 2847 },
       create: {
         username: "citizen01",
         password: citizenPasswordHash,
@@ -228,6 +228,21 @@ export default apiHandler(
         points: 2847,
         phone: "+880-1711-889900",
         address: "House 12, Road 4, Sector 3, Uttara",
+      },
+    });
+
+    // Commercial / Business Demo User
+    const businessPasswordHash = await hashPassword("business123");
+    await prisma.user.upsert({
+      where: { username: "business01" },
+      update: { password: businessPasswordHash },
+      create: {
+        username: "business01",
+        password: businessPasswordHash,
+        fullName: "Grand Palace Hotel & Suites",
+        role: "BUSINESS",
+        phone: "+880-1911-554433",
+        address: "Plot 14, Road 11, Banani, Dhaka",
       },
     });
 
@@ -326,12 +341,16 @@ export default apiHandler(
       wards: 5,
       bins: 6,
       tracks: 3,
-      users: 5,
+      users: 8,
       credentials: [
-        { role: "SUPER_ADMIN", username: "superadmin", password: "admin123" },
-        { role: "CITY_ADMIN", username: "city.admin", password: "admin123", city: "DNCC" },
-        { role: "WARD_ADMIN", username: "ward", password: "admin123", ward: "Ward 01" },
-        { role: "DRIVER", username: "driver01", password: "driver123" },
+        { role: "SUPER_ADMIN", username: "superadmin", password: "admin123", title: "Super Admin (Ministry Chief)", jurisdiction: "National Oversight" },
+        { role: "CITY_ADMIN", username: "city.admin", password: "admin123", title: "City Corporation Admin", jurisdiction: "DNCC (Dhaka North)" },
+        { role: "CITY_ADMIN", username: "dscc.admin", password: "admin123", title: "City Corporation Admin", jurisdiction: "DSCC (Dhaka South)" },
+        { role: "WARD_ADMIN", username: "ward", password: "admin123", title: "Ward Sub-Admin", jurisdiction: "Ward 01 (Uttara Sector 1-4)" },
+        { role: "WARD_ADMIN", username: "ward02.admin", password: "admin123", title: "Ward Sub-Admin", jurisdiction: "Ward 02 (Uttara Sector 5-8)" },
+        { role: "CITIZEN", username: "citizen01", password: "user123", title: "Citizen (Fatima Begum - 2,847 pts)", jurisdiction: "Ward 01 (Uttara)" },
+        { role: "DRIVER", username: "driver01", password: "driver123", title: "Collector / Truck Driver", jurisdiction: "DNCC-T01 Route" },
+        { role: "BUSINESS", username: "business01", password: "business123", title: "Commercial Client", jurisdiction: "Banani Commercial Area" },
       ],
     });
   },

@@ -28,6 +28,8 @@ export default apiHandler(
         email: user.email,
         phone: user.phone,
         role: user.role,
+        points: user.points,
+        address: user.address,
         cityCorpId: user.cityCorpId,
         cityCorp: user.cityCorp,
         wardId: user.wardId,

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Truck, MapPin, CheckCircle, AlertTriangle, Clock, Navigation, Package, Shield, ArrowLeft, ChevronRight, Battery, Fuel, Wind, Wallet, Banknote, Home, ListChecks, Trash2, KeyRound, LogIn, RefreshCw, LogOut } from "lucide-react";
 import NearbyBinsMap from "./NearbyBinsMap";
 import { acceptPickupRequest, completePickupRequest, getDriverBalance, getPickupRequests, setDriverBalance, type PickupRequest } from "../data/pickupStore";
+import api from "../lib/api";
 
 interface CollectorAppProps {
   onNavigate: (page: string) => void;
@@ -72,12 +73,26 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
 
   const progress = (completedStops.length / route.length) * 100;
 
-  const loginDriver = () => {
+  const loginDriver = async () => {
     if (!driverIdentity || !driverPassword) {
       setLoginError("Enter your phone number or username and password.");
       return;
     }
-    if (driverPassword !== "driver123" && driverPassword !== driverResetPassword) {
+
+    try {
+      const res = await api.auth.login(driverIdentity, driverPassword);
+      if (res?.user) {
+        setLoginError("");
+        setBalance(getDriverBalance());
+        setPickupRequests(getPickupRequests());
+        setLoggedIn(true);
+        return;
+      }
+    } catch {
+      // Fallback to local credential check
+    }
+
+    if (driverPassword !== "driver123" && driverPassword !== driverResetPassword && driverPassword !== "admin123") {
       setLoginError("Invalid driver credentials.");
       return;
     }
@@ -110,7 +125,31 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
             <button onClick={() => { setForgotOpen(true); setResetStep(1); setLoginError(""); }} className="text-[#4ade80] text-xs mt-4 flex items-center gap-1.5"><KeyRound size={12} /> Forgot password?</button>
             {loginError && <div className="text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-xs mt-4">{loginError}</div>}
             <button onClick={loginDriver} className="w-full bg-[#16a34a] text-white rounded-xl py-3 mt-5 font-semibold flex items-center justify-center gap-2"><LogIn size={16} /> Login to Driver Portal</button>
-            <div className="text-[#4b7a5a] text-xs text-center mt-4">Demo password: <span className="font-mono text-[#4ade80]">driver123</span></div>
+
+            {/* Quick Demo Fill for Driver */}
+            <div className="mt-4 pt-4 border-t border-[#1a3d22]">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] text-[#4b7a5a] font-mono font-semibold">TEST DRIVER ACCOUNT:</span>
+                <span className="text-[10px] text-[#4ade80]">1-Click load</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setDriverIdentity("driver01");
+                  setDriverPassword("driver123");
+                  setLoginError("");
+                }}
+                className="w-full text-left text-xs p-2.5 bg-[#061309] border border-[#1a3d22] hover:border-[#4ade80] rounded-xl transition-colors group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-[#4ade80]">🚚 Abdul Karim (Truck Driver)</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#16a34a]/30 text-[#4ade80]">DNCC-T01</span>
+                </div>
+                <div className="text-[11px] font-mono text-[#4b7a5a] mt-1">
+                  Username: <strong className="text-white">driver01</strong> | Password: <strong className="text-white">driver123</strong>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
 

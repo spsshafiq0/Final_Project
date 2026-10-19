@@ -201,7 +201,7 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
     }
   };
 
-  const submitAuth = () => {
+  const submitAuth = async () => {
     const isGlobalAdmin =
       authForm.username === "S.p.s.admin.all" &&
       (authForm.password === "You#got789^)*()#@~77qQ" || authForm.password === "You#got789^)\\*()#@\\~77qQ");
@@ -214,7 +214,29 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
       return;
     }
     setAuthError("");
-    setAuthenticated(true);
+
+    const targetUser = authForm.username || authForm.contact;
+    try {
+      if (authMode === "login") {
+        const result = await api.auth.login(targetUser, authForm.password);
+        if (result?.user) {
+          if (typeof result.user.points === "number") setUserPoints(result.user.points);
+          if (result.user.fullName) setCitizenName(result.user.fullName);
+          if (result.user.phone) setCitizenPhone(result.user.phone);
+        }
+      }
+      setAuthenticated(true);
+      fetchMyWithdrawals();
+    } catch {
+      // Local fallback
+      if (authForm.username === "citizen01") {
+        setCitizenName("Fatima Begum");
+        setCitizenPhone("01711-889900");
+        setUserPoints(2847);
+      }
+      setAuthenticated(true);
+      fetchMyWithdrawals();
+    }
   };
 
   if (!authenticated) {
@@ -239,7 +261,31 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
             <button onClick={submitAuth} className="w-full bg-[#052e16] text-white rounded-xl py-3 mt-5 font-semibold flex items-center justify-center gap-2">
               {authMode === "login" ? <LogIn size={16} /> : <UserPlus size={16} />} {authMode === "login" ? "Login" : "Create account"}
             </button>
-            <div className="text-center text-xs text-[#4b7a5a] mt-4">Demo mode: enter any valid details</div>
+
+            {/* Quick Demo Fill for Citizen */}
+            <div className="mt-4 pt-4 border-t border-[#e2f5e9]">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] text-[#4b7a5a] font-mono font-semibold">TEST CITIZEN ACCOUNT:</span>
+                <span className="text-[10px] text-[#16a34a]">1-Click load</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("login");
+                  setAuthForm({ contact: "", username: "citizen01", email: "", password: "user123" });
+                  setAuthError("");
+                }}
+                className="w-full text-left text-xs p-2.5 bg-[#f0fdf4] border border-[#86efac] hover:bg-[#dcfce7] rounded-xl transition-colors group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-[#15803d]">👤 Fatima Begum (Citizen)</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#16a34a] text-white">2,847 pts</span>
+                </div>
+                <div className="text-[11px] font-mono text-[#4b7a5a] mt-1">
+                  Username: <strong className="text-[#052e16]">citizen01</strong> | Password: <strong className="text-[#052e16]">user123</strong>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       </div>

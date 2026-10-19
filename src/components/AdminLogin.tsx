@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Recycle, Shield, ChevronRight, Eye, EyeOff, AlertCircle, KeyRound, CheckCircle, Globe2, Loader2 } from "lucide-react";
-import api, { WardItem, CityCorporationItem } from "../lib/api";
+import { Recycle, Shield, ChevronRight, Eye, EyeOff, AlertCircle, KeyRound, CheckCircle, Globe2, Loader2, Truck, Users } from "lucide-react";
+import api, { WardItem, CityCorporationItem, userStorage } from "../lib/api";
 
 interface AdminLoginProps {
   onLogin: (role: "super" | "city" | "ward", targetId?: string | number) => void;
@@ -8,7 +8,7 @@ interface AdminLoginProps {
 }
 
 export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
-  const [tab, setTab] = useState<"city" | "ward" | "super">("city");
+  const [tab, setTab] = useState<"city" | "ward" | "super" | "driver" | "citizen">("city");
   const [ward, setWard] = useState<string>("1");
   const [pass, setPass] = useState("");
   const [username, setUsername] = useState("");
@@ -44,7 +44,7 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
     loadData();
   }, []);
 
-  const handleQuickFill = (role: "super" | "city" | "ward") => {
+  const handleQuickFill = (role: "super" | "city" | "ward" | "driver" | "citizen") => {
     setTab(role);
     setError("");
     if (role === "super") {
@@ -53,9 +53,15 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
     } else if (role === "city") {
       setUsername("city.admin");
       setPass("admin123");
-    } else {
+    } else if (role === "ward") {
       setUsername("ward");
       setPass("admin123");
+    } else if (role === "driver") {
+      setUsername("driver01");
+      setPass("driver123");
+    } else if (role === "citizen") {
+      setUsername("citizen01");
+      setPass("user123");
     }
   };
 
@@ -80,36 +86,70 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
         onLogin("ward", result.user.wardId || undefined);
       } else if (result.user.role === "DRIVER") {
         onNavigate("collector");
+      } else if (result.user.role === "BUSINESS") {
+        onNavigate("business");
       } else {
         onNavigate("citizen");
       }
     } catch (apiError: any) {
       // 2. Fallback to local demo credentials if server/database is not yet reached
       const isSuper =
-        (username === "superadmin" || username === "S.p.s.admin.all") &&
+        (username === "superadmin" || username === "S.p.s.admin.all" || tab === "super") &&
         (pass === "admin123" || pass === "You#got789^)*()#@~77qQ");
 
       const isCity =
-        (username === "city.admin" || username === "dncc.admin" || tab === "city") &&
+        (username === "city.admin" || username === "dscc.admin" || username === "dncc.admin" || tab === "city") &&
         pass === "admin123";
 
       const isWard =
         (username.startsWith("ward") || tab === "ward") &&
         (pass === "ward123" || pass === "admin123");
 
+      const isDriver =
+        (username === "driver01" || tab === "driver") &&
+        (pass === "driver123" || pass === "admin123");
+
+      const isCitizen =
+        (username === "citizen01" || tab === "citizen") &&
+        (pass === "user123" || pass === "admin123");
+
+      const isBiz =
+        username === "business01" && (pass === "business123" || pass === "admin123");
+
       if (isSuper) {
         setLoading(false);
+        userStorage.set({ id: "super-01", username: "superadmin", fullName: "Ministry Chief Director", role: "SUPER_ADMIN" });
         onLogin("super");
         return;
       }
-      if (tab === "city" && isCity) {
+      if (isCity) {
         setLoading(false);
+        userStorage.set({ id: "city-01", username: username || "city.admin", fullName: "DNCC Central Waste Officer", role: "CITY_ADMIN", cityCorpId: "dncc" });
         onLogin("city");
         return;
       }
-      if (tab === "ward" && isWard) {
+      if (isWard) {
         setLoading(false);
+        userStorage.set({ id: "ward-01", username: username || "ward", fullName: "Ward 01 Inspector", role: "WARD_ADMIN", wardId: ward });
         onLogin("ward", ward);
+        return;
+      }
+      if (isDriver) {
+        setLoading(false);
+        userStorage.set({ id: "driver-01", username: "driver01", fullName: "Abdul Karim (Truck Driver)", role: "DRIVER" });
+        onNavigate("collector");
+        return;
+      }
+      if (isCitizen) {
+        setLoading(false);
+        userStorage.set({ id: "citizen-01", username: "citizen01", fullName: "Fatima Begum (Citizen)", role: "CITIZEN", points: 2847 });
+        onNavigate("citizen");
+        return;
+      }
+      if (isBiz) {
+        setLoading(false);
+        userStorage.set({ id: "biz-01", username: "business01", fullName: "Grand Palace Hotel", role: "BUSINESS" });
+        onNavigate("business");
         return;
       }
 
@@ -149,33 +189,51 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
         {/* Card */}
         <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6 sm:p-8 shadow-2xl">
           {/* Role tabs */}
-          <div className="flex gap-1.5 bg-[#061309] rounded-xl p-1 mb-6">
+          <div className="flex flex-wrap gap-1 bg-[#061309] rounded-xl p-1 mb-5">
             <button
-              onClick={() => { setTab("city"); setError(""); }}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-                tab === "city" ? "bg-[#16a34a] text-white shadow" : "text-[#4b7a5a] hover:text-[#86efac]"
-              }`}
-            >
-              <Shield size={14} />
-              City Admin
-            </button>
-            <button
-              onClick={() => { setTab("ward"); setError(""); }}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-                tab === "ward" ? "bg-[#16a34a] text-white shadow" : "text-[#4b7a5a] hover:text-[#86efac]"
-              }`}
-            >
-              <Recycle size={14} />
-              Ward Admin
-            </button>
-            <button
-              onClick={() => { setTab("super"); setError(""); }}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all ${
+              onClick={() => handleQuickFill("super")}
+              className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
                 tab === "super" ? "bg-[#16a34a] text-white shadow" : "text-[#4b7a5a] hover:text-[#86efac]"
               }`}
             >
-              <Globe2 size={14} />
-              Super Admin
+              <Globe2 size={13} />
+              Super
+            </button>
+            <button
+              onClick={() => handleQuickFill("city")}
+              className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+                tab === "city" ? "bg-[#16a34a] text-white shadow" : "text-[#4b7a5a] hover:text-[#86efac]"
+              }`}
+            >
+              <Shield size={13} />
+              City Corp
+            </button>
+            <button
+              onClick={() => handleQuickFill("ward")}
+              className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+                tab === "ward" ? "bg-[#16a34a] text-white shadow" : "text-[#4b7a5a] hover:text-[#86efac]"
+              }`}
+            >
+              <Recycle size={13} />
+              Ward
+            </button>
+            <button
+              onClick={() => handleQuickFill("driver")}
+              className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+                tab === "driver" ? "bg-[#16a34a] text-white shadow" : "text-[#4b7a5a] hover:text-[#86efac]"
+              }`}
+            >
+              <Truck size={13} />
+              Driver
+            </button>
+            <button
+              onClick={() => handleQuickFill("citizen")}
+              className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+                tab === "citizen" ? "bg-[#16a34a] text-white shadow" : "text-[#4b7a5a] hover:text-[#86efac]"
+              }`}
+            >
+              <Users size={13} />
+              Citizen
             </button>
           </div>
 
@@ -183,25 +241,41 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
           <div className="bg-[#061309] border border-[#1a3d22] rounded-xl p-3.5 mb-5">
             {tab === "super" && (
               <div>
-                <div className="text-[#4ade80] font-mono text-xs mb-1">SUPER ADMIN (CENTRAL MINISTRY)</div>
+                <div className="text-[#4ade80] font-mono text-xs mb-1">👑 SUPER ADMIN (MINISTRY CENTRAL)</div>
                 <div className="text-[#4b7a5a] text-xs leading-relaxed">
-                  Full national oversight: Create new City Corporations, assign City Admins, and view database metrics.
+                  National authority: Add City Corporations, assign Central Admins, and view country-wide operational metrics.
                 </div>
               </div>
             )}
             {tab === "city" && (
               <div>
-                <div className="text-[#4ade80] font-mono text-xs mb-1">CITY CORPORATION ADMIN</div>
+                <div className="text-[#4ade80] font-mono text-xs mb-1">🏢 CITY CORPORATION ADMIN (DNCC / DSCC)</div>
                 <div className="text-[#4b7a5a] text-xs leading-relaxed">
-                  Manages own City Corporation: Dynamically add wards/areas, assign ward sub-admins, and monitor all bins & tracks.
+                  Jurisdiction management: Configure point-to-cash rate (৳0.20/pt), add wards, assign sub-admins, view all trucks & bins.
                 </div>
               </div>
             )}
             {tab === "ward" && (
               <div>
-                <div className="text-[#60a5fa] font-mono text-xs mb-1">WARD SUB-ADMIN</div>
+                <div className="text-[#60a5fa] font-mono text-xs mb-1">🏛️ SUB-ADMIN (LOCAL WARD 01 INSPECTOR)</div>
                 <div className="text-[#4b7a5a] text-xs leading-relaxed">
-                  Local jurisdiction: View & manage assigned ward smart bins, collection tracks, and resolve alerts.
+                  Ward level: Monitor local smart bins & trucks, disburse physical cash to citizens with digital voucher codes.
+                </div>
+              </div>
+            )}
+            {tab === "driver" && (
+              <div>
+                <div className="text-[#f59e0b] font-mono text-xs mb-1">🚚 TRUCK DRIVER / COLLECTOR</div>
+                <div className="text-[#4b7a5a] text-xs leading-relaxed">
+                  Field operations: Real-time route navigation, bin emptying logs, hazard protocol, and paid pickup jobs.
+                </div>
+              </div>
+            )}
+            {tab === "citizen" && (
+              <div>
+                <div className="text-[#38bdf8] font-mono text-xs mb-1">👤 CITIZEN USER (REWARDS & CASH OUT)</div>
+                <div className="text-[#4b7a5a] text-xs leading-relaxed">
+                  Public portal: 2,847 recycling points pre-loaded. Request cash voucher, schedule pickups, report garbage issues.
                 </div>
               </div>
             )}
@@ -236,7 +310,11 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
                   ? "superadmin"
                   : tab === "city"
                   ? "city.admin"
-                  : "ward"
+                  : tab === "ward"
+                  ? "ward"
+                  : tab === "driver"
+                  ? "driver01"
+                  : "citizen01"
               }
               autoComplete="username"
               className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm focus:border-[#4ade80] outline-none"
@@ -294,36 +372,77 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
               <Loader2 size={16} className="animate-spin" />
             ) : (
               <>
-                Login as {tab === "super" ? "Super Admin" : tab === "city" ? "City Admin" : "Ward Admin"}
+                Login as {tab === "super" ? "Super Admin" : tab === "city" ? "City Admin" : tab === "ward" ? "Ward Sub-Admin" : tab === "driver" ? "Driver" : "Citizen"}
                 <ChevronRight size={16} />
               </>
             )}
           </button>
 
-          {/* Quick Demo Fills */}
+          {/* Quick Demo Fills Grid */}
           <div className="mt-5 pt-4 border-t border-[#1a3d22]">
-            <div className="text-[11px] text-[#4b7a5a] text-center mb-2 font-mono">QUICK DEMO ONE-CLICK FILL:</div>
-            <div className="flex gap-2">
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-[11px] text-[#4b7a5a] font-mono font-semibold">ALL TEST ACCOUNTS (1-CLICK FILL):</span>
+              <span className="text-[10px] text-[#86efac]/70">Tap to load</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => handleQuickFill("super")}
-                className="flex-1 text-[11px] py-1.5 px-2 bg-[#061309] border border-[#1a3d22] hover:border-[#4ade80] text-[#4ade80] rounded-lg truncate transition-colors"
+                className="text-left text-[11px] p-2 bg-[#061309] border border-[#1a3d22] hover:border-[#4ade80] rounded-xl transition-all group"
               >
-                Super Admin
+                <div className="text-[#4ade80] font-semibold flex items-center justify-between">
+                  <span>👑 Super Admin</span>
+                  <span className="text-[9px] px-1 py-0.5 rounded bg-[#16a34a]/20 text-[#4ade80]">Ministry</span>
+                </div>
+                <div className="font-mono text-[10px] text-[#86efac]/80 mt-0.5">superadmin / admin123</div>
               </button>
+
               <button
                 type="button"
                 onClick={() => handleQuickFill("city")}
-                className="flex-1 text-[11px] py-1.5 px-2 bg-[#061309] border border-[#1a3d22] hover:border-[#4ade80] text-[#86efac] rounded-lg truncate transition-colors"
+                className="text-left text-[11px] p-2 bg-[#061309] border border-[#1a3d22] hover:border-[#4ade80] rounded-xl transition-all group"
               >
-                City Admin
+                <div className="text-[#86efac] font-semibold flex items-center justify-between">
+                  <span>🏢 City Corp</span>
+                  <span className="text-[9px] px-1 py-0.5 rounded bg-[#16a34a]/20 text-[#86efac]">DNCC</span>
+                </div>
+                <div className="font-mono text-[10px] text-[#86efac]/80 mt-0.5">city.admin / admin123</div>
               </button>
+
               <button
                 type="button"
                 onClick={() => handleQuickFill("ward")}
-                className="flex-1 text-[11px] py-1.5 px-2 bg-[#061309] border border-[#1a3d22] hover:border-[#60a5fa] text-[#60a5fa] rounded-lg truncate transition-colors"
+                className="text-left text-[11px] p-2 bg-[#061309] border border-[#60a5fa]/40 hover:border-[#60a5fa] rounded-xl transition-all group"
               >
-                Ward Admin
+                <div className="text-[#60a5fa] font-semibold flex items-center justify-between">
+                  <span>🏛️ Sub-Admin</span>
+                  <span className="text-[9px] px-1 py-0.5 rounded bg-[#60a5fa]/20 text-[#60a5fa]">Ward 01</span>
+                </div>
+                <div className="font-mono text-[10px] text-[#93c5fd]/80 mt-0.5">ward / admin123</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickFill("driver")}
+                className="text-left text-[11px] p-2 bg-[#061309] border border-[#f59e0b]/40 hover:border-[#f59e0b] rounded-xl transition-all group"
+              >
+                <div className="text-[#f59e0b] font-semibold flex items-center justify-between">
+                  <span>🚚 Driver</span>
+                  <span className="text-[9px] px-1 py-0.5 rounded bg-[#f59e0b]/20 text-[#f59e0b]">Collector</span>
+                </div>
+                <div className="font-mono text-[10px] text-[#fcd34d]/80 mt-0.5">driver01 / driver123</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickFill("citizen")}
+                className="col-span-2 text-left text-[11px] p-2 bg-[#061309] border border-[#38bdf8]/40 hover:border-[#38bdf8] rounded-xl transition-all group"
+              >
+                <div className="text-[#38bdf8] font-semibold flex items-center justify-between">
+                  <span>👤 Citizen (Fatima Begum)</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#38bdf8]/20 text-[#38bdf8]">2,847 pts ready</span>
+                </div>
+                <div className="font-mono text-[10px] text-[#7dd3fc]/80 mt-0.5">citizen01 / user123 (Test Cash Out to BDT)</div>
               </button>
             </div>
           </div>

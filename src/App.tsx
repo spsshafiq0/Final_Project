@@ -38,6 +38,10 @@ export default function App() {
         setState({ page: "main-admin", cityCorpId: user.cityCorpId || undefined });
       } else if (user.role === "WARD_ADMIN") {
         setState({ page: "ward-admin", wardId: user.wardId || undefined });
+      } else if (user.role === "DRIVER") {
+        setState({ page: "collector" });
+      } else if (user.role === "CITIZEN") {
+        setState({ page: "citizen" });
       }
     }
   }, []);

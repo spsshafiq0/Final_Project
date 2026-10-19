@@ -14,6 +14,8 @@ export interface UserProfile {
   cityCorp?: { id: string; name: string; code: string } | null;
   wardId?: string | null;
   ward?: { id: string; name: string; area: string } | null;
+  points?: number;
+  address?: string | null;
 }
 
 export interface CityCorporationItem {
