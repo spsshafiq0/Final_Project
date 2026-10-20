@@ -48,7 +48,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     // Extract path components
-    const urlClean = (req.url || "").split("?")[0];
+    const matched = (req.headers["x-matched-path"] as string) || (req.headers["x-now-route-matches"] as string);
+    const rawUrl = (req.url && req.url !== "/api/index.js" && req.url !== "/api/[...path].js") ? req.url : (matched || req.url || "");
+    const urlClean = rawUrl.split("?")[0];
     const urlPath = urlClean.replace(/^\/api\/?/, "").replace(/^\//, "");
     
     const segments = Array.isArray(req.query.path)

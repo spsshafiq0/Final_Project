@@ -5910,13 +5910,27 @@ function apiHandler(handler, options) {
 }
 
 // lib/store.ts
+var defaultRootSuperAdmin = {
+  id: "usr-super-1",
+  username: "spsshafiq",
+  password: "$2a$10$HKkVtRwcZcEFJNbdQsXg7Oz1pxtT037uW8N3Gj2iHQenrzXX8Bp6S",
+  // bcrypt hash of Sps(#)12D
+  fullName: "Shafiq",
+  email: "shafiq_mollah1087@uits.edu.bd",
+  phone: "+8801700000000",
+  role: "SUPER_ADMIN",
+  active: true,
+  points: 0,
+  createdAt: (/* @__PURE__ */ new Date()).toISOString()
+};
 var g = globalThis;
 if (!g.__intelliwaste_store) {
   g.__intelliwaste_store = {
-    isSetupComplete: false,
+    isSetupComplete: true,
+    setupLocked: true,
     cities: [],
     wards: [],
-    users: [],
+    users: [defaultRootSuperAdmin],
     bins: [],
     tracks: [],
     alerts: [],
@@ -5926,6 +5940,11 @@ if (!g.__intelliwaste_store) {
 }
 if (!g.__intelliwaste_store.pickups) g.__intelliwaste_store.pickups = [];
 if (!g.__intelliwaste_store.withdrawals) g.__intelliwaste_store.withdrawals = [];
+if (!g.__intelliwaste_store.users || g.__intelliwaste_store.users.length === 0) {
+  g.__intelliwaste_store.users = [defaultRootSuperAdmin];
+}
+g.__intelliwaste_store.isSetupComplete = true;
+g.__intelliwaste_store.setupLocked = true;
 var memoryDb = g.__intelliwaste_store;
 
 // lib/email.ts

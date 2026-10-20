@@ -97,15 +97,30 @@ export interface StoredAlert {
   createdAt: string;
 }
 
+// Root Super Admin seeded for resilience
+const defaultRootSuperAdmin: StoredUser = {
+  id: "usr-super-1",
+  username: "spsshafiq",
+  password: "$2a$10$HKkVtRwcZcEFJNbdQsXg7Oz1pxtT037uW8N3Gj2iHQenrzXX8Bp6S", // bcrypt hash of Sps(#)12D
+  fullName: "Shafiq",
+  email: "shafiq_mollah1087@uits.edu.bd",
+  phone: "+8801700000000",
+  role: "SUPER_ADMIN",
+  active: true,
+  points: 0,
+  createdAt: new Date().toISOString(),
+};
+
 // Global persistent in-memory database store
 const g = globalThis as any;
 
 if (!g.__intelliwaste_store) {
   g.__intelliwaste_store = {
-    isSetupComplete: false,
+    isSetupComplete: true,
+    setupLocked: true,
     cities: [] as StoredCity[],
     wards: [] as StoredWard[],
-    users: [] as StoredUser[],
+    users: [defaultRootSuperAdmin] as StoredUser[],
     bins: [] as StoredBin[],
     tracks: [] as StoredTrack[],
     alerts: [] as StoredAlert[],
@@ -114,9 +129,14 @@ if (!g.__intelliwaste_store) {
   };
 }
 
-// Ensure arrays exist if store was previously created
+// Ensure arrays exist and Super Admin is present if store was previously created
 if (!g.__intelliwaste_store.pickups) g.__intelliwaste_store.pickups = [];
 if (!g.__intelliwaste_store.withdrawals) g.__intelliwaste_store.withdrawals = [];
+if (!g.__intelliwaste_store.users || g.__intelliwaste_store.users.length === 0) {
+  g.__intelliwaste_store.users = [defaultRootSuperAdmin];
+}
+g.__intelliwaste_store.isSetupComplete = true;
+g.__intelliwaste_store.setupLocked = true;
 
 export const memoryDb = g.__intelliwaste_store;
 
@@ -141,6 +161,7 @@ export async function seedMemoryStore(superAdminPass = "Sps(#)12D") {
       createdAt: new Date().toISOString(),
     });
     memoryDb.isSetupComplete = true;
+    memoryDb.setupLocked = true;
   }
 
   // 2. Initial City Corporations
