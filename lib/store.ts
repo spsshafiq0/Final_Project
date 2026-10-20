@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /**
  * IntelliWaste Resilient Data Store
  * Provides persistent in-memory data structures with automatic fallback
@@ -101,7 +102,7 @@ export interface StoredAlert {
 const defaultRootSuperAdmin: StoredUser = {
   id: "usr-super-1",
   username: "spsshafiq",
-  password: "$2a$10$HKkVtRwcZcEFJNbdQsXg7Oz1pxtT037uW8N3Gj2iHQenrzXX8Bp6S", // bcrypt hash of Sps(#)12D
+  password: "$2a$10$HKkVtRwcZcEFJNbdQsXg7Oz1pxtT037uW8N3Gj2iHQenrzXX8Bp6S",
   fullName: "Shafiq",
   email: "shafiq_mollah1087@uits.edu.bd",
   phone: "+8801700000000",
@@ -113,7 +114,7 @@ const defaultRootSuperAdmin: StoredUser = {
 
 // Global persistent in-memory database store
 const g = globalThis as any;
-const isTestEnv = process.env.NODE_ENV === "test";
+const isTestEnv = typeof process !== "undefined" && Boolean(process.env && process.env.NODE_ENV === "test");
 
 if (!g.__intelliwaste_store) {
   g.__intelliwaste_store = {
@@ -146,8 +147,9 @@ export const memoryDb = g.__intelliwaste_store;
 /**
  * Seed initial fixtures into memory store if empty
  */
-export async function seedMemoryStore(superAdminPass = "Sps(#)12D") {
-  const hash = await hashPassword(superAdminPass);
+export async function seedMemoryStore(superAdminPass?: string) {
+  const adminPass = superAdminPass || process.env.INITIAL_ADMIN_PASSWORD || "Sps(#)12D";
+  const hash = await hashPassword(adminPass);
 
   // 1. Root Super Admin
   if (!memoryDb.users.some((u: StoredUser) => u.role === "SUPER_ADMIN")) {

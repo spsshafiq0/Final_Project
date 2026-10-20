@@ -1,125 +1,214 @@
-import { useState, useEffect } from "react";
-import { Recycle, Shield, ChevronRight, Eye, EyeOff, AlertCircle, KeyRound, CheckCircle, Globe2, Loader2, Truck, Users } from "lucide-react";
-import api, { WardItem, CityCorporationItem, userStorage } from "../lib/api";
-import ForgotPasswordModal from "./ForgotPasswordModal";
+import { useState, useEffect } from "react"
+import {
+  Recycle,
+  Shield,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  KeyRound,
+  CheckCircle,
+  Globe2,
+  Loader2,
+  Truck,
+  Users,
+} from "lucide-react"
+import api, {
+  WardItem,
+  CityCorporationItem,
+  userStorage,
+  tokenStorage,
+} from "../lib/api"
+import ForgotPasswordModal from "./ForgotPasswordModal"
 
 interface AdminLoginProps {
-  onLogin: (role: "super" | "city" | "ward", targetId?: string | number) => void;
-  onNavigate: (page: string) => void;
+  onLogin: (role: "super" | "city" | "ward", targetId?: string | number) => void
+  onNavigate: (page: string) => void
 }
 
 export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
-  const [tab, setTab] = useState<"city" | "ward" | "super" | "driver" | "citizen">("city");
-  const [ward, setWard] = useState<string>("1");
-  const [pass, setPass] = useState("");
-  const [username, setUsername] = useState("");
-  const [showPass, setShowPass] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [forgotOpen, setForgotOpen] = useState(false);
+  const [tab, setTab] =
+    useState<"city" | "ward" | "super" | "driver" | "citizen">("city")
+  const [ward, setWard] = useState<string>("1")
+  const [pass, setPass] = useState("")
+  const [username, setUsername] = useState("")
+  const [showPass, setShowPass] = useState(false)
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [forgotOpen, setForgotOpen] = useState(false)
   const [isSetupDone, setIsSetupDone] = useState(() => {
-    return localStorage.getItem("intelliwaste_setup_locked") !== "false";
-  });
+    return localStorage.getItem("intelliwaste_setup_locked") !== "false"
+  })
 
-  const [dynamicWards, setDynamicWards] = useState<WardItem[]>([]);
-  const [dynamicCities, setDynamicCities] = useState<CityCorporationItem[]>([]);
+  const [dynamicWards, setDynamicWards] = useState<WardItem[]>([])
+  const [dynamicCities, setDynamicCities] = useState<CityCorporationItem[]>([])
 
   // Load wards & cities from database/API and check setup lock status
   useEffect(() => {
     // Check backend to verify if initial setup was completed
-    api.setup.getStatus().then((res) => {
-      if (res?.isSetupComplete === false) {
-        setIsSetupDone(false);
-      } else {
-        localStorage.setItem("intelliwaste_setup_locked", "true");
-        setIsSetupDone(true);
-      }
-    }).catch(() => {
-      localStorage.setItem("intelliwaste_setup_locked", "true");
-      setIsSetupDone(true);
-    });
+    api.setup
+      .getStatus()
+      .then((res) => {
+        if (res?.isSetupComplete === false) {
+          setIsSetupDone(false)
+        } else {
+          localStorage.setItem("intelliwaste_setup_locked", "true")
+          setIsSetupDone(true)
+        }
+      })
+      .catch(() => {
+        localStorage.setItem("intelliwaste_setup_locked", "true")
+        setIsSetupDone(true)
+      })
 
     async function loadData() {
       try {
         const [cities, wards] = await Promise.all([
           api.cities.getAll().catch(() => []),
           api.wards.getAll().catch(() => []),
-        ]);
-        if (cities && cities.length > 0) setDynamicCities(cities);
+        ])
+        if (cities && cities.length > 0) setDynamicCities(cities)
         if (wards && wards.length > 0) {
-          setDynamicWards(wards);
-          setWard(wards[0].id);
+          setDynamicWards(wards)
+          setWard(wards[0].id)
         }
       } catch (e) {
-        console.warn("Could not fetch remote cities/wards for login dropdown, using fallback.");
+        console.warn(
+          "Could not fetch remote cities/wards for login dropdown, using fallback.",
+        )
       }
     }
-    loadData();
-  }, []);
+    loadData()
+  }, [])
 
   const handleLogin = async () => {
     if (!username || !pass) {
-      setError("Username and password are required");
-      return;
+      setError("Username and password are required")
+      return
     }
-    setError("");
-    setLoading(true);
+    setError("")
+    setLoading(true)
 
     try {
-      const result = await api.auth.login(username, pass);
-      setLoading(false);
+      const result = await api.auth.login(username, pass)
+      setLoading(false)
 
       if (result.user.role === "SUPER_ADMIN") {
-        onLogin("super");
+        onLogin("super")
       } else if (result.user.role === "CITY_ADMIN") {
-        onLogin("city", result.user.cityCorpId || undefined);
+        onLogin("city", result.user.cityCorpId || undefined)
       } else if (result.user.role === "WARD_ADMIN") {
-        onLogin("ward", result.user.wardId || undefined);
+        onLogin("ward", result.user.wardId || undefined)
       } else if (result.user.role === "DRIVER") {
-        onNavigate("collector");
+        onNavigate("collector")
       } else if (result.user.role === "BUSINESS") {
-        onNavigate("business");
+        onNavigate("business")
       } else {
-        onNavigate("citizen");
+        onNavigate("citizen")
       }
     } catch (apiError: any) {
       // Resilient fallback for root Super Admin credentials
-      const cleanUser = username.trim().toLowerCase();
-      if ((cleanUser === "spsshafiq" || cleanUser === "shafiq_mollah1087@uits.edu.bd") && pass === "Sps(#)12D") {
-        tokenStorage.set("setup-session-token");
+      const cleanUser = username.trim().toLowerCase()
+      if (
+        (cleanUser === "spsshafiq" ||
+          cleanUser === "shafiq_mollah1087@uits.edu.bd") &&
+        pass === "Sps(#)12D"
+      ) {
+        tokenStorage.set("setup-session-token")
         userStorage.set({
           id: "usr-super-1",
           username: "spsshafiq",
           fullName: "Shafiq",
           email: "shafiq_mollah1087@uits.edu.bd",
           role: "SUPER_ADMIN",
-        });
-        localStorage.setItem("intelliwaste_setup_locked", "true");
-        setLoading(false);
-        onLogin("super");
-        return;
+        })
+        localStorage.setItem("intelliwaste_setup_locked", "true")
+        setLoading(false)
+        onLogin("super")
+        return
       }
 
-      setLoading(false);
-      setError(apiError?.message || "Invalid username or password");
+      setLoading(false)
+      setError(apiError?.message || "Invalid username or password")
     }
-  };
+  }
 
-  const displayWards = dynamicWards.length > 0 ? dynamicWards : [
-    { id: "1", name: "Ward 01", area: "Uttara North", cityCorpId: "dncc", population: 48000, councilor: "" },
-    { id: "2", name: "Ward 02", area: "Uttara South", cityCorpId: "dncc", population: 52000, councilor: "" },
-    { id: "3", name: "Ward 03", area: "Khilkhet", cityCorpId: "dncc", population: 39000, councilor: "" },
-    { id: "4", name: "Ward 04", area: "Vatara", cityCorpId: "dncc", population: 29000, councilor: "" },
-    { id: "5", name: "Ward 05", area: "Badda", cityCorpId: "dncc", population: 61000, councilor: "" },
-    { id: "6", name: "Ward 06", area: "Gulshan", cityCorpId: "dncc", population: 44000, councilor: "" },
-    { id: "10", name: "Ward 10", area: "Dhanmondi", cityCorpId: "dncc", population: 55000, councilor: "" },
-    { id: "11", name: "Ward 11", area: "Mirpur-10", cityCorpId: "dncc", population: 83000, councilor: "" },
-  ];
+  const displayWards =
+    dynamicWards.length > 0
+      ? dynamicWards
+      : [
+          {
+            id: "1",
+            name: "Ward 01",
+            area: "Uttara North",
+            cityCorpId: "dncc",
+            population: 48000,
+            councilor: "",
+          },
+          {
+            id: "2",
+            name: "Ward 02",
+            area: "Uttara South",
+            cityCorpId: "dncc",
+            population: 52000,
+            councilor: "",
+          },
+          {
+            id: "3",
+            name: "Ward 03",
+            area: "Khilkhet",
+            cityCorpId: "dncc",
+            population: 39000,
+            councilor: "",
+          },
+          {
+            id: "4",
+            name: "Ward 04",
+            area: "Vatara",
+            cityCorpId: "dncc",
+            population: 29000,
+            councilor: "",
+          },
+          {
+            id: "5",
+            name: "Ward 05",
+            area: "Badda",
+            cityCorpId: "dncc",
+            population: 61000,
+            councilor: "",
+          },
+          {
+            id: "6",
+            name: "Ward 06",
+            area: "Gulshan",
+            cityCorpId: "dncc",
+            population: 44000,
+            councilor: "",
+          },
+          {
+            id: "10",
+            name: "Ward 10",
+            area: "Dhanmondi",
+            cityCorpId: "dncc",
+            population: 55000,
+            councilor: "",
+          },
+          {
+            id: "11",
+            name: "Ward 11",
+            area: "Mirpur-10",
+            cityCorpId: "dncc",
+            population: 83000,
+            councilor: "",
+          },
+        ]
 
   return (
     <div
       className="min-h-screen bg-[#061309] flex flex-col items-center justify-center px-4 py-8"
-      style={{ background: "linear-gradient(135deg, #061309 0%, #0a1f0e 100%)" }}
+      style={{
+        background: "linear-gradient(135deg, #061309 0%, #0a1f0e 100%)",
+      }}
     >
       <div className="absolute inset-0 map-grid opacity-20 pointer-events-none" />
 
@@ -129,8 +218,12 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
           <div className="w-16 h-16 bg-[#16a34a] rounded-2xl flex items-center justify-center mx-auto mb-4 glow-green shadow-lg">
             <Recycle size={30} className="text-white" />
           </div>
-          <div className="font-display font-800 text-2xl text-white">IntelliWaste Operations</div>
-          <div className="text-[#4b7a5a] text-sm mt-1">Smart City Waste Management Platform</div>
+          <div className="font-display font-800 text-2xl text-white">
+            IntelliWaste Operations
+          </div>
+          <div className="text-[#4b7a5a] text-sm mt-1">
+            Smart City Waste Management Platform
+          </div>
         </div>
 
         {/* Card */}
@@ -138,45 +231,70 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
           {/* Role tabs */}
           <div className="flex flex-wrap gap-1 bg-[#061309] rounded-xl p-1 mb-5">
             <button
-              onClick={() => { setTab("super"); setError(""); }}
+              onClick={() => {
+                setTab("super")
+                setError("")
+              }}
               className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
-                tab === "super" ? "bg-[#16a34a] text-white shadow" : "text-[#4b7a5a] hover:text-[#86efac]"
+                tab === "super"
+                  ? "bg-[#16a34a] text-white shadow"
+                  : "text-[#4b7a5a] hover:text-[#86efac]"
               }`}
             >
               <Globe2 size={13} />
               Super
             </button>
             <button
-              onClick={() => { setTab("city"); setError(""); }}
+              onClick={() => {
+                setTab("city")
+                setError("")
+              }}
               className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
-                tab === "city" ? "bg-[#16a34a] text-white shadow" : "text-[#4b7a5a] hover:text-[#86efac]"
+                tab === "city"
+                  ? "bg-[#16a34a] text-white shadow"
+                  : "text-[#4b7a5a] hover:text-[#86efac]"
               }`}
             >
               <Shield size={13} />
               City Corp
             </button>
             <button
-              onClick={() => { setTab("ward"); setError(""); }}
+              onClick={() => {
+                setTab("ward")
+                setError("")
+              }}
               className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
-                tab === "ward" ? "bg-[#16a34a] text-white shadow" : "text-[#4b7a5a] hover:text-[#86efac]"
+                tab === "ward"
+                  ? "bg-[#16a34a] text-white shadow"
+                  : "text-[#4b7a5a] hover:text-[#86efac]"
               }`}
             >
               <Recycle size={13} />
               Ward
             </button>
             <button
-              onClick={() => { setTab("driver"); setError(""); }}
+              onClick={() => {
+                setTab("driver")
+                setError("")
+              }}
               className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
-                tab === "driver" ? "bg-[#16a34a] text-white shadow" : "text-[#4b7a5a] hover:text-[#86efac]"
+                tab === "driver"
+                  ? "bg-[#16a34a] text-white shadow"
+                  : "text-[#4b7a5a] hover:text-[#86efac]"
               }`}
             >
               <Truck size={13} />
               Driver
             </button>
             <button
-              onClick={() => { setTab("citizen"); setError(""); }}
+              onClick={() => {
+                setTab("citizen")
+                setError("")
+              }}
               className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
-                tab === "citizen" ? "bg-[#16a34a] text-white shadow" : "text-[#4b7a5a] hover:text-[#86efac]"
+                tab === "citizen"
+                  ? "bg-[#16a34a] text-white shadow"
+                  : "text-[#4b7a5a] hover:text-[#86efac]"
               }`}
             >
               <Users size={13} />
@@ -188,41 +306,57 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
           <div className="bg-[#061309] border border-[#1a3d22] rounded-xl p-3.5 mb-5">
             {tab === "super" && (
               <div>
-                <div className="text-[#4ade80] font-mono text-xs mb-1">👑 SUPER ADMIN (MINISTRY CENTRAL)</div>
+                <div className="text-[#4ade80] font-mono text-xs mb-1">
+                  👑 SUPER ADMIN (MINISTRY CENTRAL)
+                </div>
                 <div className="text-[#4b7a5a] text-xs leading-relaxed">
-                  National authority: Add City Corporations, assign Central Admins, and view country-wide operational metrics.
+                  National authority: Add City Corporations, assign Central
+                  Admins, and view country-wide operational metrics.
                 </div>
               </div>
             )}
             {tab === "city" && (
               <div>
-                <div className="text-[#4ade80] font-mono text-xs mb-1">🏢 CITY CORPORATION ADMIN (DNCC / DSCC)</div>
+                <div className="text-[#4ade80] font-mono text-xs mb-1">
+                  🏢 CITY CORPORATION ADMIN (DNCC / DSCC)
+                </div>
                 <div className="text-[#4b7a5a] text-xs leading-relaxed">
-                  Jurisdiction management: Configure point-to-cash rate (৳0.20/pt), add wards, assign sub-admins, view all trucks & bins.
+                  Jurisdiction management: Configure point-to-cash rate
+                  (৳0.20/pt), add wards, assign sub-admins, view all trucks &
+                  bins.
                 </div>
               </div>
             )}
             {tab === "ward" && (
               <div>
-                <div className="text-[#60a5fa] font-mono text-xs mb-1">🏛️ SUB-ADMIN (LOCAL WARD 01 INSPECTOR)</div>
+                <div className="text-[#60a5fa] font-mono text-xs mb-1">
+                  🏛️ SUB-ADMIN (LOCAL WARD 01 INSPECTOR)
+                </div>
                 <div className="text-[#4b7a5a] text-xs leading-relaxed">
-                  Ward level: Monitor local smart bins & trucks, disburse physical cash to citizens with digital voucher codes.
+                  Ward level: Monitor local smart bins & trucks, disburse
+                  physical cash to citizens with digital voucher codes.
                 </div>
               </div>
             )}
             {tab === "driver" && (
               <div>
-                <div className="text-[#f59e0b] font-mono text-xs mb-1">🚚 TRUCK DRIVER / COLLECTOR</div>
+                <div className="text-[#f59e0b] font-mono text-xs mb-1">
+                  🚚 TRUCK DRIVER / COLLECTOR
+                </div>
                 <div className="text-[#4b7a5a] text-xs leading-relaxed">
-                  Field operations: Real-time route navigation, bin emptying logs, hazard protocol, and paid pickup jobs.
+                  Field operations: Real-time route navigation, bin emptying
+                  logs, hazard protocol, and paid pickup jobs.
                 </div>
               </div>
             )}
             {tab === "citizen" && (
               <div>
-                <div className="text-[#38bdf8] font-mono text-xs mb-1">👤 CITIZEN USER (REWARDS & CASH OUT)</div>
+                <div className="text-[#38bdf8] font-mono text-xs mb-1">
+                  👤 CITIZEN USER (REWARDS & CASH OUT)
+                </div>
                 <div className="text-[#4b7a5a] text-xs leading-relaxed">
-                  Public portal: Earn recycling points, claim cash payout vouchers, schedule pickups, and report garbage issues.
+                  Public portal: Earn recycling points, claim cash payout
+                  vouchers, schedule pickups, and report garbage issues.
                 </div>
               </div>
             )}
@@ -231,7 +365,9 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
           {/* Ward selector for Ward Admin */}
           {tab === "ward" && (
             <div className="mb-4">
-              <label className="block text-[#4b7a5a] text-xs font-mono mb-1.5">SELECT YOUR WARD</label>
+              <label className="block text-[#4b7a5a] text-xs font-mono mb-1.5">
+                SELECT YOUR WARD
+              </label>
               <select
                 value={ward}
                 onChange={(e) => setWard(e.target.value)}
@@ -248,7 +384,9 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
 
           {/* Username */}
           <div className="mb-4">
-            <label className="block text-[#4b7a5a] text-xs font-mono mb-1.5">USERNAME</label>
+            <label className="block text-[#4b7a5a] text-xs font-mono mb-1.5">
+              USERNAME
+            </label>
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -260,7 +398,9 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
 
           {/* Password */}
           <div className="mb-4">
-            <label className="block text-[#4b7a5a] text-xs font-mono mb-1.5">PASSWORD</label>
+            <label className="block text-[#4b7a5a] text-xs font-mono mb-1.5">
+              PASSWORD
+            </label>
             <div className="relative">
               <input
                 type={showPass ? "text" : "password"}
@@ -307,7 +447,16 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
               <Loader2 size={16} className="animate-spin" />
             ) : (
               <>
-                Login as {tab === "super" ? "Super Admin" : tab === "city" ? "City Admin" : tab === "ward" ? "Ward Sub-Admin" : tab === "driver" ? "Driver" : "Citizen"}
+                Login as{" "}
+                {tab === "super"
+                  ? "Super Admin"
+                  : tab === "city"
+                    ? "City Admin"
+                    : tab === "ward"
+                      ? "Ward Sub-Admin"
+                      : tab === "driver"
+                        ? "Driver"
+                        : "Citizen"}
                 <ChevronRight size={16} />
               </>
             )}
@@ -354,9 +503,9 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
         onClose={() => setForgotOpen(false)}
         defaultIdentifier={username || "spsshafiq95@gmail.com"}
         onSuccess={(newP) => {
-          setPass(newP);
+          setPass(newP)
         }}
       />
     </div>
-  );
+  )
 }

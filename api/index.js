@@ -5824,7 +5824,7 @@ var prisma_default = prisma;
 var import_bcryptjs = __toESM(require_bcryptjs(), 1);
 var import_jsonwebtoken = __toESM(require_jsonwebtoken(), 1);
 var JWT_SECRET = process.env.JWT_SECRET || "intelliwaste-jwt-secret-key-2025-dhaka";
-async function hashPassword2(password) {
+async function hashPassword(password) {
   const salt = await import_bcryptjs.default.genSalt(10);
   return import_bcryptjs.default.hash(password, salt);
 }
@@ -5917,7 +5917,6 @@ var defaultRootSuperAdmin = {
   id: "usr-super-1",
   username: "spsshafiq",
   password: "$2a$10$HKkVtRwcZcEFJNbdQsXg7Oz1pxtT037uW8N3Gj2iHQenrzXX8Bp6S",
-  // bcrypt hash of Sps(#)12D
   fullName: "Shafiq",
   email: "shafiq_mollah1087@uits.edu.bd",
   phone: "+8801700000000",
@@ -5927,7 +5926,7 @@ var defaultRootSuperAdmin = {
   createdAt: (/* @__PURE__ */ new Date()).toISOString()
 };
 var g = globalThis;
-var isTestEnv = process.env.NODE_ENV === "test";
+var isTestEnv = typeof process !== "undefined" && Boolean(process.env && process.env.NODE_ENV === "test");
 if (!g.__intelliwaste_store) {
   g.__intelliwaste_store = {
     isSetupComplete: !isTestEnv,
@@ -5952,8 +5951,9 @@ if (!isTestEnv) {
   g.__intelliwaste_store.setupLocked = true;
 }
 var memoryDb = g.__intelliwaste_store;
-async function seedMemoryStore(superAdminPass = "Sps(#)12D") {
-  const hash = await hashPassword2(superAdminPass);
+async function seedMemoryStore(superAdminPass) {
+  const adminPass = superAdminPass || process.env.INITIAL_ADMIN_PASSWORD || "Sps(#)12D";
+  const hash = await hashPassword(adminPass);
   if (!memoryDb.users.some((u) => u.role === "SUPER_ADMIN")) {
     memoryDb.users.push({
       id: "usr-super-1",
@@ -6147,7 +6147,9 @@ var login_default = apiHandler(
         (u) => u.username.toLowerCase() === cleanUsername || u.email && u.email.toLowerCase() === cleanUsername
       );
       if (memUser) {
-        const city = memoryDb.cities.find((c) => c.id === memUser.cityCorpId);
+        const city = memoryDb.cities.find(
+          (c) => c.id === memUser.cityCorpId
+        );
         const ward = memoryDb.wards.find((w) => w.id === memUser.wardId);
         user = {
           ...memUser,
@@ -6270,7 +6272,7 @@ var register_default = apiHandler(
     if (isTaken) {
       return res.status(409).json({ error: "Username is already taken" });
     }
-    const hashedPassword = await hashPassword2(password);
+    const hashedPassword = await hashPassword(password);
     let newUser = null;
     try {
       newUser = await prisma_default.user.create({
@@ -6906,7 +6908,7 @@ var reset_password_default = apiHandler(
         error: "Invalid or expired verification code. Please request a new code."
       });
     }
-    const hashedPassword = await hashPassword2(newPassword);
+    const hashedPassword = await hashPassword(newPassword);
     try {
       if (user?.id) {
         await prisma_default.user.update({
@@ -7028,7 +7030,7 @@ var cities_default = apiHandler(
           }
         }).catch(() => null);
         if (createdCity && adminName && adminUsername && adminPassword) {
-          const hashedAdminPass = await hashPassword2(adminPassword);
+          const hashedAdminPass = await hashPassword(adminPassword);
           await prisma_default.user.create({
             data: {
               fullName: adminName,
@@ -7066,7 +7068,7 @@ var cities_default = apiHandler(
         memoryDb.cities.push(memCity);
       }
       if (adminName && adminUsername && adminPassword) {
-        const hashedPass = await hashPassword2(adminPassword);
+        const hashedPass = await hashPassword(adminPassword);
         const memAdmin = {
           id: `usr-city-${Date.now()}`,
           fullName: adminName,
@@ -7683,7 +7685,7 @@ var tracks_default = apiHandler(
       let assignedDriverId = null;
       if (driverUsername && driverPassword) {
         const cleanUser = String(driverUsername).toLowerCase().trim();
-        const hashedPass = await hashPassword2(driverPassword);
+        const hashedPass = await hashPassword(driverPassword);
         try {
           const user = await prisma_default.user.create({
             data: {
@@ -7977,7 +7979,7 @@ var users_default = apiHandler(
         return res.status(400).json({ error: "Username, password, full name, and role are required" });
       }
       const cleanUsername = String(username).toLowerCase().trim();
-      const hashedPassword = await hashPassword2(password);
+      const hashedPassword = await hashPassword(password);
       const assignedCityCorpId = cityCorpId || (currentUser?.cityCorpId || null);
       const assignedWardId = wardId || (currentUser?.wardId || null);
       let createdUser = null;
@@ -8109,7 +8111,7 @@ var id_default5 = apiHandler(
       } = req.body || {};
       let hashedPassword;
       if (password) {
-        hashedPassword = await hashPassword2(password);
+        hashedPassword = await hashPassword(password);
       }
       if (fullName) user.fullName = fullName;
       if (email !== void 0) user.email = email;
@@ -8743,7 +8745,7 @@ var seed_default = apiHandler(
         where: { role: "SUPER_ADMIN" }
       }).catch(() => null);
       if (!superAdminExists) {
-        const masterPasswordHash = await hashPassword2(adminPass);
+        const masterPasswordHash = await hashPassword(adminPass);
         const dncc = await prisma_default.cityCorporation.upsert({
           where: { code: "DNCC" },
           update: { pointRate: 0.2, minWithdrawPoints: 100, rewardActive: true },
@@ -8847,7 +8849,7 @@ var setup_default = apiHandler(
           error: "Password must be at least 6 characters long."
         });
       }
-      const hashedPassword = await hashPassword2(password);
+      const hashedPassword = await hashPassword(password);
       const cleanUsername = username.toLowerCase().trim();
       let createdUser = null;
       let createdCity = null;

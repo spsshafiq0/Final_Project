@@ -5914,7 +5914,6 @@ var defaultRootSuperAdmin = {
   id: "usr-super-1",
   username: "spsshafiq",
   password: "$2a$10$HKkVtRwcZcEFJNbdQsXg7Oz1pxtT037uW8N3Gj2iHQenrzXX8Bp6S",
-  // bcrypt hash of Sps(#)12D
   fullName: "Shafiq",
   email: "shafiq_mollah1087@uits.edu.bd",
   phone: "+8801700000000",
@@ -5924,7 +5923,7 @@ var defaultRootSuperAdmin = {
   createdAt: (/* @__PURE__ */ new Date()).toISOString()
 };
 var g = globalThis;
-var isTestEnv = process.env.NODE_ENV === "test";
+var isTestEnv = typeof process !== "undefined" && Boolean(process.env && process.env.NODE_ENV === "test");
 if (!g.__intelliwaste_store) {
   g.__intelliwaste_store = {
     isSetupComplete: !isTestEnv,
