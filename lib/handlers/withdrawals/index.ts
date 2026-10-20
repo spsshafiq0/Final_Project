@@ -139,6 +139,7 @@ export default apiHandler(
 
       return res.status(201).json({
         message: "Withdrawal request submitted successfully",
+        verificationCode: code,
         withdrawal: newWithdrawal,
         instructions: `Present verification code ${code} to Ward Admin to receive ৳${bdtAmount} cash.`,
       });

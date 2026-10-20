@@ -1,3 +1,4 @@
+import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -6296,7 +6297,7 @@ var setup_default = apiHandler(
   { allowedMethods: ["GET", "POST"] }
 );
 
-// api/setup.ts
+// api-src/setup.ts
 var setup_default2 = setup_default;
 export {
   setup_default2 as default

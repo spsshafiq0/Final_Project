@@ -1,3 +1,4 @@
+import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -6210,51 +6211,82 @@ var register_default = apiHandler(
         }
       }
     }
-    const existing = await prisma_default.user.findUnique({ where: { username } });
-    if (existing) {
+    let isTaken = false;
+    try {
+      const existing = await prisma_default.user.findUnique({ where: { username } }).catch(() => null);
+      if (existing) isTaken = true;
+    } catch {
+    }
+    if (!isTaken && memoryDb.users.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
+      isTaken = true;
+    }
+    if (isTaken) {
       return res.status(409).json({ error: "Username is already taken" });
     }
     const hashedPassword = await hashPassword(password);
-    const newUser = await prisma_default.user.create({
-      data: {
-        username,
-        password: hashedPassword,
-        fullName,
-        email: email || null,
-        phone: phone || null,
-        nid: nid || null,
-        address: address || null,
-        role,
-        cityCorpId: cityCorpId || null,
-        wardId: wardId || null
-      },
-      include: {
-        cityCorp: true,
-        ward: true
-      }
-    });
+    let newUser = null;
+    try {
+      newUser = await prisma_default.user.create({
+        data: {
+          username,
+          password: hashedPassword,
+          fullName,
+          email: email || null,
+          phone: phone || null,
+          nid: nid || null,
+          address: address || null,
+          role,
+          cityCorpId: cityCorpId || null,
+          wardId: wardId || null
+        },
+        include: {
+          cityCorp: true,
+          ward: true
+        }
+      }).catch(() => null);
+    } catch (e) {
+      console.warn("[Register PG Notice] Falling back to memory store:", e.message);
+    }
+    const userId = newUser?.id || `usr-reg-${Date.now()}`;
+    const memUser = {
+      id: userId,
+      username,
+      password: hashedPassword,
+      fullName,
+      email: email || null,
+      phone: phone || null,
+      nid: nid || null,
+      address: address || null,
+      role,
+      active: true,
+      points: 0,
+      cityCorpId: cityCorpId || null,
+      wardId: wardId || null,
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    if (!memoryDb.users.some((u) => u.username === username)) {
+      memoryDb.users.push(memUser);
+    }
     const token = signToken({
-      userId: newUser.id,
-      username: newUser.username,
-      role: newUser.role,
-      cityCorpId: newUser.cityCorpId,
-      wardId: newUser.wardId,
-      fullName: newUser.fullName
+      userId: memUser.id,
+      username: memUser.username,
+      role: memUser.role,
+      cityCorpId: memUser.cityCorpId,
+      wardId: memUser.wardId,
+      fullName: memUser.fullName
     });
     return res.status(201).json({
       message: "User created successfully",
       token,
       user: {
-        id: newUser.id,
-        username: newUser.username,
-        fullName: newUser.fullName,
-        email: newUser.email,
-        phone: newUser.phone,
-        role: newUser.role,
-        cityCorpId: newUser.cityCorpId,
-        cityCorp: newUser.cityCorp,
-        wardId: newUser.wardId,
-        ward: newUser.ward
+        id: memUser.id,
+        username: memUser.username,
+        fullName: memUser.fullName,
+        email: memUser.email,
+        phone: memUser.phone,
+        role: memUser.role,
+        cityCorpId: memUser.cityCorpId,
+        wardId: memUser.wardId
       }
     });
   },
@@ -8189,6 +8221,7 @@ var withdrawals_default = apiHandler(
       memoryDb.withdrawals.unshift(newWithdrawal);
       return res.status(201).json({
         message: "Withdrawal request submitted successfully",
+        verificationCode: code,
         withdrawal: newWithdrawal,
         instructions: `Present verification code ${code} to Ward Admin to receive \u09F3${bdtAmount} cash.`
       });
@@ -8877,7 +8910,7 @@ var setup_default = apiHandler(
   { allowedMethods: ["GET", "POST"] }
 );
 
-// api/[...path].ts
+// api-src/[...path].ts
 async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Origin", "*");
