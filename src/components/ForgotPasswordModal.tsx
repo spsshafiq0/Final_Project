@@ -99,7 +99,7 @@ export default function ForgotPasswordModal({
       onClick={handleClose}
     >
       <div
-        className="w-full max-w-md bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6 shadow-2xl relative"
+        className="w-full max-w-md bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
@@ -161,17 +161,6 @@ export default function ForgotPasswordModal({
               </p>
             </div>
 
-            {/* Quick Test Fill */}
-            <div className="p-2.5 bg-[#061309] border border-[#1a3d22] rounded-xl flex items-center justify-between text-xs">
-              <span className="text-[#86efac]/80 font-mono text-[11px]">Primary Test Email:</span>
-              <button
-                type="button"
-                onClick={() => setIdentifier("spsshafiq95@gmail.com")}
-                className="text-[11px] text-[#4ade80] hover:underline font-medium"
-              >
-                Use spsshafiq95@gmail.com
-              </button>
-            </div>
 
             <button
               onClick={handleSendCode}

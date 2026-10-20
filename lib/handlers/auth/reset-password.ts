@@ -3,6 +3,7 @@ import prisma from "../../prisma";
 import { hashPassword } from "../../auth";
 import { apiHandler } from "../../middleware";
 import otpStore from "../../otpStore";
+import { memoryDb } from "../../store";
 
 export default apiHandler(
   async (req: VercelRequest, res: VercelResponse) => {
@@ -47,11 +48,6 @@ export default apiHandler(
       console.warn("Prisma lookup failed in reset-password:", e.message);
     }
 
-    // Allow demo reset if demo account
-    if (!isCodeValid && cleanId.toLowerCase().includes("spsshafiq") && cleanCode === "123456") {
-      isCodeValid = true;
-    }
-
     if (!isCodeValid) {
       return res.status(400).json({
         error: "Invalid or expired verification code. Please request a new code.",
@@ -61,7 +57,7 @@ export default apiHandler(
     // 2. Hash new password with bcrypt
     const hashedPassword = await hashPassword(newPassword);
 
-    // 3. Update in Database
+    // 3. Update in Database if user exists in DB
     try {
       if (user?.id) {
         await prisma.user.update({
@@ -77,7 +73,17 @@ export default apiHandler(
       console.warn("Could not update password in database:", dbErr.message);
     }
 
-    // 4. Consume / clear OTP from memory
+    // 4. Update in resilient memory store
+    const memUserIndex = memoryDb.users.findIndex(
+      (u: any) =>
+        u.username.toLowerCase() === cleanId.toLowerCase() ||
+        (u.email && u.email.toLowerCase() === cleanId.toLowerCase())
+    );
+    if (memUserIndex >= 0) {
+      memoryDb.users[memUserIndex].password = hashedPassword;
+    }
+
+    // 5. Consume / clear OTP from memory
     otpStore.consume(cleanId, cleanCode);
 
     return res.status(200).json({

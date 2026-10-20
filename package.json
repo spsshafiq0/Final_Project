@@ -6,13 +6,13 @@
   "packageManager": "pnpm@10.28.0",
   "scripts": {
     "dev": "vite",
-    "build": "prisma generate && vite build && esbuild api/index.ts --bundle --platform=node --target=node20 --format=esm --external:@prisma/client --outfile=api/index.js && esbuild api/setup.ts --bundle --platform=node --target=node20 --format=esm --external:@prisma/client --outfile=api/setup.js",
+    "build": "prisma generate && vite build && esbuild api/index.ts --bundle --platform=node --target=node20 --format=esm --external:@prisma/client --outfile=api/index.js && esbuild api/setup.ts --bundle --platform=node --target=node20 --format=esm --external:@prisma/client --outfile=api/setup.js && esbuild \"api/[...path].ts\" --bundle --platform=node --target=node20 --format=esm --external:@prisma/client --outfile=\"api/[...path].js\"",
     "preview": "vite preview",
     "format": "oxfmt",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
-    "vercel-build": "prisma generate && vite build && esbuild api/index.ts --bundle --platform=node --target=node20 --format=esm --external:@prisma/client --outfile=api/index.js && esbuild api/setup.ts --bundle --platform=node --target=node20 --format=esm --external:@prisma/client --outfile=api/setup.js"
+    "vercel-build": "prisma generate && vite build && esbuild api/index.ts --bundle --platform=node --target=node20 --format=esm --external:@prisma/client --outfile=api/index.js && esbuild api/setup.ts --bundle --platform=node --target=node20 --format=esm --external:@prisma/client --outfile=api/setup.js && esbuild \"api/[...path].ts\" --bundle --platform=node --target=node20 --format=esm --external:@prisma/client --outfile=\"api/[...path].js\""
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",

@@ -26,14 +26,24 @@ export default function SystemSetupPage({ onSetupSuccess, onNavigate }: SystemSe
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
+    // 1. Check if browser has permanently recorded setup completion
+    const localLocked = localStorage.getItem("intelliwaste_setup_locked") === "true";
+    if (localLocked) {
+      setIsLocked(true);
+      setChecking(false);
+      return;
+    }
+
+    // 2. Query backend to verify if Super Admin is already initialized
     async function checkStatus() {
       try {
         const res = await api.setup.getStatus();
         if (res.isSetupComplete) {
+          localStorage.setItem("intelliwaste_setup_locked", "true");
           setIsLocked(true);
         }
       } catch (e) {
-        // If status cannot be retrieved, allow setup
+        // If status cannot be retrieved, fallback to local check
       } finally {
         setChecking(false);
       }
@@ -82,8 +92,11 @@ export default function SystemSetupPage({ onSetupSuccess, onNavigate }: SystemSe
         });
       }
 
+      // Permanently seal the installer locally and globally
+      localStorage.setItem("intelliwaste_setup_locked", "true");
       setSuccess(true);
       setTimeout(() => {
+        setIsLocked(true);
         onSetupSuccess();
       }, 1200);
     } catch (err: any) {
@@ -96,8 +109,10 @@ export default function SystemSetupPage({ onSetupSuccess, onNavigate }: SystemSe
         email,
         role: "SUPER_ADMIN",
       });
+      localStorage.setItem("intelliwaste_setup_locked", "true");
       setSuccess(true);
       setTimeout(() => {
+        setIsLocked(true);
         onSetupSuccess();
       }, 1200);
     } finally {

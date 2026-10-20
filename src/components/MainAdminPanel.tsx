@@ -326,7 +326,7 @@ function TrackModal({
                   type={showDriverPass ? "text" : "password"}
                   value={form.driverPassword}
                   onChange={e => setForm(f => ({ ...f, driverPassword: e.target.value }))}
-                  placeholder="Min 6 characters (e.g. driver123)"
+                  placeholder="Min 6 characters (e.g. Pass#2025)"
                   className={`${inp} pr-10`}
                 />
                 <button
@@ -866,7 +866,7 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
       await api.users.create({
         fullName: form.name,
         username: form.username,
-        password: form.password || "ward123",
+        password: form.password,
         role: "WARD_ADMIN",
         phone: form.phone,
         email: form.email,

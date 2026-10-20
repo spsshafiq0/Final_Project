@@ -16,6 +16,7 @@ export interface UserProfile {
   ward?: { id: string; name: string; area: string } | null;
   points?: number;
   address?: string | null;
+  nid?: string | null;
 }
 
 export interface CityCorporationItem {

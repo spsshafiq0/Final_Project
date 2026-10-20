@@ -9,7 +9,25 @@ export default apiHandler(
   async (req: VercelRequest, res: VercelResponse) => {
     // ── GET: Check if initial setup is complete ──────────────────────────
     if (req.method === "GET") {
-      const isComplete = Boolean(memoryDb.isSetupComplete && memoryDb.setupLocked);
+      let isComplete = Boolean(memoryDb.isSetupComplete || memoryDb.setupLocked);
+
+      if (!isComplete) {
+        try {
+          const count = await prisma.user.count({ where: { role: "SUPER_ADMIN" } });
+          if (count > 0) isComplete = true;
+        } catch (e) {
+          // ignore error
+        }
+      }
+
+      if (!isComplete && memoryDb.users.some((u: StoredUser) => u.role === "SUPER_ADMIN")) {
+        isComplete = true;
+      }
+
+      if (isComplete) {
+        memoryDb.isSetupComplete = true;
+        memoryDb.setupLocked = true;
+      }
 
       return res.status(200).json({
         isSetupComplete: isComplete,
@@ -21,8 +39,23 @@ export default apiHandler(
 
     // ── POST: First-time root Super Admin initialization ─────────────────
     if (req.method === "POST") {
-      // Security Check: Block only if explicitly locked after client submission
-      if (memoryDb.isSetupComplete && memoryDb.setupLocked) {
+      let alreadyInstalled = Boolean(memoryDb.isSetupComplete || memoryDb.setupLocked);
+
+      if (!alreadyInstalled) {
+        try {
+          const count = await prisma.user.count({ where: { role: "SUPER_ADMIN" } });
+          if (count > 0) alreadyInstalled = true;
+        } catch (e) {
+          // ignore error
+        }
+      }
+
+      if (!alreadyInstalled && memoryDb.users.some((u: StoredUser) => u.role === "SUPER_ADMIN")) {
+        alreadyInstalled = true;
+      }
+
+      // Security Check: Block permanently if Super Admin already exists
+      if (alreadyInstalled) {
         return res.status(403).json({
           error: "Initial setup has already been completed. This installer is permanently disabled for system security.",
         });
