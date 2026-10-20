@@ -29,6 +29,7 @@ import pickupsIndex from "../lib/handlers/pickups/index";
 import pickupsId from "../lib/handlers/pickups/[id]";
 
 import alertsIndex from "../lib/handlers/alerts/index";
+import reportsIndex from "../lib/handlers/reports/index";
 import dashboardStats from "../lib/handlers/dashboard/stats";
 import seedDatabase from "../lib/handlers/seed";
 import setupHandler from "../lib/handlers/setup/index";
@@ -152,6 +153,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return pickupsId(req, res);
       }
       return pickupsIndex(req, res);
+    }
+
+    // 12. Citizen Waste Hazard Reports
+    if (resource === "reports") {
+      return reportsIndex(req, res);
     }
 
     return res.status(200).json({ status: "healthy", endpoint: segments.join("/") });

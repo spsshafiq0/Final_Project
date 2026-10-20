@@ -5914,7 +5914,8 @@ if (!g.__intelliwaste_store) {
     tracks: [],
     alerts: [],
     pickups: [],
-    withdrawals: []
+    withdrawals: [],
+    wasteReports: []
   };
 }
 var memoryDb = g.__intelliwaste_store;

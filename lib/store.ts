@@ -45,6 +45,9 @@ export interface StoredUser {
   points: number;
   cityCorpId?: string | null;
   wardId?: string | null;
+  businessType?: string | null;
+  tradeLicense?: string | null;
+  licenseNumber?: string | null;
   createdAt: string;
 }
 
@@ -98,6 +101,21 @@ export interface StoredAlert {
   createdAt: string;
 }
 
+export interface StoredWasteReport {
+  id: string;
+  reportCode: string;
+  location: string;
+  description: string;
+  imageUrl?: string | null;
+  wasteType: string;
+  status: "pending" | "investigating" | "resolved";
+  priority: "normal" | "urgent" | "critical";
+  pointsEarned: number;
+  citizenId: string;
+  wardId?: string | null;
+  createdAt: string;
+}
+
 // Global persistent in-memory database store
 const g = globalThis as any;
 
@@ -113,6 +131,7 @@ if (!g.__intelliwaste_store) {
     alerts: [] as StoredAlert[],
     pickups: [] as any[],
     withdrawals: [] as any[],
+    wasteReports: [] as StoredWasteReport[],
   };
 }
 

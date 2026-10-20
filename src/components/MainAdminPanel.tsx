@@ -10,7 +10,7 @@ import {
   Navigation, ExternalLink, ClipboardList, Loader2, Coins, Wallet
 } from "lucide-react";
 import { type Ward, type Bin, type Track } from "../data/cityData";
-import api, { WardItem, BinItem, TrackItem, UserProfile, WithdrawalItem, userStorage } from "../lib/api";
+import api, { WardItem, BinItem, TrackItem, UserProfile, WithdrawalItem, ReportItem, userStorage } from "../lib/api";
 
 interface MainAdminPanelProps {
   onLogout: () => void;
@@ -581,18 +581,24 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
   const [savingPolicy, setSavingPolicy] = useState<boolean>(false);
   const [policySaved, setPolicySaved] = useState<boolean>(false);
   const [withdrawals, setWithdrawals] = useState<WithdrawalItem[]>([]);
+  const [wasteReports, setWasteReports] = useState<ReportItem[]>([]);
 
   // Load from API on mount
   useEffect(() => {
     async function fetchData() {
       try {
-        const [apiWards, apiBins, apiTracks, apiUsers, apiWithdrawals] = await Promise.all([
+        const [apiWards, apiBins, apiTracks, apiUsers, apiWithdrawals, apiReports] = await Promise.all([
           api.wards.getAll(cityCorpId).catch(() => []),
           api.bins.getAll({ cityCorpId }).catch(() => []),
           api.tracks.getAll().catch(() => []),
           api.users.getAll({ role: "WARD_ADMIN", cityCorpId }).catch(() => []),
           api.withdrawals.getAll().catch(() => []),
+          api.reports.getAll().catch(() => []),
         ]);
+
+        if (apiReports && apiReports.length > 0) {
+          setWasteReports(apiReports);
+        }
 
         if (apiWards && apiWards.length > 0) {
           const mappedWards: Ward[] = apiWards.map((w, idx) => ({
@@ -1594,25 +1600,119 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
             <div className="space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <div className="text-white font-display font-700 text-lg">Ward Waste Collection Ranking</div>
-                  <div className="text-[#4b7a5a] text-sm">Verified submissions from ward sub-admins</div>
+                  <div className="text-white font-display font-700 text-lg">Citizen Waste & Hazard Reports</div>
+                  <div className="text-[#4b7a5a] text-sm">Real-time incident reports submitted by citizens via Citizen Portal</div>
                 </div>
                 <button onClick={exportWasteReportCsv} className="self-start border border-[#1a3d22] text-[#86efac] text-xs px-4 py-2 rounded-lg flex items-center gap-1.5 hover:border-[#4ade80]/30 transition-colors">
-                  <Download size={14} /> Export report
+                  <Download size={14} /> Export CSV
                 </button>
               </div>
+
+              {/* KPI Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {[
-                  ["Total collected", "128.4 t", "This month"],
-                  ["Top ward", localWards[0]?.name || "Ward 01", "18.7 t"],
-                  ["Reports received", `${localWards.length * 3}`, "All verified"],
-                ].map(([label, value, sub]) => (
-                  <div key={label} className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-5">
-                    <div className="text-[#4b7a5a] text-xs">{label}</div>
-                    <div className="text-white text-2xl font-display font-800 mt-1">{value}</div>
-                    <div className="text-[#4ade80] text-xs mt-1">{sub}</div>
+                <div className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-5">
+                  <div className="text-[#4b7a5a] text-xs font-mono">TOTAL INCIDENTS LOGGED</div>
+                  <div className="text-white text-2xl font-display font-800 mt-1">{wasteReports.length}</div>
+                  <div className="text-[#4ade80] text-xs mt-1">From public reports</div>
+                </div>
+                <div className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-5">
+                  <div className="text-[#4b7a5a] text-xs font-mono">PENDING INSPECTION</div>
+                  <div className="text-yellow-400 text-2xl font-display font-800 mt-1">
+                    {wasteReports.filter(r => r.status === "pending").length}
                   </div>
-                ))}
+                  <div className="text-yellow-400 text-xs mt-1">Awaiting field inspector</div>
+                </div>
+                <div className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-5">
+                  <div className="text-[#4b7a5a] text-xs font-mono">RESOLVED</div>
+                  <div className="text-[#4ade80] text-2xl font-display font-800 mt-1">
+                    {wasteReports.filter(r => r.status === "resolved").length}
+                  </div>
+                  <div className="text-[#4ade80] text-xs mt-1">Inspected & cleared</div>
+                </div>
+              </div>
+
+              {/* Reports Table */}
+              <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl overflow-hidden">
+                <div className="p-4 border-b border-[#1a3d22] flex items-center justify-between">
+                  <div className="font-display font-600 text-white text-sm">Live Incident Stream</div>
+                  <span className="text-xs font-mono text-[#86efac]">{wasteReports.length} reports</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-[#1a3d22]">
+                        {["Report ID", "Citizen", "Location", "Category", "Priority", "Status", "Reported At", "Action"].map(h => (
+                          <th key={h} className="px-4 py-3 text-left text-xs font-mono text-[#4b7a5a] whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {wasteReports.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="px-4 py-8 text-center text-xs text-[#4b7a5a] font-mono">
+                            No citizen waste reports submitted yet. Reports submitted from Citizen Portal will appear here in real-time.
+                          </td>
+                        </tr>
+                      ) : (
+                        wasteReports.map(r => (
+                          <tr key={r.id} className="border-b border-[#1a3d22] hover:bg-[#061309] transition-colors">
+                            <td className="px-4 py-3 font-mono text-xs font-bold text-[#4ade80] whitespace-nowrap">{r.reportCode}</td>
+                            <td className="px-4 py-3 text-white text-xs whitespace-nowrap">
+                              <div>{r.citizen?.fullName || "Citizen"}</div>
+                              <div className="text-[11px] text-[#4b7a5a] font-mono">{r.citizen?.phone || "—"}</div>
+                            </td>
+                            <td className="px-4 py-3 text-[#86efac] text-xs max-w-[180px] truncate">{r.location}</td>
+                            <td className="px-4 py-3 text-xs text-white whitespace-nowrap">{r.wasteType}</td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`text-[11px] font-mono px-2 py-0.5 rounded-full ${
+                                r.priority === "critical"
+                                  ? "bg-red-500/20 text-red-400"
+                                  : r.priority === "urgent"
+                                  ? "bg-orange-500/20 text-orange-400"
+                                  : "bg-green-500/20 text-green-400"
+                              }`}>
+                                {r.priority.toUpperCase()}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`text-[11px] font-mono px-2 py-0.5 rounded-full ${
+                                r.status === "resolved"
+                                  ? "bg-green-500/20 text-green-400"
+                                  : r.status === "investigating"
+                                  ? "bg-blue-500/20 text-blue-400"
+                                  : "bg-yellow-500/20 text-yellow-400"
+                              }`}>
+                                {r.status.toUpperCase()}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-xs text-[#4b7a5a] whitespace-nowrap">
+                              {new Date(r.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {r.status !== "resolved" ? (
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await api.reports.updateStatus(r.id, "resolved");
+                                      setWasteReports(prev => prev.map(item => item.id === r.id ? { ...item, status: "resolved" } : item));
+                                    } catch (e) {}
+                                  }}
+                                  className="text-xs bg-[#16a34a]/20 hover:bg-[#16a34a]/40 border border-[#16a34a]/50 text-[#4ade80] px-2.5 py-1 rounded-lg font-mono transition-colors"
+                                >
+                                  Mark Resolved
+                                </button>
+                              ) : (
+                                <span className="text-[11px] text-[#4ade80] font-mono flex items-center gap-1">
+                                  <CheckCircle size={12} /> Resolved
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}

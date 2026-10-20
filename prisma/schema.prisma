@@ -89,6 +89,7 @@ model Ward {
   admins      User[]              @relation("WardAdmins")
   alerts      Alert[]
   withdrawals WithdrawalRequest[]
+  wasteReports WasteReport[]
 
   @@map("wards")
 }
@@ -176,8 +177,16 @@ model User {
   wardId String?
   ward   Ward?   @relation("WardAdmins", fields: [wardId], references: [id], onDelete: SetNull)
 
-  // A DRIVER can have tracks
-  driverTracks Track[] @relation("DriverTracks")
+  // Commercial / Business details
+  businessType String? // e.g. "Restaurant", "Hospital", "Hotel", "Corporate", "Industrial"
+  tradeLicense String? // Trade license or business registration number
+
+  // Driver details
+  licenseNumber String? // Driving license number
+  driverTracks  Track[] @relation("DriverTracks")
+
+  // Waste Issue / Hazard Reports made by citizen
+  wasteReports WasteReport[] @relation("CitizenWasteReports")
 
   // Pickup requests as requester or driver
   pickupsMade    PickupRequest[] @relation("PickupRequester")
@@ -262,4 +271,28 @@ model Alert {
   createdAt DateTime @default(now())
 
   @@map("alerts")
+}
+
+// ─── Waste Issue Report (Citizen Garbage / Hazard / Overflow Complaint) ───
+model WasteReport {
+  id           String   @id @default(cuid())
+  reportCode   String   @unique // e.g. "RPT-2026-001"
+  location     String
+  description  String
+  imageUrl     String?
+  wasteType    String   @default("Mixed")
+  status       String   @default("pending") // "pending" | "investigating" | "resolved"
+  priority     String   @default("normal")  // "normal" | "urgent" | "critical"
+  pointsEarned Int      @default(150)
+
+  citizenId String
+  citizen   User   @relation("CitizenWasteReports", fields: [citizenId], references: [id], onDelete: Cascade)
+
+  wardId String?
+  ward   Ward?  @relation(fields: [wardId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("waste_reports")
 }

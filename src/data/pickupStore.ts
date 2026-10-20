@@ -19,11 +19,7 @@ export interface PickupRequest {
 const REQUESTS_KEY = "intelliwaste-pickup-requests";
 const DRIVER_BALANCE_KEY = "intelliwaste-driver-balance";
 
-const starterRequests: PickupRequest[] = [
-  { id: 1001, requesterType: "business", requesterName: "Cafe Riverside", area: "Mohammadpur", address: "Road 7, Mohammadpur", wasteType: "Restaurant Mixed Waste", date: "2026-09-14", amount: 450, status: "open", createdAt: "Today, 09:20" },
-  { id: 1002, requesterType: "business", requesterName: "Hotel Green View", area: "Mohammadpur", address: "Town Hall, Mohammadpur", wasteType: "Hotel Mixed Waste", date: "2026-09-14", amount: 700, status: "open", createdAt: "Today, 08:45" },
-  { id: 1003, requesterType: "citizen", requesterName: "Nabila Residence", area: "Mohammadpur", address: "Tajmahal Road, Block C", wasteType: "General Extra Waste", date: "2026-09-15", amount: 250, status: "open", createdAt: "Yesterday, 18:10" },
-];
+const starterRequests: PickupRequest[] = [];
 
 export function getPickupRequests(): PickupRequest[] {
   const stored = localStorage.getItem(REQUESTS_KEY);
@@ -53,11 +49,11 @@ export function addPickupRequest(request: Omit<PickupRequest, "id" | "status" | 
   return created;
 }
 
-export function acceptPickupRequest(id: number): PickupRequest[] {
+export function acceptPickupRequest(id: number, assignedDriverName: string = "Assigned Driver"): PickupRequest[] {
   const code = String(Math.floor(100000 + Math.random() * 900000));
   const requests = getPickupRequests().map((request) =>
     request.id === id
-      ? { ...request, status: "accepted" as const, driverName: "Jalal Mia", securityCode: code }
+      ? { ...request, status: "accepted" as const, driverName: assignedDriverName, securityCode: code }
       : request,
   );
   savePickupRequests(requests);
@@ -83,7 +79,7 @@ export function completePickupRequest(id: number, code: string): { success: bool
 }
 
 export function getDriverBalance(): number {
-  return Number(localStorage.getItem(DRIVER_BALANCE_KEY) ?? "3840");
+  return Number(localStorage.getItem(DRIVER_BALANCE_KEY) ?? "0");
 }
 
 export function setDriverBalance(balance: number) {

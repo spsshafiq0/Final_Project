@@ -133,6 +133,23 @@ export interface WithdrawalItem {
   createdAt: string;
 }
 
+export interface ReportItem {
+  id: string;
+  reportCode: string;
+  location: string;
+  description: string;
+  imageUrl?: string | null;
+  wasteType: string;
+  status: "pending" | "investigating" | "resolved";
+  priority: "normal" | "urgent" | "critical";
+  pointsEarned: number;
+  citizenId: string;
+  citizen?: { id: string; fullName: string; phone?: string; email?: string } | null;
+  wardId?: string | null;
+  ward?: { id: string; name: string; area: string } | null;
+  createdAt: string;
+}
+
 // ─── Token Management ──────────────────────────────────────────────────
 export const tokenStorage = {
   get: (): string | null => localStorage.getItem("intelliwaste_token"),
@@ -503,6 +520,36 @@ export const api = {
     run: (force = false) =>
       request<any>(`/seed${force ? "?force=true" : ""}`, {
         method: "POST",
+      }),
+  },
+
+  // Citizen Waste Issue Reports
+  reports: {
+    getAll: (filters?: { wardId?: string; citizenId?: string; status?: string }) => {
+      const params = new URLSearchParams();
+      if (filters?.wardId) params.append("wardId", filters.wardId);
+      if (filters?.citizenId) params.append("citizenId", filters.citizenId);
+      if (filters?.status) params.append("status", filters.status);
+      const query = params.toString() ? `?${params.toString()}` : "";
+      return request<ReportItem[]>(`/reports${query}`);
+    },
+    create: (data: {
+      location: string;
+      description: string;
+      imageUrl?: string;
+      wasteType?: string;
+      priority?: string;
+      wardId?: string;
+      citizenId?: string;
+    }) =>
+      request<{ success: boolean; message: string; report: ReportItem; pointsAwarded: number }>("/reports", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    updateStatus: (id: string, status: string) =>
+      request<{ success: boolean; report: ReportItem }>("/reports", {
+        method: "PUT",
+        body: JSON.stringify({ id, status }),
       }),
   },
 };

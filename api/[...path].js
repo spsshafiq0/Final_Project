@@ -5927,7 +5927,8 @@ if (!g.__intelliwaste_store) {
     tracks: [],
     alerts: [],
     pickups: [],
-    withdrawals: []
+    withdrawals: [],
+    wasteReports: []
   };
 }
 var memoryDb = g.__intelliwaste_store;
@@ -8545,6 +8546,173 @@ var alerts_default = apiHandler(
   { allowedMethods: ["GET", "POST", "PATCH"] }
 );
 
+// lib/handlers/reports/index.ts
+var reports_default = apiHandler(
+  async (req, res, currentUser) => {
+    if (req.method === "GET") {
+      const wardId = req.query.wardId;
+      const citizenId = req.query.citizenId;
+      const status = req.query.status;
+      const whereClause = {};
+      if (wardId) whereClause.wardId = wardId;
+      if (citizenId) whereClause.citizenId = citizenId;
+      if (status) whereClause.status = status;
+      if (currentUser?.role === "CITIZEN") {
+        whereClause.citizenId = currentUser.userId;
+      } else if (currentUser?.role === "WARD_ADMIN" && currentUser.wardId) {
+        whereClause.wardId = currentUser.wardId;
+      }
+      try {
+        const reports = await prisma_default.wasteReport.findMany({
+          where: whereClause,
+          include: {
+            citizen: { select: { id: true, fullName: true, phone: true, email: true } },
+            ward: { select: { id: true, name: true, area: true } }
+          },
+          orderBy: { createdAt: "desc" },
+          take: 50
+        });
+        if (reports && reports.length > 0) {
+          return res.status(200).json(reports);
+        }
+      } catch (e) {
+        console.warn("[Reports GET Notice] Operating on resilient store:", e.message);
+      }
+      let memReports = [...memoryDb.wasteReports || []];
+      if (wardId) memReports = memReports.filter((r) => r.wardId === wardId);
+      if (citizenId) memReports = memReports.filter((r) => r.citizenId === citizenId);
+      if (status) memReports = memReports.filter((r) => r.status === status);
+      const enriched = memReports.map((r) => {
+        const citizen = memoryDb.users.find((u) => u.id === r.citizenId);
+        const ward = memoryDb.wards.find((w) => w.id === r.wardId);
+        return {
+          ...r,
+          citizen: citizen ? { id: citizen.id, fullName: citizen.fullName, phone: citizen.phone, email: citizen.email } : null,
+          ward: ward ? { id: ward.id, name: ward.name, area: ward.area } : null
+        };
+      });
+      return res.status(200).json(enriched);
+    }
+    if (req.method === "POST") {
+      const {
+        location,
+        description,
+        imageUrl,
+        wasteType = "Mixed",
+        priority = "normal",
+        wardId,
+        citizenId
+      } = req.body || {};
+      if (!location || !description) {
+        return res.status(400).json({ error: "Location and description are required" });
+      }
+      const finalCitizenId = currentUser?.userId || citizenId;
+      if (!finalCitizenId) {
+        return res.status(400).json({ error: "Citizen ID is required to submit a report" });
+      }
+      const reportCode = `RPT-${Date.now().toString().slice(-6)}`;
+      const pointsEarned = 150;
+      let createdReport = null;
+      try {
+        createdReport = await prisma_default.wasteReport.create({
+          data: {
+            reportCode,
+            location,
+            description,
+            imageUrl: imageUrl || null,
+            wasteType,
+            status: "pending",
+            priority,
+            pointsEarned,
+            citizenId: finalCitizenId,
+            wardId: wardId || null
+          },
+          include: {
+            citizen: { select: { id: true, fullName: true, phone: true } },
+            ward: { select: { id: true, name: true, area: true } }
+          }
+        });
+        await prisma_default.user.update({
+          where: { id: finalCitizenId },
+          data: { points: { increment: pointsEarned } }
+        }).catch(() => null);
+        if (priority === "critical" || priority === "urgent") {
+          await prisma_default.alert.create({
+            data: {
+              type: "overflow",
+              message: `Citizen Report [${reportCode}]: ${description.slice(0, 80)} at ${location}`,
+              priority: priority === "critical" ? "critical" : "high",
+              wardId: wardId || null
+            }
+          }).catch(() => null);
+        }
+      } catch (e) {
+        console.warn("[Reports POST Notice] Operating on resilient store:", e.message);
+      }
+      const memReport = {
+        id: createdReport?.id || `rpt-${Date.now()}`,
+        reportCode,
+        location,
+        description,
+        imageUrl: imageUrl || null,
+        wasteType,
+        status: "pending",
+        priority: priority || "normal",
+        pointsEarned,
+        citizenId: finalCitizenId,
+        wardId: wardId || null,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      if (!memoryDb.wasteReports) memoryDb.wasteReports = [];
+      memoryDb.wasteReports.unshift(memReport);
+      const memUser = memoryDb.users.find((u) => u.id === finalCitizenId);
+      if (memUser) {
+        memUser.points = (memUser.points || 0) + pointsEarned;
+      }
+      if (priority === "critical" || priority === "urgent") {
+        memoryDb.alerts.unshift({
+          id: `alt-${Date.now()}`,
+          type: "overflow",
+          message: `Citizen Report [${reportCode}]: ${description.slice(0, 80)} at ${location}`,
+          priority: priority === "critical" ? "critical" : "high",
+          resolved: false,
+          wardId: wardId || null,
+          createdAt: (/* @__PURE__ */ new Date()).toISOString()
+        });
+      }
+      return res.status(201).json({
+        success: true,
+        message: "Report submitted successfully! 150 reward points credited.",
+        report: createdReport || memReport,
+        pointsAwarded: pointsEarned
+      });
+    }
+    if (req.method === "PUT") {
+      const { id, status } = req.body || {};
+      if (!id || !status) {
+        return res.status(400).json({ error: "Report ID and new status are required" });
+      }
+      try {
+        const updated = await prisma_default.wasteReport.update({
+          where: { id },
+          data: { status }
+        });
+        return res.status(200).json({ success: true, report: updated });
+      } catch (e) {
+        console.warn("[Reports PUT Notice] Falling back to memory store:", e.message);
+      }
+      const memIndex = (memoryDb.wasteReports || []).findIndex((r) => r.id === id);
+      if (memIndex >= 0) {
+        memoryDb.wasteReports[memIndex].status = status;
+        return res.status(200).json({ success: true, report: memoryDb.wasteReports[memIndex] });
+      }
+      return res.status(404).json({ error: "Report not found" });
+    }
+    return res.status(405).json({ error: "Method not allowed" });
+  },
+  { allowedMethods: ["GET", "POST", "PUT"] }
+);
+
 // lib/handlers/dashboard/stats.ts
 var stats_default = apiHandler(
   async (req, res, currentUser) => {
@@ -8918,6 +9086,9 @@ async function handler(req, res) {
         return id_default7(req, res);
       }
       return pickups_default(req, res);
+    }
+    if (resource === "reports") {
+      return reports_default(req, res);
     }
     return res.status(404).json({ error: `API route /api/${segments.join("/")} not found` });
   } catch (err) {
