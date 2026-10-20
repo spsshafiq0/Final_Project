@@ -649,7 +649,7 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
               {[
                 ["Database Connection", "PostgreSQL / Prisma ORM", "Live Connection"],
                 ["Serverless Runtime", "Vercel /api Functions", "Operational"],
-                ["Authentication", "JWT + bcryptjs (7-day expiry)", "Protected"],
+                ["Authentication", "Enterprise Cryptographic Token (7-day)", "Protected"],
               ].map(([title, subtitle, status]) => (
                 <div key={title} className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-5">
                   <Activity size={18} className="text-[#4ade80] mb-3" />
@@ -810,7 +810,7 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
                     </div>
                   </div>
                   <p className="text-[11px] text-[#4b7a5a]">
-                    🔒 Password is securely hashed with bcrypt. Credentials and login portal link will be emailed via Brevo.
+                    🔒 Password is cryptographically protected. Credentials and login portal link will be emailed via Brevo.
                   </p>
                 </div>
               )}

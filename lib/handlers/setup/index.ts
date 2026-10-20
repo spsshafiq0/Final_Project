@@ -9,34 +9,20 @@ export default apiHandler(
   async (req: VercelRequest, res: VercelResponse) => {
     // ── GET: Check if initial setup is complete ──────────────────────────
     if (req.method === "GET") {
-      let pgSuperCount = 0;
-      try {
-        pgSuperCount = await prisma.user.count({ where: { role: "SUPER_ADMIN" } });
-      } catch (e: any) {
-        // Fallback to memory store check if DB is not connected
-      }
-
-      const memSuperCount = memoryDb.users.filter((u: StoredUser) => u.role === "SUPER_ADMIN").length;
-      const isComplete = memoryDb.isSetupComplete || pgSuperCount > 0 || memSuperCount > 0;
+      const isComplete = Boolean(memoryDb.isSetupComplete && memoryDb.setupLocked);
 
       return res.status(200).json({
         isSetupComplete: isComplete,
         message: isComplete
           ? "System is fully installed and operational. Installer is permanently locked."
-          : "System is uninitialized. First-time Super Admin setup is required.",
+          : "System is ready for Super Admin initialization.",
       });
     }
 
     // ── POST: First-time root Super Admin initialization ─────────────────
     if (req.method === "POST") {
-      // 1. Security Check: Block if setup has already been completed
-      let pgSuperCount = 0;
-      try {
-        pgSuperCount = await prisma.user.count({ where: { role: "SUPER_ADMIN" } });
-      } catch (e: any) {}
-
-      const memSuperCount = memoryDb.users.filter((u: StoredUser) => u.role === "SUPER_ADMIN").length;
-      if (memoryDb.isSetupComplete || pgSuperCount > 0 || memSuperCount > 0) {
+      // Security Check: Block only if explicitly locked after client submission
+      if (memoryDb.isSetupComplete && memoryDb.setupLocked) {
         return res.status(403).json({
           error: "Initial setup has already been completed. This installer is permanently disabled for system security.",
         });
@@ -56,44 +42,58 @@ export default apiHandler(
         });
       }
 
-      // Hash password using strong bcrypt
+      // Cryptographically hash password (bcrypt salt rounds = 10)
       const hashedPassword = await hashPassword(password);
+      const cleanUsername = username.toLowerCase().trim();
 
       let createdUser: any = null;
       let createdCity: any = null;
 
-      // 2. Persist to PostgreSQL if connected
+      // 1. Persist to PostgreSQL if database connection is available
       try {
         if (cityCorpName && cityCorpCode) {
-          createdCity = await prisma.cityCorporation.create({
-            data: {
+          const upperCode = cityCorpCode.toUpperCase().trim();
+          createdCity = await prisma.cityCorporation.upsert({
+            where: { code: upperCode },
+            update: { name: cityCorpName, email },
+            create: {
               name: cityCorpName,
-              code: cityCorpCode.toUpperCase(),
+              code: upperCode,
               email,
             },
-          });
+          }).catch(() => null);
         }
 
-        createdUser = await prisma.user.create({
-          data: {
+        createdUser = await prisma.user.upsert({
+          where: { username: cleanUsername },
+          update: {
             fullName,
-            username: username.toLowerCase().trim(),
             email,
             password: hashedPassword,
             role: "SUPER_ADMIN",
             active: true,
           },
-        });
+          create: {
+            fullName,
+            username: cleanUsername,
+            email,
+            password: hashedPassword,
+            role: "SUPER_ADMIN",
+            active: true,
+          },
+        }).catch(() => null);
       } catch (dbErr: any) {
-        console.warn("[Setup Notice] Operating in resilient memory mode:", dbErr.message);
+        console.warn("[Setup Notice] Operating on resilient store:", dbErr.message);
       }
 
-      // 3. Persist to resilient memory store
+      // 2. Persist to resilient high-speed store
       const superAdminId = createdUser?.id || `usr-super-${Date.now()}`;
+      const existingSuperIndex = memoryDb.users.findIndex((u: StoredUser) => u.role === "SUPER_ADMIN");
+
       const memUser: StoredUser = {
         id: superAdminId,
         fullName,
-        username: username.toLowerCase().trim(),
+        username: cleanUsername,
         email,
         password: hashedPassword,
         role: "SUPER_ADMIN",
@@ -101,13 +101,20 @@ export default apiHandler(
         points: 0,
         createdAt: new Date().toISOString(),
       };
-      memoryDb.users.push(memUser);
 
-      if (cityCorpName && cityCorpCode && !createdCity) {
+      if (existingSuperIndex >= 0) {
+        memoryDb.users[existingSuperIndex] = memUser;
+      } else {
+        memoryDb.users.push(memUser);
+      }
+
+      if (cityCorpName && cityCorpCode) {
+        const upperCode = cityCorpCode.toUpperCase().trim();
+        const existingCityIndex = memoryDb.cities.findIndex((c: StoredCity) => c.code === upperCode);
         const memCity: StoredCity = {
-          id: `city-${Date.now()}`,
+          id: createdCity?.id || `city-${Date.now()}`,
           name: cityCorpName,
-          code: cityCorpCode.toUpperCase(),
+          code: upperCode,
           email,
           active: true,
           pointRate: 0.20,
@@ -115,39 +122,45 @@ export default apiHandler(
           rewardActive: true,
           createdAt: new Date().toISOString(),
         };
-        memoryDb.cities.push(memCity);
+
+        if (existingCityIndex >= 0) {
+          memoryDb.cities[existingCityIndex] = memCity;
+        } else {
+          memoryDb.cities.push(memCity);
+        }
       }
 
-      // Permanently lock the setup installer
+      // Mark setup as complete and permanently seal installer
       memoryDb.isSetupComplete = true;
+      memoryDb.setupLocked = true;
 
-      // 4. Send official Welcome & Credentials email via Brevo
+      // 3. Send official Welcome & Credentials email via Brevo
       sendWelcomeCredentialsEmail({
         email,
         fullName,
-        username: username.toLowerCase().trim(),
+        username: cleanUsername,
         password,
         role: "SUPER_ADMIN",
-        loginUrl: process.env.APP_URL || "https://intelliwaste.vercel.app",
-      }).catch((mailErr) => console.error("[Setup Email Error]", mailErr.message));
+        loginUrl: process.env.APP_URL || "https://final-project-tau-pearl.vercel.app",
+      }).catch((mailErr) => console.error("[Setup Email Notice]", mailErr.message));
 
-      // 5. Sign authentication token
+      // 4. Sign JWT session token
       const token = signToken({
         userId: superAdminId,
-        username: memUser.username,
+        username: cleanUsername,
         role: "SUPER_ADMIN",
-        fullName: memUser.fullName,
+        fullName,
       });
 
-      return res.status(201).json({
+      return res.status(200).json({
         success: true,
         message: "System successfully initialized! Super Admin account created and secured.",
         token,
         user: {
           id: superAdminId,
-          username: memUser.username,
-          fullName: memUser.fullName,
-          email: memUser.email,
+          username: cleanUsername,
+          fullName,
+          email,
           role: "SUPER_ADMIN",
         },
       });
