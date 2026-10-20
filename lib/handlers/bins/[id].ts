@@ -48,6 +48,15 @@ export default apiHandler(
     }
 
     if (req.method === "PUT") {
+      const isSuper = currentUser?.role === "SUPER_ADMIN";
+      const isWardAdmin = currentUser?.role === "WARD_ADMIN" && currentUser?.wardId === bin.wardId;
+      const isCityAdmin = currentUser?.role === "CITY_ADMIN" && (!currentUser?.cityCorpId || bin.ward?.cityCorpId === currentUser.cityCorpId);
+      const isDriver = currentUser?.role === "DRIVER";
+
+      if (currentUser && !isSuper && !isWardAdmin && !isCityAdmin && !isDriver) {
+        return res.status(403).json({ error: "Forbidden: You do not have permission to update this bin" });
+      }
+
       const {
         binCode,
         location,
@@ -111,6 +120,14 @@ export default apiHandler(
     }
 
     if (req.method === "DELETE") {
+      const isSuper = currentUser?.role === "SUPER_ADMIN";
+      const isWardAdmin = currentUser?.role === "WARD_ADMIN" && currentUser?.wardId === bin.wardId;
+      const isCityAdmin = currentUser?.role === "CITY_ADMIN" && (!currentUser?.cityCorpId || bin.ward?.cityCorpId === currentUser.cityCorpId);
+
+      if (!isSuper && !isWardAdmin && !isCityAdmin) {
+        return res.status(403).json({ error: "Forbidden: Only Ward Admin or City/Super Admin can delete bins" });
+      }
+
       try {
         await prisma.bin.delete({ where: { id } }).catch(() => null);
       } catch {}

@@ -4,6 +4,7 @@ import { apiHandler, AuthenticatedRequest } from "../../middleware";
 import { memoryDb, StoredCity, StoredUser } from "../../store";
 import { hashPassword, verifyToken } from "../../auth";
 import { sendWelcomeCredentialsEmail } from "../../email";
+import { logAudit } from "../../audit";
 
 export default apiHandler(
   async (req: AuthenticatedRequest, res: VercelResponse, currentUser: any) => {
@@ -48,22 +49,7 @@ export default apiHandler(
 
     // ── POST: Create City Corporation (and optionally City Admin) ──────
     if (req.method === "POST") {
-      let isSuper = currentUser?.role === "SUPER_ADMIN";
-      if (!isSuper) {
-        const authHeader = req.headers.authorization;
-        if (authHeader && authHeader.includes("Bearer ")) {
-          const t = authHeader.replace("Bearer ", "").trim();
-          if (t === "setup-session-token") {
-            isSuper = true;
-          } else {
-            const verified = verifyToken(t);
-            if (verified && verified.role === "SUPER_ADMIN") {
-              isSuper = true;
-            }
-          }
-        }
-      }
-
+      const isSuper = currentUser?.role === "SUPER_ADMIN";
       if (!isSuper) {
         return res.status(403).json({ error: "Only Super Admin can create City Corporations" });
       }
@@ -195,6 +181,14 @@ export default apiHandler(
           }
         }
       }
+
+      await logAudit({
+        userId: currentUser?.userId || null,
+        action: "CREATE_CITY_CORP",
+        resource: "city_corporations",
+        details: `Created City Corporation ${name} (${upperCode})`,
+        ipAddress: (req.headers["x-forwarded-for"] as string) || (req.socket?.remoteAddress as string),
+      });
 
       return res.status(201).json(createdCity || memCity);
     }

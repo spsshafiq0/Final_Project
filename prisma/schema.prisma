@@ -91,6 +91,7 @@ model Ward {
   withdrawals WithdrawalRequest[]
   wasteReports WasteReport[]
 
+  @@index([cityCorpId])
   @@map("wards")
 }
 
@@ -119,6 +120,8 @@ model Bin {
 
   alerts Alert[]
 
+  @@index([wardId])
+  @@index([status])
   @@map("bins")
 }
 
@@ -146,6 +149,9 @@ model Track {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([wardId])
+  @@index([driverId])
+  @@index([status])
   @@map("tracks")
 }
 
@@ -199,6 +205,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([role])
+  @@index([cityCorpId])
+  @@index([wardId])
+  @@index([email])
   @@map("users")
 }
 
@@ -223,6 +233,9 @@ model PickupRequest {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([requesterId])
+  @@index([driverId])
+  @@index([status])
   @@map("pickup_requests")
 }
 
@@ -251,6 +264,9 @@ model WithdrawalRequest {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([citizenId])
+  @@index([wardId])
+  @@index([status])
   @@map("withdrawal_requests")
 }
 
@@ -270,6 +286,9 @@ model Alert {
 
   createdAt DateTime @default(now())
 
+  @@index([wardId])
+  @@index([binId])
+  @@index([resolved])
   @@map("alerts")
 }
 
@@ -294,5 +313,24 @@ model WasteReport {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([citizenId])
+  @@index([wardId])
+  @@index([status])
   @@map("waste_reports")
+}
+
+// ─── Audit Log ─────────────────────────────────────────────────────────
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String   // e.g. "USER_LOGIN", "CREATE_WARD", "PROCESS_WITHDRAWAL"
+  resource  String   // e.g. "users", "withdrawals", "bins"
+  details   String?  // JSON string or summary
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
 }

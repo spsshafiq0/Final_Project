@@ -4,6 +4,7 @@ import { hashPassword, signToken } from "../../auth";
 import { apiHandler } from "../../middleware";
 import { memoryDb, StoredUser } from "../../store";
 import { sendWelcomeCredentialsEmail } from "../../email";
+import { logAudit } from "../../audit";
 
 export default apiHandler(
   async (req: VercelRequest, res: VercelResponse) => {
@@ -147,6 +148,14 @@ export default apiHandler(
         username: cleanUsername,
         role: "SUPER_ADMIN",
         fullName,
+      });
+
+      await logAudit({
+        userId: superAdminId,
+        action: "SYSTEM_INITIALIZED",
+        resource: "setup",
+        details: `Root Super Admin ${cleanUsername} (${email}) initialized and secured`,
+        ipAddress: (req.headers["x-forwarded-for"] as string) || (req.socket?.remoteAddress as string),
       });
 
       return res.status(200).json({

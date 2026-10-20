@@ -103,24 +103,12 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
         setBalance(getDriverBalance());
         setPickupRequests(getPickupRequests());
         setLoggedIn(true);
-        return;
+      } else {
+        setLoginError("Invalid credentials. Please verify your username and password.");
       }
     } catch (err: any) {
-      if (driverResetPassword && driverPassword === driverResetPassword) {
-        setLoginError("");
-        setBalance(getDriverBalance());
-        setPickupRequests(getPickupRequests());
-        setLoggedIn(true);
-        return;
-      }
       setLoginError(err?.message || "Invalid driver credentials. Please verify your phone or username and password.");
-      return;
     }
-
-    setLoginError("");
-    setBalance(getDriverBalance());
-    setPickupRequests(getPickupRequests());
-    setLoggedIn(true);
   };
 
   if (!loggedIn) {

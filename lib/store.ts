@@ -132,6 +132,7 @@ if (!g.__intelliwaste_store) {
     pickups: [] as any[],
     withdrawals: [] as any[],
     wasteReports: [] as StoredWasteReport[],
+    auditLogs: [] as any[],
   };
 }
 

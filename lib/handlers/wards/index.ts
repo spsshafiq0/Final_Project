@@ -2,6 +2,7 @@ import type { VercelResponse } from "@vercel/node";
 import prisma from "../../prisma";
 import { apiHandler, AuthenticatedRequest } from "../../middleware";
 import { memoryDb, StoredWard } from "../../store";
+import { logAudit } from "../../audit";
 
 export default apiHandler(
   async (req: AuthenticatedRequest, res: VercelResponse, currentUser: any) => {
@@ -121,6 +122,14 @@ export default apiHandler(
       };
 
       memoryDb.wards.push(memWard);
+
+      await logAudit({
+        userId: currentUser?.userId || null,
+        action: "CREATE_WARD",
+        resource: "wards",
+        details: `Created Ward ${name} (${area}) under City Corp ${cityCorpId}`,
+        ipAddress: (req.headers["x-forwarded-for"] as string) || (req.socket?.remoteAddress as string),
+      });
 
       return res.status(201).json(createdWard || memWard);
     }

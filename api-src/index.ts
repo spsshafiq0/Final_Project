@@ -33,6 +33,7 @@ import reportsIndex from "../lib/handlers/reports/index";
 import dashboardStats from "../lib/handlers/dashboard/stats";
 import seedDatabase from "../lib/handlers/seed";
 import setupHandler from "../lib/handlers/setup/index";
+import auditHandler from "../lib/handlers/audit/index";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -158,6 +159,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 12. Citizen Waste Hazard Reports
     if (resource === "reports") {
       return reportsIndex(req, res);
+    }
+
+    // 13. System Audit Logs
+    if (resource === "audit") {
+      return auditHandler(req, res);
     }
 
     return res.status(200).json({ status: "healthy", endpoint: segments.join("/") });

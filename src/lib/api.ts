@@ -150,6 +150,16 @@ export interface ReportItem {
   createdAt: string;
 }
 
+export interface AuditLogItem {
+  id: string;
+  userId?: string | null;
+  action: string;
+  resource: string;
+  details?: string | null;
+  ipAddress?: string | null;
+  createdAt: string;
+}
+
 // ─── Token Management ──────────────────────────────────────────────────
 export const tokenStorage = {
   get: (): string | null => localStorage.getItem("intelliwaste_token"),
@@ -551,6 +561,11 @@ export const api = {
         method: "PUT",
         body: JSON.stringify({ id, status }),
       }),
+  },
+
+  // Security Audit Logs
+  audit: {
+    getAll: () => request<AuditLogItem[]>("/audit"),
   },
 };
 

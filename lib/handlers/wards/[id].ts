@@ -50,6 +50,13 @@ export default apiHandler(
     }
 
     if (req.method === "PUT") {
+      const isSuper = currentUser?.role === "SUPER_ADMIN";
+      const isCityAdmin = currentUser?.role === "CITY_ADMIN" && currentUser?.cityCorpId === ward.cityCorpId;
+      const isWardAdmin = currentUser?.role === "WARD_ADMIN" && currentUser?.wardId === id;
+      if (!isSuper && !isCityAdmin && !isWardAdmin) {
+        return res.status(403).json({ error: "Forbidden: Insufficient permissions to update this ward" });
+      }
+
       const { name, area, population, councilor, cityCorpId } = req.body || {};
       if (name) ward.name = name;
       if (area) ward.area = area;
@@ -74,6 +81,12 @@ export default apiHandler(
     }
 
     if (req.method === "DELETE") {
+      const isSuper = currentUser?.role === "SUPER_ADMIN";
+      const isCityAdmin = currentUser?.role === "CITY_ADMIN" && currentUser?.cityCorpId === ward.cityCorpId;
+      if (!isSuper && !isCityAdmin) {
+        return res.status(403).json({ error: "Forbidden: Only Super Admin or City Admin can delete a ward" });
+      }
+
       try {
         await prisma.ward.delete({ where: { id } }).catch(() => null);
       } catch {}

@@ -52,6 +52,15 @@ export default apiHandler(
     }
 
     if (req.method === "PUT") {
+      const isSuper = currentUser?.role === "SUPER_ADMIN";
+      const isWardAdmin = currentUser?.role === "WARD_ADMIN" && currentUser?.wardId === track.wardId;
+      const isCityAdmin = currentUser?.role === "CITY_ADMIN" && (!currentUser?.cityCorpId || track.ward?.cityCorpId === currentUser.cityCorpId);
+      const isAssignedDriver = currentUser?.role === "DRIVER" && (currentUser?.userId === track.driverId || currentUser?.username === track.driver?.username);
+
+      if (currentUser && !isSuper && !isWardAdmin && !isCityAdmin && !isAssignedDriver) {
+        return res.status(403).json({ error: "Forbidden: You do not have permission to update this track" });
+      }
+
       const {
         truckId,
         route,
@@ -104,6 +113,14 @@ export default apiHandler(
     }
 
     if (req.method === "DELETE") {
+      const isSuper = currentUser?.role === "SUPER_ADMIN";
+      const isWardAdmin = currentUser?.role === "WARD_ADMIN" && currentUser?.wardId === track.wardId;
+      const isCityAdmin = currentUser?.role === "CITY_ADMIN" && (!currentUser?.cityCorpId || track.ward?.cityCorpId === currentUser.cityCorpId);
+
+      if (!isSuper && !isWardAdmin && !isCityAdmin) {
+        return res.status(403).json({ error: "Forbidden: Only Ward Admin or City/Super Admin can delete collection tracks" });
+      }
+
       try {
         await prisma.track.delete({ where: { id } }).catch(() => null);
       } catch {}

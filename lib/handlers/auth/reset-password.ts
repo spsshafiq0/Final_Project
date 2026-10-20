@@ -4,6 +4,7 @@ import { hashPassword, verifyRecoveryToken } from "../../auth";
 import { apiHandler } from "../../middleware";
 import otpStore from "../../otpStore";
 import { memoryDb } from "../../store";
+import { logAudit } from "../../audit";
 
 export default apiHandler(
   async (req: VercelRequest, res: VercelResponse) => {
@@ -119,6 +120,14 @@ export default apiHandler(
 
     // 5. Consume / clear OTP from memory
     otpStore.consume(cleanId, cleanCode);
+
+    await logAudit({
+      userId: targetUserId || null,
+      action: "PASSWORD_RESET",
+      resource: "auth",
+      details: `Password reset successfully completed for ${targetUsername}`,
+      ipAddress: (req.headers["x-forwarded-for"] as string) || (req.socket?.remoteAddress as string),
+    });
 
     return res.status(200).json({
       success: true,

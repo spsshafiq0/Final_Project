@@ -4,6 +4,7 @@ import { hashPassword } from "../../auth";
 import { apiHandler, AuthenticatedRequest } from "../../middleware";
 import { sendWelcomeCredentialsEmail } from "../../email";
 import { memoryDb, StoredUser } from "../../store";
+import { logAudit } from "../../audit";
 
 export default apiHandler(
   async (req: AuthenticatedRequest, res: VercelResponse, currentUser: any) => {
@@ -274,6 +275,14 @@ export default apiHandler(
           role,
         }).catch((err) => console.error("[Brevo Welcome Email Error]", err.message));
       }
+
+      await logAudit({
+        userId: currentUser?.userId || null,
+        action: "CREATE_USER",
+        resource: "users",
+        details: `Created user ${cleanUsername} (${role}) by ${currentUser?.username || "system"}`,
+        ipAddress: (req.headers["x-forwarded-for"] as string) || (req.socket?.remoteAddress as string),
+      });
 
       return res.status(201).json(createdUser || {
         id: memUser.id,

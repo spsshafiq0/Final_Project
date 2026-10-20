@@ -3,6 +3,7 @@ import prisma from "../../prisma"
 import { comparePassword, signToken } from "../../auth"
 import { apiHandler } from "../../middleware"
 import { memoryDb, StoredUser } from "../../store"
+import { logAudit } from "../../audit"
 
 export default apiHandler(
   async (req: VercelRequest, res: VercelResponse) => {
@@ -74,6 +75,14 @@ export default apiHandler(
       wardId: user.wardId,
       fullName: user.fullName,
     })
+
+    await logAudit({
+      userId: user.id,
+      action: "USER_LOGIN",
+      resource: "auth",
+      details: `User ${user.username} (${user.role}) logged in successfully`,
+      ipAddress: (req.headers["x-forwarded-for"] as string) || (req.socket?.remoteAddress as string),
+    });
 
     return res.status(200).json({
       token,

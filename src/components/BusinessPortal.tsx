@@ -60,23 +60,7 @@ export default function BusinessPortal({ onNavigate }: BusinessPortalProps) {
       }
       setAuthenticated(true);
     } catch (err: any) {
-      // Local fallback
-      if (authMode === "register") {
-        const profile: BusinessProfile = { shopName, email, password };
-        localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-        localStorage.setItem("intelliwaste-business-balance", "6000");
-        setBalance(6000);
-        setAuthenticated(true);
-      } else {
-        const stored = localStorage.getItem(PROFILE_KEY);
-        const profile = stored ? (JSON.parse(stored) as BusinessProfile) : null;
-        if (profile && profile.email === email && profile.password === password) {
-          setShopName(profile.shopName);
-          setAuthenticated(true);
-          return;
-        }
-        setAuthError(err?.message || "Invalid business credentials");
-      }
+      setAuthError(err?.message || "Authentication failed. Please verify your credentials.");
     }
   };
 

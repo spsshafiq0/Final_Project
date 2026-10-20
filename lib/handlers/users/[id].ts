@@ -46,6 +46,15 @@ export default apiHandler(
     }
 
     if (req.method === "PUT") {
+      const isSuper = currentUser?.role === "SUPER_ADMIN";
+      const isSelf = currentUser?.userId === id || currentUser?.username === user.username;
+      const isCityAdmin = currentUser?.role === "CITY_ADMIN" && currentUser?.cityCorpId && user.cityCorpId === currentUser.cityCorpId;
+      const isWardAdmin = currentUser?.role === "WARD_ADMIN" && currentUser?.wardId && user.wardId === currentUser.wardId;
+
+      if (!isSuper && !isSelf && !isCityAdmin && !isWardAdmin) {
+        return res.status(403).json({ error: "Forbidden: You do not have permission to modify this user account" });
+      }
+
       const {
         fullName,
         email,
@@ -57,8 +66,16 @@ export default apiHandler(
         wardId,
       } = req.body || {};
 
+      // Privilege escalation protection: Only Super Admin can assign/change admin roles
+      if (role && role !== user.role && !isSuper) {
+        return res.status(403).json({ error: "Forbidden: Only Super Admin can change account roles" });
+      }
+
       let hashedPassword: string | undefined;
       if (password) {
+        if (typeof password !== "string" || password.length < 6) {
+          return res.status(400).json({ error: "Password must be at least 6 characters long" });
+        }
         hashedPassword = await hashPassword(password);
       }
 
@@ -66,10 +83,10 @@ export default apiHandler(
       if (email !== undefined) user.email = email;
       if (phone !== undefined) user.phone = phone;
       if (hashedPassword) user.password = hashedPassword;
-      if (active !== undefined) user.active = Boolean(active);
-      if (role) user.role = role;
-      if (cityCorpId !== undefined) user.cityCorpId = cityCorpId;
-      if (wardId !== undefined) user.wardId = wardId;
+      if (active !== undefined && (isSuper || isCityAdmin)) user.active = Boolean(active);
+      if (role && isSuper) user.role = role;
+      if (cityCorpId !== undefined && isSuper) user.cityCorpId = cityCorpId;
+      if (wardId !== undefined && (isSuper || isCityAdmin)) user.wardId = wardId;
 
       // Update in memory store
       const memUserIdx = memoryDb.users.findIndex((u: StoredUser) => u.id === id || u.username === id);
@@ -78,10 +95,10 @@ export default apiHandler(
         if (email !== undefined) memoryDb.users[memUserIdx].email = email;
         if (phone !== undefined) memoryDb.users[memUserIdx].phone = phone;
         if (hashedPassword) memoryDb.users[memUserIdx].password = hashedPassword;
-        if (active !== undefined) memoryDb.users[memUserIdx].active = Boolean(active);
-        if (role) memoryDb.users[memUserIdx].role = role;
-        if (cityCorpId !== undefined) memoryDb.users[memUserIdx].cityCorpId = cityCorpId;
-        if (wardId !== undefined) memoryDb.users[memUserIdx].wardId = wardId;
+        if (active !== undefined && (isSuper || isCityAdmin)) memoryDb.users[memUserIdx].active = Boolean(active);
+        if (role && isSuper) memoryDb.users[memUserIdx].role = role;
+        if (cityCorpId !== undefined && isSuper) memoryDb.users[memUserIdx].cityCorpId = cityCorpId;
+        if (wardId !== undefined && (isSuper || isCityAdmin)) memoryDb.users[memUserIdx].wardId = wardId;
       }
 
       try {
@@ -92,10 +109,10 @@ export default apiHandler(
             ...(email !== undefined && { email }),
             ...(phone !== undefined && { phone }),
             ...(hashedPassword && { password: hashedPassword }),
-            ...(active !== undefined && { active: Boolean(active) }),
-            ...(role && { role }),
-            ...(cityCorpId !== undefined && { cityCorpId }),
-            ...(wardId !== undefined && { wardId }),
+            ...(active !== undefined && (isSuper || isCityAdmin) && { active: Boolean(active) }),
+            ...(role && isSuper && { role }),
+            ...(cityCorpId !== undefined && isSuper && { cityCorpId }),
+            ...(wardId !== undefined && (isSuper || isCityAdmin) && { wardId }),
           },
         }).catch(() => null);
       } catch {}
@@ -104,6 +121,17 @@ export default apiHandler(
     }
 
     if (req.method === "DELETE") {
+      const isSuper = currentUser?.role === "SUPER_ADMIN";
+      const isCityAdmin = currentUser?.role === "CITY_ADMIN" && currentUser?.cityCorpId && user.cityCorpId === currentUser.cityCorpId;
+
+      if (!isSuper && !isCityAdmin) {
+        return res.status(403).json({ error: "Forbidden: Only administrators can delete users" });
+      }
+
+      if (user.role === "SUPER_ADMIN") {
+        return res.status(403).json({ error: "Forbidden: Super Admin accounts cannot be deleted" });
+      }
+
       try {
         await prisma.user.delete({ where: { id } }).catch(() => null);
       } catch {}
@@ -114,5 +142,5 @@ export default apiHandler(
 
     return res.status(405).json({ error: "Method not allowed" });
   },
-  { requireAuth: false, allowedMethods: ["GET", "PUT", "DELETE"] }
+  { requireAuth: true, allowedMethods: ["GET", "PUT", "DELETE"] }
 );

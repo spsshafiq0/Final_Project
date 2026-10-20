@@ -47,6 +47,12 @@ export default apiHandler(
     }
 
     if (req.method === "PUT") {
+      const isSuper = currentUser?.role === "SUPER_ADMIN";
+      const isCityAdmin = currentUser?.role === "CITY_ADMIN" && currentUser?.cityCorpId === id;
+      if (!isSuper && !isCityAdmin) {
+        return res.status(403).json({ error: "Forbidden: Only Super Admin or City Corp Admin can update this City Corporation" });
+      }
+
       const {
         name,
         code,
@@ -104,6 +110,9 @@ export default apiHandler(
     }
 
     if (req.method === "DELETE") {
+      if (currentUser?.role !== "SUPER_ADMIN") {
+        return res.status(403).json({ error: "Forbidden: Only Super Admin can delete a City Corporation" });
+      }
       try {
         await prisma.cityCorporation.delete({ where: { id } });
       } catch (dbErr: any) {}
