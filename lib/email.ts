@@ -17,7 +17,7 @@ interface SendEmailParams {
 
 export async function sendEmail({ to, subject, htmlContent, textContent }: SendEmailParams): Promise<{ success: boolean; messageId?: string; simulated?: boolean }> {
   const apiKey = process.env.BREVO_API_KEY;
-  const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.SENDER_EMAIL || "spsshafiq95@gmail.com";
+  const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.SENDER_EMAIL || "shafiq_mollah1087@uits.edu.bd";
   const senderName = process.env.BREVO_SENDER_NAME || "IntelliWaste Smart City";
 
   // If no Brevo API key is configured yet, gracefully simulate and log to server console
