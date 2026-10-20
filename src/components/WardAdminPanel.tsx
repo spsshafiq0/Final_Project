@@ -45,7 +45,7 @@ function AddTrackModal({ wardId, onClose, onAdd }: { wardId: number; onClose: ()
     driver: "",
     phone: "",
     username: "",
-    password: "Sps(#)12D",
+    password: "",
     email: "",
     nid: "",
     address: "",
@@ -72,7 +72,7 @@ function AddTrackModal({ wardId, onClose, onAdd }: { wardId: number; onClose: ()
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[#4b7a5a] text-xs font-mono mb-1">TRUCK ID</label>
-              <input value={form.truckId} onChange={e => setForm(f => ({ ...f, truckId: e.target.value }))} placeholder="DNCC-T00" className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-[#4ade80] placeholder-[#4b7a5a]" />
+              <input value={form.truckId} onChange={e => setForm(f => ({ ...f, truckId: e.target.value }))} placeholder="TRUCK-001" className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-[#4ade80] placeholder-[#4b7a5a]" />
             </div>
             <div>
               <label className="block text-[#4b7a5a] text-xs font-mono mb-1">STOPS</label>

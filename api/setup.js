@@ -5832,14 +5832,6 @@ function signToken(payload) {
   return import_jsonwebtoken.default.sign(payload, JWT_SECRET, { expiresIn: "7d" });
 }
 function verifyToken(token) {
-  if (token === "setup-session-token") {
-    return {
-      userId: "usr-super-1",
-      username: "spsshafiq",
-      role: "SUPER_ADMIN",
-      fullName: "Super Administrator"
-    };
-  }
   try {
     return import_jsonwebtoken.default.verify(token, JWT_SECRET);
   } catch {
@@ -5910,42 +5902,20 @@ function apiHandler(handler, options) {
 }
 
 // lib/store.ts
-var defaultRootSuperAdmin = {
-  id: "usr-super-1",
-  username: "spsshafiq",
-  password: "$2a$10$HKkVtRwcZcEFJNbdQsXg7Oz1pxtT037uW8N3Gj2iHQenrzXX8Bp6S",
-  fullName: "Shafiq",
-  email: "shafiq_mollah1087@uits.edu.bd",
-  phone: "+8801700000000",
-  role: "SUPER_ADMIN",
-  active: true,
-  points: 0,
-  createdAt: (/* @__PURE__ */ new Date()).toISOString()
-};
 var g = globalThis;
-var isTestEnv = typeof process !== "undefined" && Boolean(process.env && process.env.NODE_ENV === "test");
 if (!g.__intelliwaste_store) {
   g.__intelliwaste_store = {
-    isSetupComplete: !isTestEnv,
-    setupLocked: !isTestEnv,
+    isSetupComplete: false,
+    setupLocked: false,
     cities: [],
     wards: [],
-    users: isTestEnv ? [] : [defaultRootSuperAdmin],
+    users: [],
     bins: [],
     tracks: [],
     alerts: [],
     pickups: [],
     withdrawals: []
   };
-}
-if (!g.__intelliwaste_store.pickups) g.__intelliwaste_store.pickups = [];
-if (!g.__intelliwaste_store.withdrawals) g.__intelliwaste_store.withdrawals = [];
-if (!isTestEnv && (!g.__intelliwaste_store.users || g.__intelliwaste_store.users.length === 0)) {
-  g.__intelliwaste_store.users = [defaultRootSuperAdmin];
-}
-if (!isTestEnv) {
-  g.__intelliwaste_store.isSetupComplete = true;
-  g.__intelliwaste_store.setupLocked = true;
 }
 var memoryDb = g.__intelliwaste_store;
 
@@ -6197,7 +6167,7 @@ var setup_default = apiHandler(
           error: "Initial setup has already been completed. This installer is permanently disabled for system security."
         });
       }
-      const { fullName, username, email, password, cityCorpName, cityCorpCode } = req.body || {};
+      const { fullName, username, email, password } = req.body || {};
       if (!fullName || !username || !email || !password) {
         return res.status(400).json({
           error: "Full name, username, official email, and password are required."
@@ -6211,20 +6181,7 @@ var setup_default = apiHandler(
       const hashedPassword = await hashPassword(password);
       const cleanUsername = username.toLowerCase().trim();
       let createdUser = null;
-      let createdCity = null;
       try {
-        if (cityCorpName && cityCorpCode) {
-          const upperCode = cityCorpCode.toUpperCase().trim();
-          createdCity = await prisma_default.cityCorporation.upsert({
-            where: { code: upperCode },
-            update: { name: cityCorpName, email },
-            create: {
-              name: cityCorpName,
-              code: upperCode,
-              email
-            }
-          }).catch(() => null);
-        }
         createdUser = await prisma_default.user.upsert({
           where: { username: cleanUsername },
           update: {
@@ -6263,26 +6220,6 @@ var setup_default = apiHandler(
         memoryDb.users[existingSuperIndex] = memUser;
       } else {
         memoryDb.users.push(memUser);
-      }
-      if (cityCorpName && cityCorpCode) {
-        const upperCode = cityCorpCode.toUpperCase().trim();
-        const existingCityIndex = memoryDb.cities.findIndex((c) => c.code === upperCode);
-        const memCity = {
-          id: createdCity?.id || `city-${Date.now()}`,
-          name: cityCorpName,
-          code: upperCode,
-          email,
-          active: true,
-          pointRate: 0.2,
-          minWithdrawPoints: 100,
-          rewardActive: true,
-          createdAt: (/* @__PURE__ */ new Date()).toISOString()
-        };
-        if (existingCityIndex >= 0) {
-          memoryDb.cities[existingCityIndex] = memCity;
-        } else {
-          memoryDb.cities.push(memCity);
-        }
       }
       memoryDb.isSetupComplete = true;
       memoryDb.setupLocked = true;

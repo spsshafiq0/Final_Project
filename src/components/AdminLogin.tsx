@@ -107,101 +107,12 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
         onNavigate("citizen")
       }
     } catch (apiError: any) {
-      // Resilient fallback for root Super Admin credentials
-      const cleanUser = username.trim().toLowerCase()
-      if (
-        (cleanUser === "spsshafiq" ||
-          cleanUser === "shafiq_mollah1087@uits.edu.bd") &&
-        pass === "Sps(#)12D"
-      ) {
-        tokenStorage.set("setup-session-token")
-        userStorage.set({
-          id: "usr-super-1",
-          username: "spsshafiq",
-          fullName: "Shafiq",
-          email: "shafiq_mollah1087@uits.edu.bd",
-          role: "SUPER_ADMIN",
-        })
-        localStorage.setItem("intelliwaste_setup_locked", "true")
-        setLoading(false)
-        onLogin("super")
-        return
-      }
-
       setLoading(false)
       setError(apiError?.message || "Invalid username or password")
     }
   }
 
-  const displayWards =
-    dynamicWards.length > 0
-      ? dynamicWards
-      : [
-          {
-            id: "1",
-            name: "Ward 01",
-            area: "Uttara North",
-            cityCorpId: "dncc",
-            population: 48000,
-            councilor: "",
-          },
-          {
-            id: "2",
-            name: "Ward 02",
-            area: "Uttara South",
-            cityCorpId: "dncc",
-            population: 52000,
-            councilor: "",
-          },
-          {
-            id: "3",
-            name: "Ward 03",
-            area: "Khilkhet",
-            cityCorpId: "dncc",
-            population: 39000,
-            councilor: "",
-          },
-          {
-            id: "4",
-            name: "Ward 04",
-            area: "Vatara",
-            cityCorpId: "dncc",
-            population: 29000,
-            councilor: "",
-          },
-          {
-            id: "5",
-            name: "Ward 05",
-            area: "Badda",
-            cityCorpId: "dncc",
-            population: 61000,
-            councilor: "",
-          },
-          {
-            id: "6",
-            name: "Ward 06",
-            area: "Gulshan",
-            cityCorpId: "dncc",
-            population: 44000,
-            councilor: "",
-          },
-          {
-            id: "10",
-            name: "Ward 10",
-            area: "Dhanmondi",
-            cityCorpId: "dncc",
-            population: 55000,
-            councilor: "",
-          },
-          {
-            id: "11",
-            name: "Ward 11",
-            area: "Mirpur-10",
-            cityCorpId: "dncc",
-            population: 83000,
-            councilor: "",
-          },
-        ]
+  const displayWards = dynamicWards;
 
   return (
     <div
@@ -318,19 +229,18 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
             {tab === "city" && (
               <div>
                 <div className="text-[#4ade80] font-mono text-xs mb-1">
-                  🏢 CITY CORPORATION ADMIN (DNCC / DSCC)
+                  🏢 CITY CORPORATION ADMIN
                 </div>
                 <div className="text-[#4b7a5a] text-xs leading-relaxed">
-                  Jurisdiction management: Configure point-to-cash rate
-                  (৳0.20/pt), add wards, assign sub-admins, view all trucks &
-                  bins.
+                  Jurisdiction management: Configure point-to-cash rate,
+                  manage wards, assign sub-admins, view all trucks & bins.
                 </div>
               </div>
             )}
             {tab === "ward" && (
               <div>
                 <div className="text-[#60a5fa] font-mono text-xs mb-1">
-                  🏛️ SUB-ADMIN (LOCAL WARD 01 INSPECTOR)
+                  🏛️ WARD SUB-ADMIN
                 </div>
                 <div className="text-[#4b7a5a] text-xs leading-relaxed">
                   Ward level: Monitor local smart bins & trucks, disburse
@@ -368,17 +278,23 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
               <label className="block text-[#4b7a5a] text-xs font-mono mb-1.5">
                 SELECT YOUR WARD
               </label>
-              <select
-                value={ward}
-                onChange={(e) => setWard(e.target.value)}
-                className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-[#86efac] text-sm focus:border-[#4ade80] outline-none"
-              >
-                {displayWards.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name} — {w.area}
-                  </option>
-                ))}
-              </select>
+              {displayWards.length > 0 ? (
+                <select
+                  value={ward}
+                  onChange={(e) => setWard(e.target.value)}
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-[#86efac] text-sm focus:border-[#4ade80] outline-none"
+                >
+                  {displayWards.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name} {w.area ? `— ${w.area}` : ""}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="text-xs text-[#86efac]/70 p-2.5 bg-[#061309] border border-[#1a3d22] rounded-xl font-mono">
+                  No wards registered yet. City Admin can create wards.
+                </div>
+              )}
             </div>
           )}
 

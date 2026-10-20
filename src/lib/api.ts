@@ -252,6 +252,7 @@ export const api = {
         message: string;
         token: string;
         user: UserProfile;
+        error?: string;
       }>("/setup", {
         method: "POST",
         body: JSON.stringify(data),

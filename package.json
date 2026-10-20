@@ -7,7 +7,6 @@
   "scripts": {
     "dev": "vite",
     "build": "prisma generate && vite build && esbuild api-src/index.ts --bundle --platform=node --target=node20 --format=esm --banner:js=\"import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);\" --external:@prisma/client --outfile=api/index.js && esbuild api-src/setup.ts --bundle --platform=node --target=node20 --format=esm --banner:js=\"import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);\" --external:@prisma/client --outfile=api/setup.js && esbuild \"api-src/[...path].ts\" --bundle --platform=node --target=node20 --format=esm --banner:js=\"import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);\" --external:@prisma/client --outfile=\"api/[...path].js\"",
-    "test": "node scripts/test-all-roles.cjs",
     "preview": "vite preview",
     "format": "oxfmt",
     "postinstall": "prisma generate",

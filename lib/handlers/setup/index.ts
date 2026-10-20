@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import prisma from "../../prisma";
 import { hashPassword, signToken } from "../../auth";
 import { apiHandler } from "../../middleware";
-import { memoryDb, StoredUser, StoredCity } from "../../store";
+import { memoryDb, StoredUser } from "../../store";
 import { sendWelcomeCredentialsEmail } from "../../email";
 
 export default apiHandler(
@@ -61,7 +61,7 @@ export default apiHandler(
         });
       }
 
-      const { fullName, username, email, password, cityCorpName, cityCorpCode } = req.body || {};
+      const { fullName, username, email, password } = req.body || {};
 
       if (!fullName || !username || !email || !password) {
         return res.status(400).json({
@@ -80,23 +80,9 @@ export default apiHandler(
       const cleanUsername = username.toLowerCase().trim();
 
       let createdUser: any = null;
-      let createdCity: any = null;
 
       // 1. Persist to PostgreSQL if database connection is available
       try {
-        if (cityCorpName && cityCorpCode) {
-          const upperCode = cityCorpCode.toUpperCase().trim();
-          createdCity = await prisma.cityCorporation.upsert({
-            where: { code: upperCode },
-            update: { name: cityCorpName, email },
-            create: {
-              name: cityCorpName,
-              code: upperCode,
-              email,
-            },
-          }).catch(() => null);
-        }
-
         createdUser = await prisma.user.upsert({
           where: { username: cleanUsername },
           update: {
@@ -139,28 +125,6 @@ export default apiHandler(
         memoryDb.users[existingSuperIndex] = memUser;
       } else {
         memoryDb.users.push(memUser);
-      }
-
-      if (cityCorpName && cityCorpCode) {
-        const upperCode = cityCorpCode.toUpperCase().trim();
-        const existingCityIndex = memoryDb.cities.findIndex((c: StoredCity) => c.code === upperCode);
-        const memCity: StoredCity = {
-          id: createdCity?.id || `city-${Date.now()}`,
-          name: cityCorpName,
-          code: upperCode,
-          email,
-          active: true,
-          pointRate: 0.20,
-          minWithdrawPoints: 100,
-          rewardActive: true,
-          createdAt: new Date().toISOString(),
-        };
-
-        if (existingCityIndex >= 0) {
-          memoryDb.cities[existingCityIndex] = memCity;
-        } else {
-          memoryDb.cities.push(memCity);
-        }
       }
 
       // Mark setup as complete and permanently seal installer

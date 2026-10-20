@@ -5835,14 +5835,6 @@ function signToken(payload) {
   return import_jsonwebtoken.default.sign(payload, JWT_SECRET, { expiresIn: "7d" });
 }
 function verifyToken(token) {
-  if (token === "setup-session-token") {
-    return {
-      userId: "usr-super-1",
-      username: "spsshafiq",
-      role: "SUPER_ADMIN",
-      fullName: "Super Administrator"
-    };
-  }
   try {
     return import_jsonwebtoken.default.verify(token, JWT_SECRET);
   } catch {
@@ -5923,27 +5915,14 @@ function apiHandler(handler2, options) {
 }
 
 // lib/store.ts
-var defaultRootSuperAdmin = {
-  id: "usr-super-1",
-  username: "spsshafiq",
-  password: "$2a$10$HKkVtRwcZcEFJNbdQsXg7Oz1pxtT037uW8N3Gj2iHQenrzXX8Bp6S",
-  fullName: "Shafiq",
-  email: "shafiq_mollah1087@uits.edu.bd",
-  phone: "+8801700000000",
-  role: "SUPER_ADMIN",
-  active: true,
-  points: 0,
-  createdAt: (/* @__PURE__ */ new Date()).toISOString()
-};
 var g = globalThis;
-var isTestEnv = typeof process !== "undefined" && Boolean(process.env && process.env.NODE_ENV === "test");
 if (!g.__intelliwaste_store) {
   g.__intelliwaste_store = {
-    isSetupComplete: !isTestEnv,
-    setupLocked: !isTestEnv,
+    isSetupComplete: false,
+    setupLocked: false,
     cities: [],
     wards: [],
-    users: isTestEnv ? [] : [defaultRootSuperAdmin],
+    users: [],
     bins: [],
     tracks: [],
     alerts: [],
@@ -5951,181 +5930,7 @@ if (!g.__intelliwaste_store) {
     withdrawals: []
   };
 }
-if (!g.__intelliwaste_store.pickups) g.__intelliwaste_store.pickups = [];
-if (!g.__intelliwaste_store.withdrawals) g.__intelliwaste_store.withdrawals = [];
-if (!isTestEnv && (!g.__intelliwaste_store.users || g.__intelliwaste_store.users.length === 0)) {
-  g.__intelliwaste_store.users = [defaultRootSuperAdmin];
-}
-if (!isTestEnv) {
-  g.__intelliwaste_store.isSetupComplete = true;
-  g.__intelliwaste_store.setupLocked = true;
-}
 var memoryDb = g.__intelliwaste_store;
-async function seedMemoryStore(superAdminPass) {
-  const adminPass = superAdminPass || process.env.INITIAL_ADMIN_PASSWORD || "Sps(#)12D";
-  const hash = await hashPassword(adminPass);
-  if (!memoryDb.users.some((u) => u.role === "SUPER_ADMIN")) {
-    memoryDb.users.push({
-      id: "usr-super-1",
-      username: "spsshafiq",
-      password: hash,
-      fullName: "Shafiq",
-      email: "shafiq_mollah1087@uits.edu.bd",
-      phone: "+8801700000000",
-      role: "SUPER_ADMIN",
-      active: true,
-      points: 0,
-      createdAt: (/* @__PURE__ */ new Date()).toISOString()
-    });
-    memoryDb.isSetupComplete = true;
-    memoryDb.setupLocked = true;
-  }
-  if (memoryDb.cities.length === 0) {
-    const dncc = {
-      id: "city-dncc-1",
-      name: "Dhaka North City Corporation",
-      code: "DNCC",
-      address: "Plot 23-26, Road 46, Gulshan-2, Dhaka",
-      phone: "+880-2-9894415",
-      email: "info@dncc.gov.bd",
-      active: true,
-      pointRate: 0.2,
-      minWithdrawPoints: 100,
-      rewardActive: true,
-      createdAt: (/* @__PURE__ */ new Date()).toISOString()
-    };
-    const dscc = {
-      id: "city-dscc-1",
-      name: "Dhaka South City Corporation",
-      code: "DSCC",
-      address: "Nagar Bhaban, Fulbaria, Dhaka",
-      phone: "+880-2-9556014",
-      email: "info@dscc.gov.bd",
-      active: true,
-      pointRate: 0.25,
-      minWithdrawPoints: 150,
-      rewardActive: true,
-      createdAt: (/* @__PURE__ */ new Date()).toISOString()
-    };
-    memoryDb.cities.push(dncc, dscc);
-    const ward1 = {
-      id: "ward-01",
-      name: "Ward 01",
-      area: "Uttara North",
-      population: 48500,
-      councilor: "Abul Kalam",
-      cityCorpId: dncc.id,
-      createdAt: (/* @__PURE__ */ new Date()).toISOString()
-    };
-    const ward2 = {
-      id: "ward-02",
-      name: "Ward 02",
-      area: "Uttara South",
-      population: 52e3,
-      councilor: "Rina Begum",
-      cityCorpId: dncc.id,
-      createdAt: (/* @__PURE__ */ new Date()).toISOString()
-    };
-    const ward3 = {
-      id: "ward-03",
-      name: "Ward 03",
-      area: "Khilkhet",
-      population: 39e3,
-      councilor: "Faruk Ahmed",
-      cityCorpId: dncc.id,
-      createdAt: (/* @__PURE__ */ new Date()).toISOString()
-    };
-    const ward4 = {
-      id: "ward-04",
-      name: "Ward 04",
-      area: "Vatara",
-      population: 29e3,
-      councilor: "Nasrin Parvin",
-      cityCorpId: dncc.id,
-      createdAt: (/* @__PURE__ */ new Date()).toISOString()
-    };
-    memoryDb.wards.push(ward1, ward2, ward3, ward4);
-    memoryDb.bins.push(
-      {
-        id: "bin-1",
-        binCode: "B-201",
-        location: "Sector 3 Park Entrance, Uttara",
-        capacity: "120L",
-        fill: 94,
-        weight: 85,
-        temp: "52\xB0C [HIGH TEMP HAZARD]",
-        gas: "75 ppm [AMMONIA SPIKE]",
-        fire: true,
-        status: "fire",
-        lat: 23.872,
-        lng: 90.395,
-        wardId: ward1.id,
-        createdAt: (/* @__PURE__ */ new Date()).toISOString()
-      },
-      {
-        id: "bin-2",
-        binCode: "B-204",
-        location: "Rajlaxmi Complex Corner, Road 7",
-        capacity: "240L",
-        fill: 88,
-        weight: 120,
-        temp: "39\xB0C [WARNING]",
-        gas: "58 ppm [AMMONIA WARNING]",
-        fire: false,
-        status: "critical",
-        lat: 23.868,
-        lng: 90.399,
-        wardId: ward1.id,
-        createdAt: (/* @__PURE__ */ new Date()).toISOString()
-      },
-      {
-        id: "bin-3",
-        binCode: "B-108",
-        location: "Azampur Bus Depot",
-        capacity: "120L",
-        fill: 42,
-        weight: 35,
-        temp: "27\xB0C [Normal]",
-        gas: "12 ppm [Normal]",
-        fire: false,
-        status: "normal",
-        lat: 23.862,
-        lng: 90.402,
-        wardId: ward1.id,
-        createdAt: (/* @__PURE__ */ new Date()).toISOString()
-      }
-    );
-    memoryDb.tracks.push({
-      id: "TR-001",
-      truckId: "DNCC-T01",
-      driver: "Abdul Karim",
-      phone: "+8801700000004",
-      route: "Sector 3 \u2192 Rajlaxmi \u2192 Azampur Depot",
-      stops: 6,
-      status: "active",
-      progress: 65,
-      load: "72%",
-      fuel: 85,
-      startTime: "07:00 AM",
-      gpsLat: 23.872,
-      gpsLng: 90.395,
-      wardId: ward1.id,
-      driverId: "usr-driver-1",
-      createdAt: (/* @__PURE__ */ new Date()).toISOString()
-    });
-    memoryDb.alerts.push({
-      id: "alt-1",
-      type: "Toxic Ammonia & Heat Hazard",
-      message: "Bin B-201 at Sector 3 Park detected 52\xB0C heat and 75 ppm ammonia gas spike. Immediate dispatch required.",
-      priority: "critical",
-      resolved: false,
-      wardId: ward1.id,
-      binId: "bin-1",
-      createdAt: (/* @__PURE__ */ new Date()).toISOString()
-    });
-  }
-  return memoryDb;
-}
 
 // lib/handlers/auth/login.ts
 var login_default = apiHandler(
@@ -6168,34 +5973,10 @@ var login_default = apiHandler(
         };
       }
     }
-    if (!user) {
-      const isSuperUsername = cleanUsername === "spsshafiq" || cleanUsername === "shafiq_mollah1087@uits.edu.bd";
-      if (isSuperUsername) {
-        if (password === "Sps(#)12D") {
-          const rootAdminHash = await hashPassword("Sps(#)12D");
-          const rootSuper = {
-            id: "usr-super-1",
-            username: "spsshafiq",
-            password: rootAdminHash,
-            fullName: "Shafiq",
-            email: "shafiq_mollah1087@uits.edu.bd",
-            phone: "+8801700000000",
-            role: "SUPER_ADMIN",
-            active: true,
-            points: 0,
-            createdAt: (/* @__PURE__ */ new Date()).toISOString()
-          };
-          memoryDb.users.push(rootSuper);
-          memoryDb.isSetupComplete = true;
-          memoryDb.setupLocked = true;
-          user = rootSuper;
-        }
-      }
-    }
     if (!user || !user.active) {
       return res.status(401).json({ error: "Invalid username or password" });
     }
-    const isMatch = password === "Sps(#)12D" && user.role === "SUPER_ADMIN" || await comparePassword(password, user.password);
+    const isMatch = await comparePassword(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ error: "Invalid username or password" });
     }
@@ -8905,53 +8686,9 @@ var stats_default = apiHandler(
 // lib/handlers/seed.ts
 var seed_default = apiHandler(
   async (req, res) => {
-    const adminPass = process.env.INITIAL_ADMIN_PASSWORD || "Sps(#)12D";
-    await seedMemoryStore(adminPass);
-    let pgSeeded = false;
-    let pgError = null;
-    try {
-      const superAdminExists = await prisma_default.user.findFirst({
-        where: { role: "SUPER_ADMIN" }
-      }).catch(() => null);
-      if (!superAdminExists) {
-        const masterPasswordHash = await hashPassword(adminPass);
-        const dncc = await prisma_default.cityCorporation.upsert({
-          where: { code: "DNCC" },
-          update: { pointRate: 0.2, minWithdrawPoints: 100, rewardActive: true },
-          create: {
-            name: "Dhaka North City Corporation",
-            code: "DNCC",
-            address: "Plot 23-26, Road 46, Gulshan-2, Dhaka",
-            phone: "+880-2-9894415",
-            email: "info@dncc.gov.bd",
-            pointRate: 0.2,
-            minWithdrawPoints: 100,
-            rewardActive: true
-          }
-        });
-        await prisma_default.user.upsert({
-          where: { username: "spsshafiq" },
-          update: { password: masterPasswordHash, active: true },
-          create: {
-            username: "spsshafiq",
-            password: masterPasswordHash,
-            fullName: "Shafiq",
-            email: "shafiq_mollah1087@uits.edu.bd",
-            phone: "+8801700000000",
-            role: "SUPER_ADMIN",
-            active: true,
-            points: 0
-          }
-        });
-        pgSeeded = true;
-      }
-    } catch (e) {
-      pgError = e.message;
-      console.warn("[Seed Notice] PostgreSQL not yet configured on this instance, operating in resilient cloud memory mode:", e.message);
-    }
     return res.status(200).json({
       success: true,
-      message: "Database successfully provisioned! Super Admin, City Corporations, Wards, and Smart Bins are synchronized.",
+      message: memoryDb.isSetupComplete ? "System is fully installed and operational." : "System is ready for first-time Super Admin initialization via /setup.",
       stats: {
         cities: memoryDb.cities.length,
         wards: memoryDb.wards.length,
@@ -8959,8 +8696,7 @@ var seed_default = apiHandler(
         bins: memoryDb.bins.length,
         tracks: memoryDb.tracks.length
       },
-      pgSeeded,
-      pgError: pgError ? "Operating in resilient in-memory mode" : void 0
+      isSetupComplete: Boolean(memoryDb.isSetupComplete)
     });
   },
   { allowedMethods: ["GET", "POST"] }
@@ -9007,7 +8743,7 @@ var setup_default = apiHandler(
           error: "Initial setup has already been completed. This installer is permanently disabled for system security."
         });
       }
-      const { fullName, username, email, password, cityCorpName, cityCorpCode } = req.body || {};
+      const { fullName, username, email, password } = req.body || {};
       if (!fullName || !username || !email || !password) {
         return res.status(400).json({
           error: "Full name, username, official email, and password are required."
@@ -9021,20 +8757,7 @@ var setup_default = apiHandler(
       const hashedPassword = await hashPassword(password);
       const cleanUsername = username.toLowerCase().trim();
       let createdUser = null;
-      let createdCity = null;
       try {
-        if (cityCorpName && cityCorpCode) {
-          const upperCode = cityCorpCode.toUpperCase().trim();
-          createdCity = await prisma_default.cityCorporation.upsert({
-            where: { code: upperCode },
-            update: { name: cityCorpName, email },
-            create: {
-              name: cityCorpName,
-              code: upperCode,
-              email
-            }
-          }).catch(() => null);
-        }
         createdUser = await prisma_default.user.upsert({
           where: { username: cleanUsername },
           update: {
@@ -9073,26 +8796,6 @@ var setup_default = apiHandler(
         memoryDb.users[existingSuperIndex] = memUser;
       } else {
         memoryDb.users.push(memUser);
-      }
-      if (cityCorpName && cityCorpCode) {
-        const upperCode = cityCorpCode.toUpperCase().trim();
-        const existingCityIndex = memoryDb.cities.findIndex((c) => c.code === upperCode);
-        const memCity = {
-          id: createdCity?.id || `city-${Date.now()}`,
-          name: cityCorpName,
-          code: upperCode,
-          email,
-          active: true,
-          pointRate: 0.2,
-          minWithdrawPoints: 100,
-          rewardActive: true,
-          createdAt: (/* @__PURE__ */ new Date()).toISOString()
-        };
-        if (existingCityIndex >= 0) {
-          memoryDb.cities[existingCityIndex] = memCity;
-        } else {
-          memoryDb.cities.push(memCity);
-        }
       }
       memoryDb.isSetupComplete = true;
       memoryDb.setupLocked = true;

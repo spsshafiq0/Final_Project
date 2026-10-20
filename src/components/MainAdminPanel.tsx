@@ -9,7 +9,7 @@ import {
   Users, MapPin, Flame, Wind, X, ChevronRight, Eye, EyeOff, Save, Package,
   Navigation, ExternalLink, ClipboardList, Loader2, Coins, Wallet
 } from "lucide-react";
-import { wards as initialFallbackWards, bins as initialFallbackBins, tracks as initialFallbackTracks, type Ward, type Bin, type Track } from "../data/cityData";
+import { type Ward, type Bin, type Track } from "../data/cityData";
 import api, { WardItem, BinItem, TrackItem, UserProfile, WithdrawalItem, userStorage } from "../lib/api";
 
 interface MainAdminPanelProps {
@@ -565,26 +565,14 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
 
   // Dynamic state
   const currentUser = userStorage.get();
-  const cityTitle = currentUser?.cityCorp?.name || "Dhaka North City Corporation";
-  const cityCode = currentUser?.cityCorp?.code || "DNCC";
+  const cityTitle = currentUser?.cityCorp?.name || "City Corporation";
+  const cityCode = currentUser?.cityCorp?.code || "CITY";
 
-  const [localWards, setLocalWards] = useState<Ward[]>(initialFallbackWards);
-  const [localBins, setLocalBins] = useState<Bin[]>(initialFallbackBins);
-  const [localTracks, setLocalTracks] = useState<Track[]>(initialFallbackTracks);
+  const [localWards, setLocalWards] = useState<Ward[]>([]);
+  const [localBins, setLocalBins] = useState<Bin[]>([]);
+  const [localTracks, setLocalTracks] = useState<Track[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [subAdmins, setSubAdmins] = useState<SubAdminForm[]>(
-    initialFallbackWards.flatMap(w => w.subAdmin ? [{
-      id: w.subAdmin.id,
-      wardId: w.id,
-      name: w.subAdmin.name,
-      username: w.subAdmin.username ?? `ward${String(w.id).padStart(2, "0")}.admin`,
-      email: w.subAdmin.email,
-      phone: w.subAdmin.phone,
-      nid: w.subAdmin.nid ?? "",
-      address: w.subAdmin.address ?? "",
-      active: w.subAdmin.active,
-    }] : [])
-  );
+  const [subAdmins, setSubAdmins] = useState<SubAdminForm[]>([]);
 
   // Point-to-Money Rate & Rewards Policy State (Exclusive to City Corp Admin)
   const [pointRate, setPointRate] = useState<number>(0.20);
@@ -592,35 +580,7 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
   const [rewardActive, setRewardActive] = useState<boolean>(true);
   const [savingPolicy, setSavingPolicy] = useState<boolean>(false);
   const [policySaved, setPolicySaved] = useState<boolean>(false);
-  const [withdrawals, setWithdrawals] = useState<WithdrawalItem[]>([
-    {
-      id: "wdr-1",
-      verificationCode: "WDR-5821",
-      points: 500,
-      amount: 100.0,
-      status: "pending",
-      citizenId: "c-1",
-      citizenName: "Fatima Begum",
-      citizenPhone: "01711-889900",
-      wardId: "1",
-      createdAt: "Today, 10:15 AM",
-      notes: "Cash withdrawal request at Ward 01 Office",
-    },
-    {
-      id: "wdr-2",
-      verificationCode: "WDR-3140",
-      points: 300,
-      amount: 60.0,
-      status: "paid",
-      citizenId: "c-2",
-      citizenName: "Rahim Khan",
-      citizenPhone: "01711-223344",
-      wardId: "1",
-      paidAt: "Today, 09:30 AM",
-      createdAt: "Today, 09:10 AM",
-      notes: "Cash disbursed by Ward Inspector",
-    },
-  ]);
+  const [withdrawals, setWithdrawals] = useState<WithdrawalItem[]>([]);
 
   // Load from API on mount
   useEffect(() => {
@@ -710,14 +670,16 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
         }
 
         // Fetch reward policy for this city
-        const targetCityId = cityCorpId || currentUser?.cityCorpId || "dncc";
-        api.cities.getById(targetCityId).then(c => {
-          if (c) {
-            if (c.pointRate !== undefined) setPointRate(c.pointRate);
-            if (c.minWithdrawPoints !== undefined) setMinWithdrawPoints(c.minWithdrawPoints);
-            if (c.rewardActive !== undefined) setRewardActive(c.rewardActive);
-          }
-        }).catch(() => {});
+        const targetCityId = cityCorpId || currentUser?.cityCorpId || "";
+        if (targetCityId) {
+          api.cities.getById(targetCityId).then(c => {
+            if (c) {
+              if (c.pointRate !== undefined) setPointRate(c.pointRate);
+              if (c.minWithdrawPoints !== undefined) setMinWithdrawPoints(c.minWithdrawPoints);
+              if (c.rewardActive !== undefined) setRewardActive(c.rewardActive);
+            }
+          }).catch(() => {});
+        }
       } catch (err) {
         console.warn("Backend API notice, keeping memory fallback active.");
       }
@@ -727,7 +689,11 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
 
   const saveRewardPolicy = async () => {
     setSavingPolicy(true);
-    const targetCityId = cityCorpId || currentUser?.cityCorpId || "dncc";
+    const targetCityId = cityCorpId || currentUser?.cityCorpId || "";
+    if (!targetCityId) {
+      setSavingPolicy(false);
+      return;
+    }
     try {
       await api.cities.update(targetCityId, {
         pointRate,
@@ -747,14 +713,16 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
   // Save Ward (Add new or Edit)
   const saveWard = async (form: { name: string; area: string; councilor: string; population: number }) => {
     try {
-      const targetCityCorpId = cityCorpId || currentUser?.cityCorpId || "dncc";
-      await api.wards.create({
-        name: form.name,
-        area: form.area,
-        councilor: form.councilor,
-        population: form.population,
-        cityCorpId: targetCityCorpId,
-      }).catch(() => null);
+      const targetCityCorpId = cityCorpId || currentUser?.cityCorpId || "";
+      if (targetCityCorpId) {
+        await api.wards.create({
+          name: form.name,
+          area: form.area,
+          councilor: form.councilor,
+          population: form.population,
+          cityCorpId: targetCityCorpId,
+        }).catch(() => null);
+      }
     } catch {}
 
     setLocalWards(prev => {

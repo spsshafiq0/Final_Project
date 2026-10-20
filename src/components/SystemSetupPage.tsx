@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Shield, KeyRound, CheckCircle, AlertCircle, Loader2, ArrowRight, Server, Mail, Lock, Building2, UserCheck, Eye, EyeOff } from "lucide-react";
+import { Shield, CheckCircle, AlertCircle, Loader2, ArrowRight, Mail, Lock, UserCheck, Eye, EyeOff } from "lucide-react";
 import api, { tokenStorage, userStorage } from "../lib/api";
 
 interface SystemSetupPageProps {
@@ -11,14 +11,12 @@ export default function SystemSetupPage({ onSetupSuccess, onNavigate }: SystemSe
   const [isLocked, setIsLocked] = useState(false);
   const [checking, setChecking] = useState(true);
 
-  // Form State
-  const [fullName, setFullName] = useState("Shafiq");
-  const [username, setUsername] = useState("spsshafiq");
-  const [email, setEmail] = useState("shafiq_mollah1087@uits.edu.bd");
-  const [password, setPassword] = useState("Sps(#)12D");
-  const [confirmPass, setConfirmPass] = useState("Sps(#)12D");
-  const [cityCorpName, setCityCorpName] = useState("Dhaka North City Corporation");
-  const [cityCorpCode, setCityCorpCode] = useState("DNCC");
+  // Form State - Empty defaults, user enters own credentials
+  const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPass, setConfirmPass] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -70,26 +68,17 @@ export default function SystemSetupPage({ onSetupSuccess, onNavigate }: SystemSe
 
     try {
       const res = await api.setup.initialize({
-        fullName,
-        username,
-        email,
+        fullName: fullName.trim(),
+        username: username.toLowerCase().trim(),
+        email: email.trim(),
         password,
-        cityCorpName,
-        cityCorpCode,
       });
 
       if (res?.user && res?.token) {
         tokenStorage.set(res.token);
         userStorage.set(res.user);
       } else {
-        tokenStorage.set("setup-session-token");
-        userStorage.set({
-          id: "usr-super-1",
-          username: username.toLowerCase().trim(),
-          fullName,
-          email,
-          role: "SUPER_ADMIN",
-        });
+        throw new Error(res?.error || "Setup initialization failed");
       }
 
       // Permanently seal the installer locally and globally
@@ -100,21 +89,7 @@ export default function SystemSetupPage({ onSetupSuccess, onNavigate }: SystemSe
         onSetupSuccess();
       }, 1200);
     } catch (err: any) {
-      console.warn("[Setup Client Fallback]", err);
-      tokenStorage.set("setup-session-token");
-      userStorage.set({
-        id: "usr-super-1",
-        username: username.toLowerCase().trim(),
-        fullName,
-        email,
-        role: "SUPER_ADMIN",
-      });
-      localStorage.setItem("intelliwaste_setup_locked", "true");
-      setSuccess(true);
-      setTimeout(() => {
-        setIsLocked(true);
-        onSetupSuccess();
-      }, 1200);
+      setError(err?.message || "Setup failed. Please check connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -230,7 +205,7 @@ export default function SystemSetupPage({ onSetupSuccess, onNavigate }: SystemSe
                 <input
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Shafiq"
+                  placeholder="e.g. System Administrator"
                   className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2.5 text-sm text-white outline-none focus:border-[#4ade80]"
                 />
               </div>
@@ -239,7 +214,7 @@ export default function SystemSetupPage({ onSetupSuccess, onNavigate }: SystemSe
                 <input
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="spsshafiq"
+                  placeholder="e.g. superadmin"
                   className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2.5 text-sm text-[#4ade80] font-mono outline-none focus:border-[#4ade80]"
                 />
               </div>
@@ -253,7 +228,7 @@ export default function SystemSetupPage({ onSetupSuccess, onNavigate }: SystemSe
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="shafiq_mollah1087@uits.edu.bd"
+                  placeholder="e.g. admin@city.gov.bd"
                   className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white outline-none focus:border-[#4ade80]"
                 />
               </div>
@@ -295,33 +270,8 @@ export default function SystemSetupPage({ onSetupSuccess, onNavigate }: SystemSe
               </div>
             </div>
 
-            <div className="text-xs text-[#4ade80] font-mono font-semibold flex items-center gap-1.5 border-b border-[#1a3d22] pt-3 pb-2">
-              <Building2 size={14} /> STEP 2: PRIMARY JURISDICTION (CITY CORPORATION)
-            </div>
-
-            <div className="grid sm:grid-cols-3 gap-3">
-              <div className="sm:col-span-2">
-                <label className="block text-[#4b7a5a] text-xs font-mono mb-1">CITY CORPORATION NAME</label>
-                <input
-                  value={cityCorpName}
-                  onChange={(e) => setCityCorpName(e.target.value)}
-                  placeholder="Dhaka North City Corporation"
-                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2.5 text-sm text-white outline-none focus:border-[#4ade80]"
-                />
-              </div>
-              <div>
-                <label className="block text-[#4b7a5a] text-xs font-mono mb-1">CODE</label>
-                <input
-                  value={cityCorpCode}
-                  onChange={(e) => setCityCorpCode(e.target.value.toUpperCase())}
-                  placeholder="DNCC"
-                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2.5 text-sm text-[#4ade80] font-mono outline-none focus:border-[#4ade80]"
-                />
-              </div>
-            </div>
-
             <div className="p-3 bg-[#061309] border border-[#1a3d22] rounded-xl text-[11px] text-[#86efac] leading-relaxed">
-              🛡️ <strong>সিকিউরিটি প্রটোকল:</strong> এই অ্যাকাউন্টটি তৈরি হওয়ার পর এই সেটআপ পেইজটি স্থায়ীভাবে নিষ্ক্রিয় হয়ে যাবে। পাসওয়ার্ডটি সম্পূর্ণ গোপন ও সুরক্ষিত এনক্রিপশনে ডাটাবেজে সংরক্ষিত থাকবে।
+              🛡️ <strong>সিকিউরিটি প্রটোকল:</strong> এই অ্যাকাউন্টটি তৈরি হওয়ার পর এই সেটআপ পেইজটি স্থায়ীভাবে নিষ্ক্রিয় হয়ে যাবে। পাসওয়ার্ডটি সম্পূর্ণ গোপন ও সুরক্ষিত এনক্রিপশনে ডাটাবেজে সংরক্ষিত থাকবে। সিটি কর্পোরেশন ও ওয়ার্ড অ্যাডমিন পরবর্তীতে সুপার অ্যাডমিন ড্যাশবোর্ড থেকে যুক্ত করা যাবে।
             </div>
 
             <button
