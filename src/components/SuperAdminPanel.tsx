@@ -22,6 +22,8 @@ import {
   Mail,
   MapPin,
   Loader2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import api, { CityCorporationItem, UserProfile } from "../lib/api";
 
@@ -43,12 +45,17 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
   // Modals state
   const [showCityModal, setShowCityModal] = useState(false);
   const [editingCity, setEditingCity] = useState<CityCorporationItem | null>(null);
+  const [showAdminPass, setShowAdminPass] = useState(false);
   const [cityForm, setCityForm] = useState({
     name: "",
     code: "",
     address: "",
     phone: "",
     email: "",
+    adminName: "",
+    adminUsername: "",
+    adminEmail: "",
+    adminPassword: "",
   });
 
   const [showUserModal, setShowUserModal] = useState(false);
@@ -111,7 +118,18 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
   // City modal actions
   const openCreateCity = () => {
     setEditingCity(null);
-    setCityForm({ name: "", code: "", address: "", phone: "", email: "" });
+    setShowAdminPass(false);
+    setCityForm({
+      name: "",
+      code: "",
+      address: "",
+      phone: "",
+      email: "",
+      adminName: "",
+      adminUsername: "",
+      adminEmail: "",
+      adminPassword: "",
+    });
     setShowCityModal(true);
   };
 
@@ -725,6 +743,73 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
                   />
                 </div>
               </div>
+
+              {!editingCity && (
+                <div className="pt-3 mt-3 border-t border-[#1a3d22] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono font-bold text-[#4ade80]">
+                      INITIAL CITY ADMIN CREDENTIALS
+                    </span>
+                    <span className="text-[10px] text-[#4b7a5a]">Auto-creates login</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[#4b7a5a] text-xs font-mono mb-1">ADMIN FULL NAME</label>
+                      <input
+                        value={cityForm.adminName}
+                        onChange={(e) => setCityForm({ ...cityForm, adminName: e.target.value })}
+                        placeholder="e.g. Engr. Shafiq Rahman"
+                        className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#4ade80]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[#4b7a5a] text-xs font-mono mb-1">ADMIN USERNAME</label>
+                      <input
+                        value={cityForm.adminUsername}
+                        onChange={(e) => setCityForm({ ...cityForm, adminUsername: e.target.value })}
+                        placeholder="e.g. dncc_admin"
+                        className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3 py-2 text-xs font-mono text-[#4ade80] outline-none focus:border-[#4ade80]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[#4b7a5a] text-xs font-mono mb-1">ADMIN EMAIL</label>
+                      <input
+                        type="email"
+                        value={cityForm.adminEmail}
+                        onChange={(e) => setCityForm({ ...cityForm, adminEmail: e.target.value })}
+                        placeholder="admin@dncc.gov.bd"
+                        className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#4ade80]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[#4b7a5a] text-xs font-mono mb-1">PASSWORD (HASHED)</label>
+                      <div className="relative">
+                        <input
+                          type={showAdminPass ? "text" : "password"}
+                          value={cityForm.adminPassword}
+                          onChange={(e) => setCityForm({ ...cityForm, adminPassword: e.target.value })}
+                          placeholder="Min 6 characters"
+                          className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#4ade80] pr-8"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowAdminPass((s) => !s)}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#4b7a5a] hover:text-[#4ade80]"
+                        >
+                          {showAdminPass ? <EyeOff size={13} /> : <Eye size={13} />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-[#4b7a5a]">
+                    🔒 Password is securely hashed with bcrypt. Credentials and login portal link will be emailed via Brevo.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 mt-6">

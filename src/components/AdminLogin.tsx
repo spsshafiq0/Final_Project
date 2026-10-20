@@ -373,71 +373,24 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
             )}
           </button>
 
-          {/* Quick Demo Fills Grid */}
+          {/* First-Time Server Setup & Root Admin Wizard */}
           <div className="mt-5 pt-4 border-t border-[#1a3d22]">
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="text-[11px] text-[#4b7a5a] font-mono font-semibold">ALL TEST ACCOUNTS (1-CLICK FILL):</span>
-              <span className="text-[10px] text-[#86efac]/70">Password: Sps(#)12D</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="bg-[#061309] border border-[#1a3d22] rounded-xl p-3 flex items-center justify-between">
+              <div>
+                <div className="text-white text-xs font-semibold flex items-center gap-1.5">
+                  <Shield size={13} className="text-[#4ade80]" />
+                  <span>First-Time Setup / Installer</span>
+                </div>
+                <div className="text-[#4b7a5a] text-[11px] mt-0.5">
+                  Private registration form to create initial Super Admin
+                </div>
+              </div>
               <button
                 type="button"
-                onClick={() => handleQuickFill("super")}
-                className="text-left text-[11px] p-2 bg-[#061309] border border-[#1a3d22] hover:border-[#4ade80] rounded-xl transition-all group"
+                onClick={() => onNavigate("setup")}
+                className="bg-[#16a34a]/20 hover:bg-[#16a34a]/40 border border-[#16a34a]/50 text-[#4ade80] text-xs px-3 py-1.5 rounded-lg font-mono transition-colors"
               >
-                <div className="text-[#4ade80] font-semibold flex items-center justify-between">
-                  <span>👑 Super Admin</span>
-                  <span className="text-[9px] px-1 py-0.5 rounded bg-[#16a34a]/20 text-[#4ade80]">Shafiq</span>
-                </div>
-                <div className="font-mono text-[10px] text-[#86efac]/80 mt-0.5">spsshafiq / Sps(#)12D</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickFill("city")}
-                className="text-left text-[11px] p-2 bg-[#061309] border border-[#1a3d22] hover:border-[#4ade80] rounded-xl transition-all group"
-              >
-                <div className="text-[#86efac] font-semibold flex items-center justify-between">
-                  <span>🏢 City Corp</span>
-                  <span className="text-[9px] px-1 py-0.5 rounded bg-[#16a34a]/20 text-[#86efac]">DNCC</span>
-                </div>
-                <div className="font-mono text-[10px] text-[#86efac]/80 mt-0.5">spsshafiq_city / Sps(#)12D</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickFill("ward")}
-                className="text-left text-[11px] p-2 bg-[#061309] border border-[#60a5fa]/40 hover:border-[#60a5fa] rounded-xl transition-all group"
-              >
-                <div className="text-[#60a5fa] font-semibold flex items-center justify-between">
-                  <span>🏛️ Sub-Admin</span>
-                  <span className="text-[9px] px-1 py-0.5 rounded bg-[#60a5fa]/20 text-[#60a5fa]">Ward 01</span>
-                </div>
-                <div className="font-mono text-[10px] text-[#93c5fd]/80 mt-0.5">spsshafiq_ward / Sps(#)12D</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickFill("driver")}
-                className="text-left text-[11px] p-2 bg-[#061309] border border-[#f59e0b]/40 hover:border-[#f59e0b] rounded-xl transition-all group"
-              >
-                <div className="text-[#f59e0b] font-semibold flex items-center justify-between">
-                  <span>🚚 Driver</span>
-                  <span className="text-[9px] px-1 py-0.5 rounded bg-[#f59e0b]/20 text-[#f59e0b]">DNCC-T01</span>
-                </div>
-                <div className="font-mono text-[10px] text-[#fcd34d]/80 mt-0.5">spsshafiq_driver / Sps(#)12D</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickFill("citizen")}
-                className="col-span-2 text-left text-[11px] p-2 bg-[#061309] border border-[#38bdf8]/40 hover:border-[#38bdf8] rounded-xl transition-all group"
-              >
-                <div className="text-[#38bdf8] font-semibold flex items-center justify-between">
-                  <span>👤 Citizen (Shafiq)</span>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#38bdf8]/20 text-[#38bdf8]">2,847 pts ready</span>
-                </div>
-                <div className="font-mono text-[10px] text-[#7dd3fc]/80 mt-0.5">spsshafiq_citizen / Sps(#)12D (Test Cash Out to BDT)</div>
+                Open Setup →
               </button>
             </div>
           </div>

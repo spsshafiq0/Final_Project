@@ -290,31 +290,6 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
             <button onClick={submitAuth} className="w-full bg-[#052e16] text-white rounded-xl py-3 mt-5 font-semibold flex items-center justify-center gap-2">
               {authMode === "login" ? <LogIn size={16} /> : <UserPlus size={16} />} {authMode === "login" ? "Login" : "Create account"}
             </button>
-
-            {/* Quick Demo Fill for Citizen */}
-            <div className="mt-4 pt-4 border-t border-[#e2f5e9]">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] text-[#4b7a5a] font-mono font-semibold">TEST CITIZEN ACCOUNT:</span>
-                <span className="text-[10px] text-[#16a34a]">1-Click load</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMode("login");
-                  setAuthForm({ contact: "", username: "spsshafiq_citizen", email: "spsshafiq95@gmail.com", password: "Sps(#)12D" });
-                  setAuthError("");
-                }}
-                className="w-full text-left text-xs p-2.5 bg-[#f0fdf4] border border-[#86efac] hover:bg-[#dcfce7] rounded-xl transition-colors group"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-[#15803d]">👤 Shafiq (Citizen)</span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#16a34a] text-white">2,847 pts</span>
-                </div>
-                <div className="text-[11px] font-mono text-[#4b7a5a] mt-1">
-                  Username: <strong className="text-[#052e16]">spsshafiq_citizen</strong> | Password: <strong className="text-[#052e16]">Sps(#)12D</strong>
-                </div>
-              </button>
-            </div>
           </div>
         </div>
 

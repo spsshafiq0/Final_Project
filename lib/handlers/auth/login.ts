@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import prisma from "../../prisma";
 import { comparePassword, signToken } from "../../auth";
 import { apiHandler } from "../../middleware";
+import { memoryDb, StoredUser } from "../../store";
 
 export default apiHandler(
   async (req: VercelRequest, res: VercelResponse) => {
@@ -11,21 +12,54 @@ export default apiHandler(
       return res.status(400).json({ error: "Username and password are required" });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { username },
-      include: {
-        cityCorp: true,
-        ward: true,
-      },
-    });
+    const cleanUsername = String(username).toLowerCase().trim();
+
+    let user: any = null;
+
+    // 1. Try Prisma DB
+    try {
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { username: { equals: cleanUsername, mode: "insensitive" } },
+            { email: { equals: cleanUsername, mode: "insensitive" } },
+          ],
+        },
+        include: {
+          cityCorp: true,
+          ward: true,
+        },
+      });
+    } catch (e: any) {
+      console.warn("[Auth Login Notice] Fallback to memory store:", e.message);
+    }
+
+    // 2. Fallback to memory store
+    if (!user) {
+      const memUser = memoryDb.users.find(
+        (u: StoredUser) =>
+          u.username.toLowerCase() === cleanUsername ||
+          (u.email && u.email.toLowerCase() === cleanUsername)
+      );
+
+      if (memUser) {
+        const city = memoryDb.cities.find((c: any) => c.id === memUser.cityCorpId);
+        const ward = memoryDb.wards.find((w: any) => w.id === memUser.wardId);
+        user = {
+          ...memUser,
+          cityCorp: city || null,
+          ward: ward || null,
+        };
+      }
+    }
 
     if (!user || !user.active) {
-      return res.status(401).json({ error: "Invalid credentials or account inactive" });
+      return res.status(401).json({ error: "Invalid username or password" });
     }
 
     const isMatch = await comparePassword(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      return res.status(401).json({ error: "Invalid username or password" });
     }
 
     const token = signToken({
@@ -46,7 +80,7 @@ export default apiHandler(
         email: user.email,
         phone: user.phone,
         role: user.role,
-        points: user.points,
+        points: user.points || 0,
         address: user.address,
         cityCorpId: user.cityCorpId,
         cityCorp: user.cityCorp,

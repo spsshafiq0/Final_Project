@@ -359,6 +359,13 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
           {/* CTAs */}
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <button
+              onClick={() => onNavigate("setup")}
+              style={{ background: "rgba(74,222,128,0.1)", border: `1px solid rgba(74,222,128,0.3)`, borderRadius: 8, padding: "8px 12px", color: "#4ade80", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+              title="First-time installation & Super Admin initialization"
+            >
+              ⚙️ Setup
+            </button>
+            <button
               onClick={() => onNavigate("citizen")}
               style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 16px", color: C.cyan, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,217,255,0.08)"; }}

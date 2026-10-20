@@ -31,6 +31,7 @@ import pickupsId from "../lib/handlers/pickups/[id]";
 import alertsIndex from "../lib/handlers/alerts/index";
 import dashboardStats from "../lib/handlers/dashboard/stats";
 import seedDatabase from "../lib/handlers/seed";
+import setupHandler from "../lib/handlers/setup/index";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Extract path components
@@ -53,6 +54,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (subResource === "forgot-password") return authForgotPassword(req, res);
     if (subResource === "verify-code") return authVerifyCode(req, res);
     if (subResource === "reset-password") return authResetPassword(req, res);
+  }
+
+  // 1.5 Setup routes (First-time installation & Super Admin initialization)
+  if (resource === "setup") {
+    return setupHandler(req, res);
   }
 
   // 2. Dashboard

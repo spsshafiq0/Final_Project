@@ -7,6 +7,7 @@ import CitizenPortal from "./components/CitizenPortal";
 import CollectorApp from "./components/CollectorApp";
 import SuperAdminPanel from "./components/SuperAdminPanel";
 import BusinessPortal from "./components/BusinessPortal";
+import SystemSetupPage from "./components/SystemSetupPage";
 import api, { userStorage } from "./lib/api";
 
 type Page =
@@ -17,7 +18,8 @@ type Page =
   | "citizen"
   | "collector"
   | "super-admin"
-  | "business";
+  | "business"
+  | "setup";
 
 interface AppState {
   page: Page;
@@ -29,6 +31,14 @@ export default function App() {
   const [state, setState] = useState<AppState>({ page: "landing" });
 
   useEffect(() => {
+    // Check if URL specifies setup page (#setup or ?setup=true)
+    const hash = window.location.hash;
+    const search = window.location.search;
+    if (hash === "#setup" || search.includes("setup=true") || window.location.pathname === "/setup") {
+      setState({ page: "setup" });
+      return;
+    }
+
     // Check if user is already logged in
     const user = userStorage.get();
     if (user) {
@@ -48,6 +58,7 @@ export default function App() {
 
   const navigate = (page: string, wardId?: string | number) => {
     if (page === "admin") setState({ page: "admin-login" });
+    else if (page === "setup") setState({ page: "setup" });
     else setState({ page: page as Page, wardId });
   };
 
@@ -67,6 +78,13 @@ export default function App() {
   };
 
   switch (state.page) {
+    case "setup":
+      return (
+        <SystemSetupPage
+          onSetupSuccess={() => setState({ page: "super-admin" })}
+          onNavigate={navigate}
+        />
+      );
     case "admin-login":
       return <AdminLogin onLogin={handleLogin} onNavigate={navigate} />;
     case "main-admin":

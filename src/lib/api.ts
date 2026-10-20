@@ -235,6 +235,28 @@ export const api = {
     },
   },
 
+  // First-Time System Setup & Root Super Admin Initialization
+  setup: {
+    getStatus: () => request<{ isSetupComplete: boolean; message: string }>("/setup"),
+    initialize: (data: {
+      fullName: string;
+      username: string;
+      email: string;
+      password: string;
+      cityCorpName?: string;
+      cityCorpCode?: string;
+    }) =>
+      request<{
+        success: boolean;
+        message: string;
+        token: string;
+        user: UserProfile;
+      }>("/setup", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+  },
+
   // City Corporations
   cities: {
     getAll: () => request<CityCorporationItem[]>("/cities"),
