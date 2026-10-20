@@ -45,17 +45,26 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
   // Modals state
   const [showCityModal, setShowCityModal] = useState(false);
   const [editingCity, setEditingCity] = useState<CityCorporationItem | null>(null);
-  const [showAdminPass, setShowAdminPass] = useState(false);
   const [cityForm, setCityForm] = useState({
     name: "",
     code: "",
     address: "",
     phone: "",
     email: "",
-    adminName: "",
-    adminUsername: "",
-    adminEmail: "",
-    adminPassword: "",
+    pointRate: 0.20,
+    minWithdrawPoints: 100,
+  });
+
+  // Dedicated City Corporation Admin Modal state
+  const [showCityAdminModal, setShowCityAdminModal] = useState(false);
+  const [showCityAdminPass, setShowCityAdminPass] = useState(false);
+  const [cityAdminForm, setCityAdminForm] = useState({
+    fullName: "",
+    username: "",
+    email: "",
+    phone: "",
+    password: "",
+    cityCorpId: "",
   });
 
   const [showUserModal, setShowUserModal] = useState(false);
@@ -118,17 +127,14 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
   // City modal actions
   const openCreateCity = () => {
     setEditingCity(null);
-    setShowAdminPass(false);
     setCityForm({
       name: "",
       code: "",
       address: "",
       phone: "",
       email: "",
-      adminName: "",
-      adminUsername: "",
-      adminEmail: "",
-      adminPassword: "",
+      pointRate: 0.20,
+      minWithdrawPoints: 100,
     });
     setShowCityModal(true);
   };
@@ -141,68 +147,116 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
       address: city.address || "",
       phone: city.phone || "",
       email: city.email || "",
-      adminName: "",
-      adminUsername: "",
-      adminEmail: "",
-      adminPassword: "",
+      pointRate: city.pointRate || 0.20,
+      minWithdrawPoints: city.minWithdrawPoints || 100,
     });
     setShowCityModal(true);
   };
 
   const saveCity = async () => {
-    if (!cityForm.name || !cityForm.code) {
+    if (!cityForm.name.trim() || !cityForm.code.trim()) {
       showNotify("error", "Name and Code (e.g. DNCC) are required");
       return;
     }
     setLoading(true);
     try {
+      const payload = {
+        name: cityForm.name.trim(),
+        code: cityForm.code.toUpperCase().trim(),
+        address: cityForm.address.trim() || null,
+        phone: cityForm.phone.trim() || null,
+        email: cityForm.email.trim() || null,
+        pointRate: Number(cityForm.pointRate) || 0.20,
+        minWithdrawPoints: Number(cityForm.minWithdrawPoints) || 100,
+      };
+
       if (editingCity) {
-        await api.cities.update(editingCity.id, cityForm);
+        await api.cities.update(editingCity.id, payload);
         showNotify("success", "City Corporation updated successfully");
       } else {
-        await api.cities.create(cityForm);
-        showNotify("success", "City Corporation created successfully");
+        await api.cities.create(payload);
+        showNotify("success", "City Corporation created successfully (No admin assigned yet)");
       }
       setShowCityModal(false);
       await loadData();
     } catch (err: any) {
-      console.warn("[SuperAdminPanel City Save Notice]", err);
-      // Resilient local persistence so UI is never blocked
-      const newCityId = editingCity?.id || `city-${Date.now()}`;
-      const newCityItem: CityCorporationItem = {
-        id: newCityId,
-        name: cityForm.name,
-        code: cityForm.code.toUpperCase().trim(),
-        address: cityForm.address,
-        phone: cityForm.phone,
-        email: cityForm.email,
-        active: true,
-        pointRate: 0.20,
-        minWithdrawPoints: 100,
-        wards: editingCity?.wards || [],
-        _count: { wards: editingCity?.wards?.length || 0, admins: 1 },
-      };
+      showNotify("error", err.message || "Failed to save City Corporation");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      setCities((prev) => {
-        const filtered = prev.filter((c) => c.id !== newCityId && c.code !== newCityItem.code);
-        return [newCityItem, ...filtered];
+  // Dedicated City Admin actions
+  const openCreateCityAdmin = (presetCityCorpId?: string) => {
+    setShowCityAdminPass(false);
+    setCityAdminForm({
+      fullName: "",
+      username: "",
+      email: "",
+      phone: "",
+      password: "",
+      cityCorpId: presetCityCorpId || (cities[0]?.id || ""),
+    });
+    setShowCityAdminModal(true);
+  };
+
+  const saveCityAdmin = async () => {
+    if (!cityAdminForm.fullName.trim() || !cityAdminForm.username.trim()) {
+      showNotify("error", "Full Name and Username are required");
+      return;
+    }
+    if (!cityAdminForm.password || cityAdminForm.password.length < 6) {
+      showNotify("error", "Password must be at least 6 characters long");
+      return;
+    }
+    if (!cityAdminForm.cityCorpId) {
+      showNotify("error", "Please select an assigned City Corporation");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await api.users.create({
+        fullName: cityAdminForm.fullName.trim(),
+        username: cityAdminForm.username.toLowerCase().trim(),
+        email: cityAdminForm.email.trim() || null,
+        phone: cityAdminForm.phone.trim() || null,
+        password: cityAdminForm.password,
+        role: "CITY_ADMIN",
+        cityCorpId: cityAdminForm.cityCorpId,
       });
 
-      if (cityForm.adminName && cityForm.adminUsername) {
-        const newAdmin: UserProfile = {
-          id: `usr-city-${Date.now()}`,
-          fullName: cityForm.adminName,
-          username: cityForm.adminUsername.toLowerCase().trim(),
-          role: "CITY_ADMIN",
-          email: cityForm.adminEmail || cityForm.email,
-          cityCorpId: newCityId,
-          cityCorp: { id: newCityId, name: cityForm.name, code: newCityItem.code },
-        };
-        setUsers((prev) => [newAdmin, ...prev.filter((u) => u.username !== newAdmin.username)]);
-      }
+      showNotify(
+        "success",
+        `City Admin account "${cityAdminForm.fullName}" created successfully! Login credentials dispatched to email.`
+      );
+      setShowCityAdminModal(false);
+      await loadData();
+    } catch (err: any) {
+      showNotify("error", err.message || "Failed to create City Corporation Admin");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      setShowCityModal(false);
-      showNotify("success", editingCity ? "City Corporation updated successfully" : "City Corporation created successfully");
+  const handleAssignCityAdmin = async (cityId: string, adminUserId: string) => {
+    if (!adminUserId) return;
+    setLoading(true);
+    try {
+      if (adminUserId === "none") {
+        const currentAdmins = users.filter((u) => u.role === "CITY_ADMIN" && u.cityCorpId === cityId);
+        for (const adm of currentAdmins) {
+          await api.users.update(adm.id, { cityCorpId: null });
+        }
+        showNotify("success", "City Corporation Admin unassigned");
+      } else {
+        await api.users.update(adminUserId, { cityCorpId: cityId });
+        const adm = users.find((u) => u.id === adminUserId);
+        showNotify("success", `Assigned "${adm?.fullName || adminUserId}" as City Corporation Admin`);
+      }
+      await loadData();
+    } catch (err: any) {
+      showNotify("error", err.message || "Failed to update admin assignment");
     } finally {
       setLoading(false);
     }
@@ -252,38 +306,22 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
     setLoading(true);
     try {
       if (editingUser) {
-        await api.users.update(editingUser.id, userForm);
+        await api.users.update(editingUser.id, {
+          ...userForm,
+          cityCorpId: userForm.cityCorpId || null,
+        });
         showNotify("success", "Account updated successfully");
       } else {
-        await api.users.create(userForm);
-        showNotify("success", "Account created and assigned successfully");
+        await api.users.create({
+          ...userForm,
+          cityCorpId: userForm.cityCorpId || null,
+        });
+        showNotify("success", "Account created successfully and credentials sent to email!");
       }
       setShowUserModal(false);
       await loadData();
     } catch (err: any) {
-      console.warn("[SuperAdminPanel User Save Notice]", err);
-      const targetUserId = editingUser?.id || `usr-${Date.now()}`;
-      const targetCity = cities.find((c) => c.id === userForm.cityCorpId);
-      const newUserItem: UserProfile = {
-        id: targetUserId,
-        fullName: userForm.fullName,
-        username: userForm.username.toLowerCase().trim(),
-        role: userForm.role,
-        cityCorpId: userForm.cityCorpId || null,
-        cityCorp: targetCity ? { id: targetCity.id, name: targetCity.name, code: targetCity.code } : null,
-        phone: userForm.phone || null,
-        email: userForm.email || null,
-        nid: userForm.nid || null,
-        address: userForm.address || null,
-      };
-
-      setUsers((prev) => {
-        const filtered = prev.filter((u) => u.id !== targetUserId && u.username !== newUserItem.username);
-        return [newUserItem, ...filtered];
-      });
-
-      setShowUserModal(false);
-      showNotify("success", editingUser ? "Account updated successfully" : "Account created and assigned successfully");
+      showNotify("error", err.message || "Failed to save account");
     } finally {
       setLoading(false);
     }
@@ -497,10 +535,10 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
 
                       <div className="mt-4 pt-3 flex gap-2">
                         <button
-                          onClick={() => openCreateUser(city.id)}
+                          onClick={() => openCreateCityAdmin(city.id)}
                           className="flex-1 bg-[#1a3d22] hover:bg-[#16a34a] text-[#86efac] hover:text-white rounded-lg py-1.5 text-xs font-semibold transition-colors flex items-center justify-center gap-1"
                         >
-                          <Plus size={12} /> Assign Admin
+                          <Plus size={12} /> Assign / Create Admin
                         </button>
                         <button
                           onClick={() => openEditCity(city)}
@@ -530,17 +568,26 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
                   className="w-full bg-[#0d2414] border border-[#1a3d22] rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:border-[#4ade80]"
                 />
               </div>
-              <button
-                onClick={openCreateCity}
-                className="bg-[#16a34a] hover:bg-[#15803d] text-white rounded-xl px-5 py-2.5 text-xs font-semibold flex items-center justify-center gap-2 shadow"
-              >
-                <Plus size={15} /> Add City Corporation
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => openCreateCityAdmin()}
+                  className="bg-[#0d2414] border border-[#16a34a] hover:bg-[#16a34a]/20 text-[#4ade80] rounded-xl px-4 py-2.5 text-xs font-semibold flex items-center justify-center gap-2 shadow transition-all whitespace-nowrap"
+                >
+                  <Plus size={15} /> Create City Admin
+                </button>
+                <button
+                  onClick={openCreateCity}
+                  className="bg-[#16a34a] hover:bg-[#15803d] text-white rounded-xl px-4 py-2.5 text-xs font-semibold flex items-center justify-center gap-2 shadow transition-all whitespace-nowrap"
+                >
+                  <Plus size={15} /> Add City Corporation
+                </button>
+              </div>
             </div>
 
             <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
               {filteredCities.map((city) => {
                 const assignedAdmins = users.filter((u) => u.role === "CITY_ADMIN" && u.cityCorpId === city.id);
+                const allCityAdmins = users.filter((u) => u.role === "CITY_ADMIN");
                 return (
                   <div key={city.id} className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-5 flex flex-col justify-between">
                     <div>
@@ -577,39 +624,82 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
                         )}
                       </div>
 
-                      <div className="mt-4 p-3 bg-[#061309] rounded-xl">
-                        <div className="text-[11px] text-[#4b7a5a] font-mono">ASSIGNED CITY ADMINS ({assignedAdmins.length})</div>
+                      {/* Assigned City Corporation Admin Section */}
+                      <div className="mt-4 p-3.5 bg-[#061309] border border-[#1a3d22] rounded-xl space-y-2.5">
+                        <div className="flex items-center justify-between text-[11px] font-mono">
+                          <span className="text-[#4b7a5a]">CITY CORPORATION ADMIN</span>
+                          <span className={assignedAdmins.length > 0 ? "text-[#4ade80] font-semibold" : "text-yellow-500 font-semibold"}>
+                            {assignedAdmins.length > 0 ? "ASSIGNED" : "UNASSIGNED"}
+                          </span>
+                        </div>
+
                         {assignedAdmins.length > 0 ? (
-                          <div className="mt-1 space-y-1">
+                          <div className="space-y-1.5 pt-0.5">
                             {assignedAdmins.map((admin) => (
-                              <div key={admin.id} className="text-xs text-white flex items-center justify-between">
-                                <span className="font-medium">{admin.fullName}</span>
-                                <span className="text-[#4b7a5a] font-mono">@{admin.username}</span>
+                              <div key={admin.id} className="text-xs bg-[#0d2414] border border-[#1a3d22]/80 rounded-lg p-2.5">
+                                <div className="font-semibold text-white flex items-center justify-between">
+                                  <span>{admin.fullName}</span>
+                                  <span className="text-[#4ade80] font-mono text-[11px]">@{admin.username}</span>
+                                </div>
+                                {admin.email && (
+                                  <div className="text-[#4b7a5a] text-[11px] truncate flex items-center gap-1.5 mt-1">
+                                    <Mail size={11} className="text-[#4ade80]" /> {admin.email}
+                                  </div>
+                                )}
+                                {admin.phone && (
+                                  <div className="text-[#4b7a5a] text-[11px] flex items-center gap-1.5 mt-0.5">
+                                    <Phone size={11} className="text-[#4ade80]" /> {admin.phone}
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
                         ) : (
-                          <div className="text-xs text-yellow-400/80 mt-1">None assigned yet</div>
+                          <div className="text-xs text-yellow-400/90 font-mono py-1">
+                            No admin assigned to this city corporation yet.
+                          </div>
                         )}
+
+                        {/* Admin Selector Dropdown */}
+                        <div className="pt-2 border-t border-[#1a3d22]">
+                          <label className="block text-[10px] text-[#4b7a5a] font-mono mb-1">
+                            SELECT / REASSIGN ADMIN:
+                          </label>
+                          <select
+                            value={assignedAdmins[0]?.id || ""}
+                            onChange={(e) => handleAssignCityAdmin(city.id, e.target.value)}
+                            className="w-full bg-[#0d2414] border border-[#1a3d22] text-[#86efac] text-xs rounded-lg px-2.5 py-1.5 outline-none focus:border-[#4ade80]"
+                          >
+                            <option value="">-- Choose City Corporation Admin --</option>
+                            <option value="none">None (Unassign current)</option>
+                            {allCityAdmins.map((admin) => (
+                              <option key={admin.id} value={admin.id}>
+                                {admin.fullName} (@{admin.username}){admin.cityCorpId === city.id ? " (Current)" : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     </div>
 
                     <div className="flex gap-2 mt-5 pt-4 border-t border-[#1a3d22]">
                       <button
-                        onClick={() => openCreateUser(city.id)}
-                        className="flex-1 bg-[#1a3d22] hover:bg-[#16a34a] text-[#86efac] hover:text-white rounded-lg py-2 text-xs font-medium flex items-center justify-center gap-1 transition-colors"
+                        onClick={() => openCreateCityAdmin(city.id)}
+                        className="flex-1 bg-[#1a3d22] hover:bg-[#16a34a] text-[#86efac] hover:text-white rounded-lg py-2 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
                       >
-                        <Plus size={12} /> Assign Admin
+                        <Plus size={13} /> Create City Admin
                       </button>
                       <button
                         onClick={() => openEditCity(city)}
                         className="border border-[#1a3d22] rounded-lg px-3 py-2 text-xs text-[#4ade80] hover:border-[#4ade80] transition-colors"
+                        title="Edit City Details"
                       >
                         <Edit3 size={13} />
                       </button>
                       <button
                         onClick={() => deleteCity(city.id, city.name)}
                         className="border border-red-500/20 rounded-lg px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors"
+                        title="Delete City Corporation"
                       >
                         <Trash2 size={13} />
                       </button>
@@ -807,72 +897,33 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
                 </div>
               </div>
 
-              {!editingCity && (
-                <div className="pt-3 mt-3 border-t border-[#1a3d22] space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-[#4ade80]">
-                      INITIAL CITY ADMIN CREDENTIALS
-                    </span>
-                    <span className="text-[10px] text-[#4b7a5a]">Auto-creates login</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[#4b7a5a] text-xs font-mono mb-1">ADMIN FULL NAME</label>
-                      <input
-                        value={cityForm.adminName}
-                        onChange={(e) => setCityForm({ ...cityForm, adminName: e.target.value })}
-                        placeholder="e.g. Engr. Shafiq Rahman"
-                        className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#4ade80]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[#4b7a5a] text-xs font-mono mb-1">ADMIN USERNAME</label>
-                      <input
-                        value={cityForm.adminUsername}
-                        onChange={(e) => setCityForm({ ...cityForm, adminUsername: e.target.value })}
-                        placeholder="e.g. dncc_admin"
-                        className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3 py-2 text-xs font-mono text-[#4ade80] outline-none focus:border-[#4ade80]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[#4b7a5a] text-xs font-mono mb-1">ADMIN EMAIL</label>
-                      <input
-                        type="email"
-                        value={cityForm.adminEmail}
-                        onChange={(e) => setCityForm({ ...cityForm, adminEmail: e.target.value })}
-                        placeholder="admin@dncc.gov.bd"
-                        className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#4ade80]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[#4b7a5a] text-xs font-mono mb-1">PASSWORD (HASHED)</label>
-                      <div className="relative">
-                        <input
-                          type={showAdminPass ? "text" : "password"}
-                          value={cityForm.adminPassword}
-                          onChange={(e) => setCityForm({ ...cityForm, adminPassword: e.target.value })}
-                          placeholder="Min 6 characters"
-                          className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#4ade80] pr-8"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowAdminPass((s) => !s)}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#4b7a5a] hover:text-[#4ade80]"
-                        >
-                          {showAdminPass ? <EyeOff size={13} /> : <Eye size={13} />}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-[#4b7a5a]">
-                    🔒 Password is cryptographically protected. Credentials and login portal link will be emailed via Brevo.
-                  </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[#4b7a5a] text-xs font-mono mb-1">POINT RATE (BDT / POINT)</label>
+                  <input
+                    type="number"
+                    step="0.05"
+                    value={cityForm.pointRate}
+                    onChange={(e) => setCityForm({ ...cityForm, pointRate: parseFloat(e.target.value) || 0.2 })}
+                    placeholder="0.20"
+                    className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2.5 text-sm text-white outline-none focus:border-[#4ade80]"
+                  />
                 </div>
-              )}
+                <div>
+                  <label className="block text-[#4b7a5a] text-xs font-mono mb-1">MIN CASH WITHDRAWAL (PTS)</label>
+                  <input
+                    type="number"
+                    value={cityForm.minWithdrawPoints}
+                    onChange={(e) => setCityForm({ ...cityForm, minWithdrawPoints: parseInt(e.target.value) || 100 })}
+                    placeholder="100"
+                    className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2.5 text-sm text-white outline-none focus:border-[#4ade80]"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-[#061309] border border-[#1a3d22] rounded-xl text-[11px] text-[#4b7a5a]">
+                ℹ️ <span className="text-[#86efac]">Note:</span> This form creates the City Corporation profile only. No email is sent here. You can create City Corporation Admins and assign them separately via the dedicated option.
+              </div>
             </div>
 
             <div className="flex gap-3 mt-6">
@@ -889,6 +940,128 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
               >
                 {loading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                 Save City Corporation
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DEDICATED CREATE CITY CORPORATION ADMIN MODAL */}
+      {showCityAdminModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4" onClick={() => setShowCityAdminModal(false)}>
+          <div className="w-full max-w-md bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-display font-700 text-lg">
+                Create City Corporation Admin
+              </h3>
+              <button onClick={() => setShowCityAdminModal(false)} className="text-[#4b7a5a] hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#86efac]/80 mb-4">
+              Register a City Corporation Admin and assign them to an official City Corporation. Login credentials will be dispatched to their email address.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[#4b7a5a] text-xs font-mono mb-1">ASSIGNED CITY CORPORATION *</label>
+                <select
+                  value={cityAdminForm.cityCorpId}
+                  onChange={(e) => setCityAdminForm({ ...cityAdminForm, cityCorpId: e.target.value })}
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2.5 text-sm text-[#86efac] outline-none focus:border-[#4ade80]"
+                >
+                  <option value="">-- Select City Corporation --</option>
+                  {cities.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[#4b7a5a] text-xs font-mono mb-1">ADMIN FULL NAME *</label>
+                <input
+                  value={cityAdminForm.fullName}
+                  onChange={(e) => setCityAdminForm({ ...cityAdminForm, fullName: e.target.value })}
+                  placeholder="e.g. Engr. Tanvir Ahmed"
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2.5 text-sm text-white outline-none focus:border-[#4ade80]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[#4b7a5a] text-xs font-mono mb-1">USERNAME *</label>
+                  <input
+                    value={cityAdminForm.username}
+                    onChange={(e) => setCityAdminForm({ ...cityAdminForm, username: e.target.value })}
+                    placeholder="e.g. dncc_admin"
+                    className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2.5 text-sm font-mono text-[#4ade80] outline-none focus:border-[#4ade80]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[#4b7a5a] text-xs font-mono mb-1">PHONE NUMBER</label>
+                  <input
+                    value={cityAdminForm.phone}
+                    onChange={(e) => setCityAdminForm({ ...cityAdminForm, phone: e.target.value })}
+                    placeholder="+8801700000000"
+                    className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2.5 text-sm text-white outline-none focus:border-[#4ade80]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[#4b7a5a] text-xs font-mono mb-1">OFFICIAL EMAIL (FOR CREDENTIALS) *</label>
+                <input
+                  type="email"
+                  value={cityAdminForm.email}
+                  onChange={(e) => setCityAdminForm({ ...cityAdminForm, email: e.target.value })}
+                  placeholder="admin@dncc.gov.bd"
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2.5 text-sm text-white outline-none focus:border-[#4ade80]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#4b7a5a] text-xs font-mono mb-1">PASSWORD *</label>
+                <div className="relative">
+                  <input
+                    type={showCityAdminPass ? "text" : "password"}
+                    value={cityAdminForm.password}
+                    onChange={(e) => setCityAdminForm({ ...cityAdminForm, password: e.target.value })}
+                    placeholder="Min 6 characters"
+                    className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2.5 text-sm text-white outline-none focus:border-[#4ade80] pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCityAdminPass((s) => !s)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4b7a5a] hover:text-[#4ade80]"
+                  >
+                    {showCityAdminPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 bg-[#061309] border border-[#1a3d22] rounded-xl text-[11px] text-[#4b7a5a] space-y-1">
+                <div>✉️ An automated email containing the login credentials and portal URL will be sent to the admin.</div>
+                <div>🔒 Password is encrypted with industry-standard bcrypt hashing.</div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowCityAdminModal(false)}
+                className="flex-1 border border-[#1a3d22] text-[#4b7a5a] py-2.5 rounded-xl text-xs hover:border-[#4ade80]/30 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveCityAdmin}
+                disabled={loading}
+                className="flex-1 bg-[#16a34a] hover:bg-[#15803d] text-white py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow"
+              >
+                {loading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                Create & Save Admin
               </button>
             </div>
           </div>

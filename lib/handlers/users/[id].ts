@@ -53,6 +53,7 @@ export default apiHandler(
         password,
         active,
         role,
+        cityCorpId,
         wardId,
       } = req.body || {};
 
@@ -67,7 +68,21 @@ export default apiHandler(
       if (hashedPassword) user.password = hashedPassword;
       if (active !== undefined) user.active = Boolean(active);
       if (role) user.role = role;
+      if (cityCorpId !== undefined) user.cityCorpId = cityCorpId;
       if (wardId !== undefined) user.wardId = wardId;
+
+      // Update in memory store
+      const memUserIdx = memoryDb.users.findIndex((u: StoredUser) => u.id === id || u.username === id);
+      if (memUserIdx >= 0) {
+        if (fullName) memoryDb.users[memUserIdx].fullName = fullName;
+        if (email !== undefined) memoryDb.users[memUserIdx].email = email;
+        if (phone !== undefined) memoryDb.users[memUserIdx].phone = phone;
+        if (hashedPassword) memoryDb.users[memUserIdx].password = hashedPassword;
+        if (active !== undefined) memoryDb.users[memUserIdx].active = Boolean(active);
+        if (role) memoryDb.users[memUserIdx].role = role;
+        if (cityCorpId !== undefined) memoryDb.users[memUserIdx].cityCorpId = cityCorpId;
+        if (wardId !== undefined) memoryDb.users[memUserIdx].wardId = wardId;
+      }
 
       try {
         await prisma.user.update({
@@ -79,6 +94,7 @@ export default apiHandler(
             ...(hashedPassword && { password: hashedPassword }),
             ...(active !== undefined && { active: Boolean(active) }),
             ...(role && { role }),
+            ...(cityCorpId !== undefined && { cityCorpId }),
             ...(wardId !== undefined && { wardId }),
           },
         }).catch(() => null);

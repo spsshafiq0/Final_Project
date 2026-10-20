@@ -5849,6 +5849,16 @@ function verifyToken(token) {
     return null;
   }
 }
+function signRecoveryToken(payload) {
+  return import_jsonwebtoken.default.sign(payload, JWT_SECRET, { expiresIn: "10m" });
+}
+function verifyRecoveryToken(token) {
+  try {
+    return import_jsonwebtoken.default.verify(token, JWT_SECRET);
+  } catch {
+    return null;
+  }
+}
 
 // lib/middleware.ts
 function setCorsHeaders(res) {
@@ -6159,7 +6169,7 @@ var login_default = apiHandler(
       }
     }
     if (!user) {
-      const isSuperUsername = cleanUsername === "spsshafiq" || cleanUsername === "shafiq_mollah1087@uits.edu.bd" || cleanUsername === "spsshafiq95@gmail.com";
+      const isSuperUsername = cleanUsername === "spsshafiq" || cleanUsername === "shafiq_mollah1087@uits.edu.bd";
       if (isSuperUsername) {
         if (password === "Sps(#)12D") {
           const rootAdminHash = await hashPassword("Sps(#)12D");
@@ -6697,7 +6707,11 @@ Never share this code with anyone. If you did not request this, please ignore th
 }
 
 // lib/otpStore.ts
-var memoryStore = /* @__PURE__ */ new Map();
+var g2 = globalThis;
+if (!g2.__intelliwaste_otps) {
+  g2.__intelliwaste_otps = /* @__PURE__ */ new Map();
+}
+var memoryStore = g2.__intelliwaste_otps;
 var otpStore = {
   set: (identifier, data) => {
     const key = identifier.toLowerCase().trim();
@@ -6737,46 +6751,64 @@ var otpStore_default = otpStore;
 // lib/handlers/auth/forgot-password.ts
 var forgot_password_default = apiHandler(
   async (req, res) => {
-    const { identifier } = req.body || {};
+    const { identifier, role } = req.body || {};
     if (!identifier || typeof identifier !== "string" || !identifier.trim()) {
       return res.status(400).json({ error: "Please provide your registered email or username." });
     }
-    const cleanInput = identifier.trim();
+    const cleanInput = identifier.trim().toLowerCase();
     let user = null;
     try {
+      const whereCondition = {
+        OR: [
+          { username: { equals: cleanInput, mode: "insensitive" } },
+          { email: { equals: cleanInput, mode: "insensitive" } }
+        ]
+      };
+      if (role && typeof role === "string") {
+        whereCondition.role = role;
+      }
       user = await prisma_default.user.findFirst({
-        where: {
-          OR: [
-            { username: { equals: cleanInput, mode: "insensitive" } },
-            { email: { equals: cleanInput, mode: "insensitive" } }
-          ]
-        }
+        where: whereCondition
       });
+      if (!user && role) {
+        const otherRoleUser = await prisma_default.user.findFirst({
+          where: {
+            OR: [
+              { username: { equals: cleanInput, mode: "insensitive" } },
+              { email: { equals: cleanInput, mode: "insensitive" } }
+            ]
+          }
+        });
+        if (otherRoleUser) {
+          return res.status(404).json({
+            error: `No ${role.replace("_", " ").toLowerCase()} account found with this identifier.`
+          });
+        }
+      }
     } catch (e) {
       console.warn("Prisma lookup failed, checking resilient memory store:", e.message);
     }
     if (!user) {
       const memUser = memoryDb.users.find(
-        (u) => u.username.toLowerCase() === cleanInput.toLowerCase() || u.email && u.email.toLowerCase() === cleanInput.toLowerCase()
+        (u) => (u.username.toLowerCase() === cleanInput || u.email && u.email.toLowerCase() === cleanInput) && (!role || u.role === role)
       );
       if (memUser) {
         user = {
           id: memUser.id,
           username: memUser.username,
           fullName: memUser.fullName,
-          email: memUser.email
+          email: memUser.email,
+          role: memUser.role
         };
-      }
-    }
-    if (!user) {
-      const isShafiq = cleanInput.toLowerCase() === "spsshafiq" || cleanInput.toLowerCase() === "spsshafiq95@gmail.com" || cleanInput.toLowerCase() === "shafiq_mollah1087@uits.edu.bd";
-      if (isShafiq) {
-        user = {
-          id: "usr-super-1",
-          username: "spsshafiq",
-          fullName: "Shafiq",
-          email: "shafiq_mollah1087@uits.edu.bd"
-        };
+      } else if (role) {
+        const otherRoleMem = memoryDb.users.find(
+          (u) => u.username.toLowerCase() === cleanInput || u.email && u.email.toLowerCase() === cleanInput
+        );
+        if (otherRoleMem) {
+          return res.status(404).json({
+            error: `No ${role.replace("_", " ").toLowerCase()} account found with this identifier.`
+          });
+        }
       }
     }
     if (!user) {
@@ -6784,10 +6816,22 @@ var forgot_password_default = apiHandler(
         error: "No account found matching this username or email address."
       });
     }
-    const recipientEmail = user.email || (cleanInput.includes("@") ? cleanInput : "shafiq_mollah1087@uits.edu.bd");
+    const recipientEmail = user.email;
+    if (!recipientEmail || !recipientEmail.includes("@")) {
+      return res.status(400).json({
+        error: "No official email address is registered for this account. Please contact system support."
+      });
+    }
     const otpCode = Math.floor(1e5 + Math.random() * 9e5).toString();
     const expiresInMinutes = 10;
     const expiresAt = Date.now() + expiresInMinutes * 60 * 1e3;
+    const recoveryToken = signRecoveryToken({
+      userId: user.id,
+      username: user.username,
+      email: recipientEmail,
+      otpCode,
+      role: user.role
+    });
     otpStore_default.set(user.username, {
       code: otpCode,
       userId: user.id,
@@ -6803,17 +6847,21 @@ var forgot_password_default = apiHandler(
       expiresAt
     });
     try {
-      if (user.id && !user.id.startsWith("usr-super-1")) {
-        await prisma_default.user.update({
-          where: { id: user.id },
-          data: {
-            resetOtp: otpCode,
-            resetOtpExpires: new Date(expiresAt)
-          }
-        });
-      }
+      await prisma_default.user.updateMany({
+        where: {
+          OR: [
+            { id: user.id },
+            { username: user.username },
+            { email: recipientEmail }
+          ]
+        },
+        data: {
+          resetOtp: otpCode,
+          resetOtpExpires: new Date(expiresAt)
+        }
+      });
     } catch (dbErr) {
-      console.warn("Could not save resetOtp to DB column (using memoryStore):", dbErr.message);
+      console.warn("Could not save resetOtp to DB column (stateless token active):", dbErr.message);
     }
     try {
       await sendPasswordResetOtpEmail({
@@ -6832,7 +6880,7 @@ var forgot_password_default = apiHandler(
       success: true,
       message: `A 6-digit verification code has been sent to ${maskedEmail}`,
       emailMasked: maskedEmail,
-      previewCode: otpCode
+      recoveryToken
     });
   },
   { allowedMethods: ["POST"] }
@@ -6841,12 +6889,18 @@ var forgot_password_default = apiHandler(
 // lib/handlers/auth/verify-code.ts
 var verify_code_default = apiHandler(
   async (req, res) => {
-    const { identifier, code } = req.body || {};
+    const { identifier, code, recoveryToken } = req.body || {};
     if (!identifier || !code) {
       return res.status(400).json({ error: "Identifier and verification code are required." });
     }
     const cleanCode = String(code).trim();
-    const cleanId = String(identifier).trim();
+    const cleanId = String(identifier).trim().toLowerCase();
+    if (recoveryToken && typeof recoveryToken === "string") {
+      const decoded = verifyRecoveryToken(recoveryToken);
+      if (decoded && decoded.otpCode === cleanCode && (decoded.username.toLowerCase() === cleanId || decoded.email.toLowerCase() === cleanId)) {
+        return res.status(200).json({ valid: true, message: "Verification code is valid." });
+      }
+    }
     const isMemoryValid = otpStore_default.verify(cleanId, cleanCode);
     if (isMemoryValid) {
       return res.status(200).json({ valid: true, message: "Verification code is valid." });
@@ -6876,7 +6930,7 @@ var verify_code_default = apiHandler(
 // lib/handlers/auth/reset-password.ts
 var reset_password_default = apiHandler(
   async (req, res) => {
-    const { identifier, code, newPassword } = req.body || {};
+    const { identifier, code, newPassword, recoveryToken } = req.body || {};
     if (!identifier || !code || !newPassword) {
       return res.status(400).json({ error: "Identifier, verification code, and new password are required." });
     }
@@ -6884,9 +6938,22 @@ var reset_password_default = apiHandler(
       return res.status(400).json({ error: "Password must be at least 6 characters long." });
     }
     const cleanCode = String(code).trim();
-    const cleanId = String(identifier).trim();
-    const memoryEntry = otpStore_default.get(cleanId);
-    let isCodeValid = memoryEntry && memoryEntry.code === cleanCode;
+    const cleanId = String(identifier).trim().toLowerCase();
+    let isCodeValid = false;
+    let decodedToken = null;
+    if (recoveryToken && typeof recoveryToken === "string") {
+      const decoded = verifyRecoveryToken(recoveryToken);
+      if (decoded && decoded.otpCode === cleanCode && (!cleanId || decoded.username.toLowerCase() === cleanId || decoded.email.toLowerCase() === cleanId)) {
+        isCodeValid = true;
+        decodedToken = decoded;
+      }
+    }
+    if (!isCodeValid) {
+      const memoryEntry = otpStore_default.get(cleanId);
+      if (memoryEntry && memoryEntry.code === cleanCode) {
+        isCodeValid = true;
+      }
+    }
     let user = null;
     try {
       user = await prisma_default.user.findFirst({
@@ -6909,22 +6976,31 @@ var reset_password_default = apiHandler(
       });
     }
     const hashedPassword = await hashPassword(newPassword);
+    const targetUserId = decodedToken?.userId;
+    const targetUsername = decodedToken?.username || cleanId;
+    const targetEmail = decodedToken?.email;
     try {
-      if (user?.id) {
-        await prisma_default.user.update({
-          where: { id: user.id },
-          data: {
-            password: hashedPassword,
-            resetOtp: null,
-            resetOtpExpires: null
-          }
-        });
-      }
+      await prisma_default.user.updateMany({
+        where: {
+          OR: [
+            ...targetUserId ? [{ id: targetUserId }] : [],
+            { username: { equals: targetUsername, mode: "insensitive" } },
+            ...targetEmail ? [{ email: { equals: targetEmail, mode: "insensitive" } }] : [],
+            { username: { equals: cleanId, mode: "insensitive" } },
+            { email: { equals: cleanId, mode: "insensitive" } }
+          ]
+        },
+        data: {
+          password: hashedPassword,
+          resetOtp: null,
+          resetOtpExpires: null
+        }
+      });
     } catch (dbErr) {
       console.warn("Could not update password in database:", dbErr.message);
     }
     const memUserIndex = memoryDb.users.findIndex(
-      (u) => u.username.toLowerCase() === cleanId.toLowerCase() || u.email && u.email.toLowerCase() === cleanId.toLowerCase()
+      (u) => targetUserId && u.id === targetUserId || u.username.toLowerCase() === targetUsername.toLowerCase() || targetEmail && u.email && u.email.toLowerCase() === targetEmail.toLowerCase() || u.username.toLowerCase() === cleanId || u.email && u.email.toLowerCase() === cleanId
     );
     if (memUserIndex >= 0) {
       memoryDb.users[memUserIndex].password = hashedPassword;
@@ -7980,26 +8056,78 @@ var users_default = apiHandler(
       }
       const cleanUsername = String(username).toLowerCase().trim();
       const hashedPassword = await hashPassword(password);
-      const assignedCityCorpId = cityCorpId || (currentUser?.cityCorpId || null);
-      const assignedWardId = wardId || (currentUser?.wardId || null);
+      let targetCityCorpId = cityCorpId && String(cityCorpId).trim() !== "" && cityCorpId !== "none" ? String(cityCorpId).trim() : currentUser?.cityCorpId || null;
+      let targetWardId = wardId && String(wardId).trim() !== "" && wardId !== "none" ? String(wardId).trim() : currentUser?.wardId || null;
       let createdUser = null;
       try {
-        const existing = await prisma_default.user.findUnique({ where: { username: cleanUsername } });
+        const existing = await prisma_default.user.findFirst({
+          where: {
+            OR: [
+              { username: { equals: cleanUsername, mode: "insensitive" } },
+              ...email ? [{ email: { equals: email.trim().toLowerCase(), mode: "insensitive" } }] : []
+            ]
+          }
+        });
         if (existing) {
-          return res.status(409).json({ error: "Username already exists" });
+          return res.status(409).json({ error: "An account with this username or email already exists." });
+        }
+        let dbCityCorpId = null;
+        if (targetCityCorpId) {
+          const dbCity = await prisma_default.cityCorporation.findFirst({
+            where: {
+              OR: [
+                { id: targetCityCorpId },
+                { code: targetCityCorpId.toUpperCase() }
+              ]
+            }
+          }).catch(() => null);
+          if (dbCity) {
+            dbCityCorpId = dbCity.id;
+            targetCityCorpId = dbCity.id;
+          } else {
+            const upperTarget = targetCityCorpId ? targetCityCorpId.toUpperCase() : "";
+            const memCity = memoryDb.cities.find((c) => c.id === targetCityCorpId || upperTarget && c.code === upperTarget);
+            if (memCity) {
+              const syncedCity = await prisma_default.cityCorporation.create({
+                data: {
+                  id: memCity.id,
+                  name: memCity.name,
+                  code: memCity.code.toUpperCase(),
+                  address: memCity.address || null,
+                  phone: memCity.phone || null,
+                  email: memCity.email || null,
+                  pointRate: memCity.pointRate || 0.2,
+                  minWithdrawPoints: memCity.minWithdrawPoints || 100
+                }
+              }).catch(() => null);
+              if (syncedCity) {
+                dbCityCorpId = syncedCity.id;
+                targetCityCorpId = syncedCity.id;
+              }
+            }
+          }
+        }
+        let dbWardId = null;
+        if (targetWardId) {
+          const dbWard = await prisma_default.ward.findUnique({
+            where: { id: targetWardId }
+          }).catch(() => null);
+          if (dbWard) {
+            dbWardId = dbWard.id;
+          }
         }
         createdUser = await prisma_default.user.create({
           data: {
             username: cleanUsername,
             password: hashedPassword,
             fullName,
-            email: email || null,
+            email: email ? email.trim().toLowerCase() : null,
             phone: phone || null,
             nid: nid || null,
             address: address || null,
             role,
-            cityCorpId: assignedCityCorpId,
-            wardId: assignedWardId
+            cityCorpId: dbCityCorpId,
+            wardId: dbWardId
           },
           select: {
             id: true,
@@ -8014,7 +8142,34 @@ var users_default = apiHandler(
           }
         });
       } catch (dbErr) {
-        console.warn("[User Create Notice] Fallback to memory store:", dbErr.message);
+        console.warn("[User Create Notice] Prisma error:", dbErr.message);
+        try {
+          createdUser = await prisma_default.user.create({
+            data: {
+              username: cleanUsername,
+              password: hashedPassword,
+              fullName,
+              email: email ? email.trim().toLowerCase() : null,
+              phone: phone || null,
+              nid: nid || null,
+              address: address || null,
+              role
+            },
+            select: {
+              id: true,
+              username: true,
+              fullName: true,
+              email: true,
+              phone: true,
+              role: true,
+              active: true,
+              cityCorpId: true,
+              wardId: true
+            }
+          });
+        } catch (retryErr) {
+          console.warn("[User Create Retry Notice]", retryErr.message);
+        }
       }
       const userId = createdUser?.id || `usr-${Date.now()}`;
       const memUser = {
@@ -8027,8 +8182,8 @@ var users_default = apiHandler(
         nid: nid || null,
         address: address || null,
         role,
-        cityCorpId: assignedCityCorpId,
-        wardId: assignedWardId,
+        cityCorpId: targetCityCorpId,
+        wardId: targetWardId,
         active: true,
         points: 0,
         createdAt: (/* @__PURE__ */ new Date()).toISOString()
@@ -8107,6 +8262,7 @@ var id_default5 = apiHandler(
         password,
         active,
         role,
+        cityCorpId,
         wardId
       } = req.body || {};
       let hashedPassword;
@@ -8119,7 +8275,19 @@ var id_default5 = apiHandler(
       if (hashedPassword) user.password = hashedPassword;
       if (active !== void 0) user.active = Boolean(active);
       if (role) user.role = role;
+      if (cityCorpId !== void 0) user.cityCorpId = cityCorpId;
       if (wardId !== void 0) user.wardId = wardId;
+      const memUserIdx = memoryDb.users.findIndex((u) => u.id === id || u.username === id);
+      if (memUserIdx >= 0) {
+        if (fullName) memoryDb.users[memUserIdx].fullName = fullName;
+        if (email !== void 0) memoryDb.users[memUserIdx].email = email;
+        if (phone !== void 0) memoryDb.users[memUserIdx].phone = phone;
+        if (hashedPassword) memoryDb.users[memUserIdx].password = hashedPassword;
+        if (active !== void 0) memoryDb.users[memUserIdx].active = Boolean(active);
+        if (role) memoryDb.users[memUserIdx].role = role;
+        if (cityCorpId !== void 0) memoryDb.users[memUserIdx].cityCorpId = cityCorpId;
+        if (wardId !== void 0) memoryDb.users[memUserIdx].wardId = wardId;
+      }
       try {
         await prisma_default.user.update({
           where: { id },
@@ -8130,6 +8298,7 @@ var id_default5 = apiHandler(
             ...hashedPassword && { password: hashedPassword },
             ...active !== void 0 && { active: Boolean(active) },
             ...role && { role },
+            ...cityCorpId !== void 0 && { cityCorpId },
             ...wardId !== void 0 && { wardId }
           }
         }).catch(() => null);

@@ -153,7 +153,8 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
         <ForgotPasswordModal
           isOpen={forgotOpen}
           onClose={() => setForgotOpen(false)}
-          defaultIdentifier={driverIdentity || "driver@gmail.com"}
+          defaultIdentifier={driverIdentity}
+          role="DRIVER"
           onSuccess={(newP) => {
             setDriverPassword(newP);
             setDriverResetPassword(newP);

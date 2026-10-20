@@ -289,7 +289,8 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
         <ForgotPasswordModal
           isOpen={forgotOpen}
           onClose={() => setForgotOpen(false)}
-          defaultIdentifier={authForm.email || authForm.username || "spsshafiq95@gmail.com"}
+          defaultIdentifier={authForm.email || authForm.username}
+          role="CITIZEN"
           onSuccess={(newP) => {
             setAuthForm(f => ({ ...f, password: newP }));
           }}

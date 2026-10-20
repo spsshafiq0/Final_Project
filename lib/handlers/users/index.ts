@@ -108,16 +108,80 @@ export default apiHandler(
 
       const cleanUsername = String(username).toLowerCase().trim();
       const hashedPassword = await hashPassword(password);
-      const assignedCityCorpId = cityCorpId || (currentUser?.cityCorpId || null);
-      const assignedWardId = wardId || (currentUser?.wardId || null);
+      
+      let targetCityCorpId: string | null = (cityCorpId && String(cityCorpId).trim() !== "" && cityCorpId !== "none") 
+        ? String(cityCorpId).trim() 
+        : (currentUser?.cityCorpId || null);
+        
+      let targetWardId: string | null = (wardId && String(wardId).trim() !== "" && wardId !== "none") 
+        ? String(wardId).trim() 
+        : (currentUser?.wardId || null);
 
       let createdUser: any = null;
 
-      // 1. Try Prisma DB
+      // 1. Try Prisma DB with smart foreign key resolution
       try {
-        const existing = await prisma.user.findUnique({ where: { username: cleanUsername } });
+        const existing = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { username: { equals: cleanUsername, mode: "insensitive" } },
+              ...(email ? [{ email: { equals: email.trim().toLowerCase(), mode: "insensitive" } }] : []),
+            ],
+          },
+        });
         if (existing) {
-          return res.status(409).json({ error: "Username already exists" });
+          return res.status(409).json({ error: "An account with this username or email already exists." });
+        }
+
+        // Verify or sync CityCorporation in PostgreSQL
+        let dbCityCorpId: string | null = null;
+        if (targetCityCorpId) {
+          const dbCity = await prisma.cityCorporation.findFirst({
+            where: {
+              OR: [
+                { id: targetCityCorpId },
+                { code: targetCityCorpId.toUpperCase() },
+              ],
+            },
+          }).catch(() => null);
+
+          if (dbCity) {
+            dbCityCorpId = dbCity.id;
+            targetCityCorpId = dbCity.id;
+          } else {
+            // Check memoryDb and sync to Prisma
+            const upperTarget = targetCityCorpId ? targetCityCorpId.toUpperCase() : "";
+            const memCity = memoryDb.cities.find((c: any) => c.id === targetCityCorpId || (upperTarget && c.code === upperTarget));
+            if (memCity) {
+              const syncedCity = await prisma.cityCorporation.create({
+                data: {
+                  id: memCity.id,
+                  name: memCity.name,
+                  code: memCity.code.toUpperCase(),
+                  address: memCity.address || null,
+                  phone: memCity.phone || null,
+                  email: memCity.email || null,
+                  pointRate: memCity.pointRate || 0.2,
+                  minWithdrawPoints: memCity.minWithdrawPoints || 100,
+                },
+              }).catch(() => null);
+              if (syncedCity) {
+                dbCityCorpId = syncedCity.id;
+                targetCityCorpId = syncedCity.id;
+              }
+            }
+          }
+        }
+
+        // Verify Ward in PostgreSQL
+        let dbWardId: string | null = null;
+        if (targetWardId) {
+          const dbWard = await prisma.ward.findUnique({
+            where: { id: targetWardId },
+          }).catch(() => null);
+          if (dbWard) {
+            dbWardId = dbWard.id;
+          }
         }
 
         createdUser = await prisma.user.create({
@@ -125,13 +189,13 @@ export default apiHandler(
             username: cleanUsername,
             password: hashedPassword,
             fullName,
-            email: email || null,
+            email: email ? email.trim().toLowerCase() : null,
             phone: phone || null,
             nid: nid || null,
             address: address || null,
             role,
-            cityCorpId: assignedCityCorpId,
-            wardId: assignedWardId,
+            cityCorpId: dbCityCorpId,
+            wardId: dbWardId,
           },
           select: {
             id: true,
@@ -146,7 +210,35 @@ export default apiHandler(
           },
         });
       } catch (dbErr: any) {
-        console.warn("[User Create Notice] Fallback to memory store:", dbErr.message);
+        console.warn("[User Create Notice] Prisma error:", dbErr.message);
+        // If Prisma failed due to foreign key or relation, retry creating user without relations to guarantee account creation
+        try {
+          createdUser = await prisma.user.create({
+            data: {
+              username: cleanUsername,
+              password: hashedPassword,
+              fullName,
+              email: email ? email.trim().toLowerCase() : null,
+              phone: phone || null,
+              nid: nid || null,
+              address: address || null,
+              role,
+            },
+            select: {
+              id: true,
+              username: true,
+              fullName: true,
+              email: true,
+              phone: true,
+              role: true,
+              active: true,
+              cityCorpId: true,
+              wardId: true,
+            },
+          });
+        } catch (retryErr: any) {
+          console.warn("[User Create Retry Notice]", retryErr.message);
+        }
       }
 
       // 2. Also save to resilient memory store
@@ -161,8 +253,8 @@ export default apiHandler(
         nid: nid || null,
         address: address || null,
         role,
-        cityCorpId: assignedCityCorpId,
-        wardId: assignedWardId,
+        cityCorpId: targetCityCorpId,
+        wardId: targetWardId,
         active: true,
         points: 0,
         createdAt: new Date().toISOString(),

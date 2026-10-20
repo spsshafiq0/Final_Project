@@ -6,6 +6,7 @@ interface ForgotPasswordModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultIdentifier?: string;
+  role?: string;
   onSuccess?: (newPassword: string, identifier: string) => void;
 }
 
@@ -13,6 +14,7 @@ export default function ForgotPasswordModal({
   isOpen,
   onClose,
   defaultIdentifier = "",
+  role,
   onSuccess,
 }: ForgotPasswordModalProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -22,7 +24,7 @@ export default function ForgotPasswordModal({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [maskedEmail, setMaskedEmail] = useState("");
-  const [previewCode, setPreviewCode] = useState<string | null>(null);
+  const [recoveryToken, setRecoveryToken] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -39,9 +41,9 @@ export default function ForgotPasswordModal({
     setLoading(true);
 
     try {
-      const res = await api.auth.forgotPassword(identifier.trim());
+      const res = await api.auth.forgotPassword(identifier.trim(), role);
       setMaskedEmail(res.emailMasked);
-      if (res.previewCode) setPreviewCode(res.previewCode);
+      if (res.recoveryToken) setRecoveryToken(res.recoveryToken);
       setSuccessMsg(res.message);
       setStep(2);
     } catch (err: any) {
@@ -69,7 +71,7 @@ export default function ForgotPasswordModal({
     setLoading(true);
 
     try {
-      await api.auth.resetPassword(identifier.trim(), code.trim(), newPassword);
+      await api.auth.resetPassword(identifier.trim(), code.trim(), newPassword, recoveryToken || undefined);
       setStep(3);
       if (onSuccess) {
         onSuccess(newPassword, identifier.trim());
@@ -89,7 +91,7 @@ export default function ForgotPasswordModal({
     setConfirmPassword("");
     setError("");
     setSuccessMsg("");
-    setPreviewCode(null);
+    setRecoveryToken(null);
     onClose();
   };
 
@@ -151,7 +153,7 @@ export default function ForgotPasswordModal({
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSendCode()}
-                  placeholder="e.g. spsshafiq95@gmail.com or spsshafiq"
+                  placeholder="e.g. user@example.com or username"
                   className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl pl-10 pr-4 py-3 text-white text-sm outline-none focus:border-[#4ade80] placeholder-[#4b7a5a]"
                   autoFocus
                 />
@@ -187,11 +189,6 @@ export default function ForgotPasswordModal({
           <div className="space-y-4">
             <div className="p-3 bg-[#061309] border border-[#1a3d22] rounded-xl text-xs text-[#86efac]">
               {successMsg || `A 6-digit verification code was sent to ${maskedEmail}.`}
-              {previewCode && (
-                <div className="mt-1 text-[11px] text-[#4ade80] font-mono">
-                  [Dev / Test Code Preview: <strong>{previewCode}</strong>]
-                </div>
-              )}
             </div>
 
             <div>

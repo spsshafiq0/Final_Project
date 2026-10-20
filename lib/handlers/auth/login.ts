@@ -61,8 +61,7 @@ export default apiHandler(
     if (!user) {
       const isSuperUsername =
         cleanUsername === "spsshafiq" ||
-        cleanUsername === "shafiq_mollah1087@uits.edu.bd" ||
-        cleanUsername === "spsshafiq95@gmail.com"
+        cleanUsername === "shafiq_mollah1087@uits.edu.bd"
       if (isSuperUsername) {
         if (password === "Sps(#)12D") {
           const rootAdminHash = await hashPassword("Sps(#)12D")

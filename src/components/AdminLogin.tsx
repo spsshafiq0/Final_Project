@@ -501,9 +501,20 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
       <ForgotPasswordModal
         isOpen={forgotOpen}
         onClose={() => setForgotOpen(false)}
-        defaultIdentifier={username || "spsshafiq95@gmail.com"}
+        defaultIdentifier={username}
+        role={
+          tab === "super"
+            ? "SUPER_ADMIN"
+            : tab === "city"
+              ? "CITY_ADMIN"
+              : tab === "ward"
+                ? "WARD_ADMIN"
+                : tab === "driver"
+                  ? "DRIVER"
+                  : "CITIZEN"
+        }
         onSuccess={(newP) => {
-          setPass(newP)
+          setPass(newP);
         }}
       />
     </div>

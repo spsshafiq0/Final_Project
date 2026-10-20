@@ -15,6 +15,7 @@
 process.env.NODE_ENV = "test";
 
 const http = require("http");
+const jwt = require("jsonwebtoken");
 
 // Mock Vercel Request & Response helper
 function mockReqRes({ method = "GET", url = "/", body = {}, headers = {}, query = {} } = {}) {
@@ -215,7 +216,7 @@ async function runTestSuite() {
   console.log("\n▶ TEST SET 3: Super Admin Operations (City Corp & City Admin Provisioning)");
   let createdCityId = "";
   {
-    // 3.1 Create City Corporation with dedicated City Admin
+    // 3.1 Create City Corporation entity purely (without admin fields)
     const { req, res } = mockReqRes({
       method: "POST",
       url: "/api/cities",
@@ -226,19 +227,40 @@ async function runTestSuite() {
         address: "Tigerpass, Chattogram",
         phone: "+880-31-610085",
         email: "info@ccc.gov.bd",
-        adminName: "Chief Engineer CCC",
-        adminUsername: "ccc_admin_user",
-        adminEmail: "ccc_admin@test.gov.bd",
-        adminPassword: "CccAdminPass#2025",
+        pointRate: 0.25,
+        minWithdrawPoints: 100,
       },
     });
     await apiHandler(req, res);
     const cityData = res._getData();
     createdCityId = cityData?.id || "";
     assert(
-      "Super Admin can create City Corporation and assign City Admin with zero errors",
+      "Super Admin can create City Corporation entity purely without requiring admin fields",
       (res._getStatus() === 200 || res._getStatus() === 201) && createdCityId !== "",
       `Status: ${res._getStatus()}, Data: ${JSON.stringify(cityData)}`
+    );
+
+    // 3.1b Create City Corporation Admin separately via users endpoint
+    const { req: admReq, res: admRes } = mockReqRes({
+      method: "POST",
+      url: "/api/users",
+      headers: { authorization: `Bearer ${superToken}` },
+      body: {
+        fullName: "Chief Engineer CCC",
+        username: "ccc_admin_user",
+        email: "ccc_admin@test.gov.bd",
+        phone: "+8801700000001",
+        password: "CccAdminPass#2025",
+        role: "CITY_ADMIN",
+        cityCorpId: createdCityId,
+      },
+    });
+    await apiHandler(admReq, admRes);
+    const admData = admRes._getData();
+    assert(
+      "Super Admin can create City Corporation Admin separately and assign to City Corp",
+      (admRes._getStatus() === 200 || admRes._getStatus() === 201) && admData?.role === "CITY_ADMIN",
+      `Status: ${admRes._getStatus()}`
     );
 
     // 3.2 List City Corporations
@@ -467,18 +489,33 @@ async function runTestSuite() {
   // ──────────────────────────────────────────────────────────────────────────
   console.log("\n▶ TEST SET 7: Account Security & Forgot Password Recovery Engine");
   {
-    // 7.1 Request Password Reset Code
+    // 7.1a Role isolation test: searching Super Admin credentials from citizen portal should reject
+    const { req: isoReq, res: isoRes } = mockReqRes({
+      method: "POST",
+      url: "/api/auth/forgot-password",
+      body: { identifier: "spsshafiq_qa", role: "CITIZEN" },
+    });
+    await apiHandler(isoReq, isoRes);
+    assert(
+      "Cross-role password reset attempt strictly rejected (user-based role segregation)",
+      isoRes._getStatus() === 404
+    );
+
+    // 7.1b Request Password Reset Code
     const { req: fpReq, res: fpRes } = mockReqRes({
       method: "POST",
       url: "/api/auth/forgot-password",
-      body: { identifier: "spsshafiq_qa" },
+      body: { identifier: "spsshafiq_qa", role: "SUPER_ADMIN" },
     });
     await apiHandler(fpReq, fpRes);
     const fpData = fpRes._getData();
-    const resetOtp = fpData?.previewCode || "";
+    const recoveryToken = fpData?.recoveryToken || "";
+    const decoded = recoveryToken ? jwt.decode(recoveryToken) : null;
+    const resetOtp = decoded?.otpCode || "";
+
     assert(
-      "Forgot password dispatches 6-digit code via Brevo safely without request crash",
-      fpRes._getStatus() === 200 && fpData?.success === true && resetOtp.length === 6,
+      "Forgot password dispatches 6-digit code, returns stateless recoveryToken without leaking previewCode in response",
+      fpRes._getStatus() === 200 && fpData?.success === true && fpData?.previewCode === undefined && recoveryToken !== "",
       `Status: ${fpRes._getStatus()}`
     );
 
@@ -489,12 +526,13 @@ async function runTestSuite() {
       body: {
         identifier: "spsshafiq_qa",
         code: resetOtp,
+        recoveryToken,
         newPassword: "BrandNewSuperPassword#2026",
       },
     });
     await apiHandler(rpReq, rpRes);
     assert(
-      "Password can be securely updated with OTP verification",
+      "Password can be securely updated with recoveryToken and OTP verification",
       rpRes._getStatus() === 200 && rpRes._getData()?.success === true
     );
 

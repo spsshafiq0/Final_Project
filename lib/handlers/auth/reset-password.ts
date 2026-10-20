@@ -1,13 +1,13 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import prisma from "../../prisma";
-import { hashPassword } from "../../auth";
+import { hashPassword, verifyRecoveryToken } from "../../auth";
 import { apiHandler } from "../../middleware";
 import otpStore from "../../otpStore";
 import { memoryDb } from "../../store";
 
 export default apiHandler(
   async (req: VercelRequest, res: VercelResponse) => {
-    const { identifier, code, newPassword } = req.body || {};
+    const { identifier, code, newPassword, recoveryToken } = req.body || {};
 
     if (!identifier || !code || !newPassword) {
       return res.status(400).json({ error: "Identifier, verification code, and new password are required." });
@@ -18,11 +18,32 @@ export default apiHandler(
     }
 
     const cleanCode = String(code).trim();
-    const cleanId = String(identifier).trim();
+    const cleanId = String(identifier).trim().toLowerCase();
+
+    // 0. Verify via signed stateless recovery token (resilient across serverless lambdas)
+    let isCodeValid = false;
+    let decodedToken: any = null;
+    if (recoveryToken && typeof recoveryToken === "string") {
+      const decoded = verifyRecoveryToken(recoveryToken);
+      if (
+        decoded &&
+        decoded.otpCode === cleanCode &&
+        (!cleanId ||
+          decoded.username.toLowerCase() === cleanId ||
+          decoded.email.toLowerCase() === cleanId)
+      ) {
+        isCodeValid = true;
+        decodedToken = decoded;
+      }
+    }
 
     // 1. Verify code via memory store or DB
-    const memoryEntry = otpStore.get(cleanId);
-    let isCodeValid = memoryEntry && memoryEntry.code === cleanCode;
+    if (!isCodeValid) {
+      const memoryEntry = otpStore.get(cleanId);
+      if (memoryEntry && memoryEntry.code === cleanCode) {
+        isCodeValid = true;
+      }
+    }
 
     let user: any = null;
     try {
@@ -57,18 +78,28 @@ export default apiHandler(
     // 2. Hash new password with bcrypt
     const hashedPassword = await hashPassword(newPassword);
 
-    // 3. Update in Database if user exists in DB
+    const targetUserId = decodedToken?.userId;
+    const targetUsername = decodedToken?.username || cleanId;
+    const targetEmail = decodedToken?.email;
+
+    // 3. Update in Database
     try {
-      if (user?.id) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            password: hashedPassword,
-            resetOtp: null,
-            resetOtpExpires: null,
-          },
-        });
-      }
+      await prisma.user.updateMany({
+        where: {
+          OR: [
+            ...(targetUserId ? [{ id: targetUserId }] : []),
+            { username: { equals: targetUsername, mode: "insensitive" } },
+            ...(targetEmail ? [{ email: { equals: targetEmail, mode: "insensitive" } }] : []),
+            { username: { equals: cleanId, mode: "insensitive" } },
+            { email: { equals: cleanId, mode: "insensitive" } },
+          ],
+        },
+        data: {
+          password: hashedPassword,
+          resetOtp: null,
+          resetOtpExpires: null,
+        },
+      });
     } catch (dbErr: any) {
       console.warn("Could not update password in database:", dbErr.message);
     }
@@ -76,8 +107,11 @@ export default apiHandler(
     // 4. Update in resilient memory store
     const memUserIndex = memoryDb.users.findIndex(
       (u: any) =>
-        u.username.toLowerCase() === cleanId.toLowerCase() ||
-        (u.email && u.email.toLowerCase() === cleanId.toLowerCase())
+        (targetUserId && u.id === targetUserId) ||
+        u.username.toLowerCase() === targetUsername.toLowerCase() ||
+        (targetEmail && u.email && u.email.toLowerCase() === targetEmail.toLowerCase()) ||
+        u.username.toLowerCase() === cleanId ||
+        (u.email && u.email.toLowerCase() === cleanId)
     );
     if (memUserIndex >= 0) {
       memoryDb.users[memUserIndex].password = hashedPassword;

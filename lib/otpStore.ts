@@ -12,8 +12,12 @@ interface OtpEntry {
   expiresAt: number;
 }
 
-// In-memory store (scoped across serverless runtime lifetime)
-const memoryStore = new Map<string, OtpEntry>();
+// In-memory store (scoped across global serverless runtime lifetime)
+const g = globalThis as any;
+if (!g.__intelliwaste_otps) {
+  g.__intelliwaste_otps = new Map<string, OtpEntry>();
+}
+const memoryStore = g.__intelliwaste_otps as Map<string, OtpEntry>;
 
 export const otpStore = {
   set: (identifier: string, data: Omit<OtpEntry, "identifier">) => {

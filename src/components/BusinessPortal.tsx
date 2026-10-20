@@ -165,6 +165,7 @@ export default function BusinessPortal({ onNavigate }: BusinessPortalProps) {
           isOpen={forgotOpen}
           onClose={() => setForgotOpen(false)}
           defaultIdentifier={email || ""}
+          role="BUSINESS"
           onSuccess={(newP) => {
             setPassword(newP);
           }}

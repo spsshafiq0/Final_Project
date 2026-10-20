@@ -48,3 +48,23 @@ export function verifyToken(token: string): TokenPayload | null {
     return null;
   }
 }
+
+export interface RecoveryTokenPayload {
+  userId: string;
+  username: string;
+  email: string;
+  otpCode: string;
+  role?: string;
+}
+
+export function signRecoveryToken(payload: RecoveryTokenPayload): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: "10m" });
+}
+
+export function verifyRecoveryToken(token: string): RecoveryTokenPayload | null {
+  try {
+    return jwt.verify(token, JWT_SECRET) as RecoveryTokenPayload;
+  } catch {
+    return null;
+  }
+}

@@ -211,27 +211,27 @@ export const api = {
       tokenStorage.remove();
       userStorage.remove();
     },
-    forgotPassword: async (identifier: string) => {
+    forgotPassword: async (identifier: string, role?: string) => {
       return request<{
         success: boolean;
         message: string;
         emailMasked: string;
-        previewCode?: string;
+        recoveryToken?: string;
       }>("/auth/forgot-password", {
         method: "POST",
-        body: JSON.stringify({ identifier }),
+        body: JSON.stringify({ identifier, role }),
       });
     },
-    verifyCode: async (identifier: string, code: string) => {
+    verifyCode: async (identifier: string, code: string, recoveryToken?: string) => {
       return request<{ valid: boolean; message: string }>("/auth/verify-code", {
         method: "POST",
-        body: JSON.stringify({ identifier, code }),
+        body: JSON.stringify({ identifier, code, recoveryToken }),
       });
     },
-    resetPassword: async (identifier: string, code: string, newPassword: string) => {
+    resetPassword: async (identifier: string, code: string, newPassword: string, recoveryToken?: string) => {
       return request<{ success: boolean; message: string }>("/auth/reset-password", {
         method: "POST",
-        body: JSON.stringify({ identifier, code, newPassword }),
+        body: JSON.stringify({ identifier, code, newPassword, recoveryToken }),
       });
     },
   },

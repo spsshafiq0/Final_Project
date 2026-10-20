@@ -2,17 +2,30 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import prisma from "../../prisma";
 import { apiHandler } from "../../middleware";
 import otpStore from "../../otpStore";
+import { verifyRecoveryToken } from "../../auth";
 
 export default apiHandler(
   async (req: VercelRequest, res: VercelResponse) => {
-    const { identifier, code } = req.body || {};
+    const { identifier, code, recoveryToken } = req.body || {};
 
     if (!identifier || !code) {
       return res.status(400).json({ error: "Identifier and verification code are required." });
     }
 
     const cleanCode = String(code).trim();
-    const cleanId = String(identifier).trim();
+    const cleanId = String(identifier).trim().toLowerCase();
+
+    // 0. Validate via signed stateless recovery token (resilient across lambdas)
+    if (recoveryToken && typeof recoveryToken === "string") {
+      const decoded = verifyRecoveryToken(recoveryToken);
+      if (
+        decoded &&
+        decoded.otpCode === cleanCode &&
+        (decoded.username.toLowerCase() === cleanId || decoded.email.toLowerCase() === cleanId)
+      ) {
+        return res.status(200).json({ valid: true, message: "Verification code is valid." });
+      }
+    }
 
     // 1. Check in-memory OTP store
     const isMemoryValid = otpStore.verify(cleanId, cleanCode);
