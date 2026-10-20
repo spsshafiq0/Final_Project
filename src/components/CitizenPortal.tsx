@@ -245,15 +245,7 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
       setAuthenticated(true);
       fetchMyWithdrawals();
     } catch (err: any) {
-      if (authForm.username === "spsshafiq_citizen" || authForm.username === "citizen01") {
-        setCitizenName("Shafiq");
-        setCitizenPhone("01711-950004");
-        setUserPoints(2847);
-        setAuthenticated(true);
-        fetchMyWithdrawals();
-        return;
-      }
-      setAuthError(err?.message || "Authentication failed");
+      setAuthError(err?.message || "Authentication failed. Please verify your username and password.");
     }
   };
 

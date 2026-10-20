@@ -41,27 +41,6 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
     loadData();
   }, []);
 
-  const handleQuickFill = (role: "super" | "city" | "ward" | "driver" | "citizen") => {
-    setTab(role);
-    setError("");
-    if (role === "super") {
-      setUsername("spsshafiq");
-      setPass("Sps(#)12D");
-    } else if (role === "city") {
-      setUsername("spsshafiq_city");
-      setPass("Sps(#)12D");
-    } else if (role === "ward") {
-      setUsername("spsshafiq_ward");
-      setPass("Sps(#)12D");
-    } else if (role === "driver") {
-      setUsername("spsshafiq_driver");
-      setPass("Sps(#)12D");
-    } else if (role === "citizen") {
-      setUsername("spsshafiq_citizen");
-      setPass("Sps(#)12D");
-    }
-  };
-
   const handleLogin = async () => {
     if (!username || !pass) {
       setError("Username and password are required");
@@ -71,7 +50,6 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
     setLoading(true);
 
     try {
-      // 1. Try real backend API authentication
       const result = await api.auth.login(username, pass);
       setLoading(false);
 
@@ -89,67 +67,6 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
         onNavigate("citizen");
       }
     } catch (apiError: any) {
-      // 2. Fallback to local demo credentials if server/database is not yet reached
-      const isSuper =
-        (username === "spsshafiq" || username === "superadmin" || username === "S.p.s.admin.all" || tab === "super") &&
-        (pass === "Sps(#)12D" || pass === "admin123" || pass === "You#got789^)*()#@~77qQ");
-
-      const isCity =
-        (username === "spsshafiq_city" || username === "city.admin" || username === "dscc.admin" || username === "dncc.admin" || tab === "city") &&
-        (pass === "Sps(#)12D" || pass === "admin123");
-
-      const isWard =
-        (username === "spsshafiq_ward" || username.startsWith("ward") || tab === "ward") &&
-        (pass === "Sps(#)12D" || pass === "ward123" || pass === "admin123");
-
-      const isDriver =
-        (username === "spsshafiq_driver" || username === "driver01" || tab === "driver") &&
-        (pass === "Sps(#)12D" || pass === "driver123" || pass === "admin123");
-
-      const isCitizen =
-        (username === "spsshafiq_citizen" || username === "citizen01" || tab === "citizen") &&
-        (pass === "Sps(#)12D" || pass === "user123" || pass === "admin123");
-
-      const isBiz =
-        (username === "spsshafiq_biz" || username === "business01") && (pass === "Sps(#)12D" || pass === "business123" || pass === "admin123");
-
-      if (isSuper) {
-        setLoading(false);
-        userStorage.set({ id: "super-01", username: "spsshafiq", fullName: "Shafiq", email: "spsshafiq95@gmail.com", role: "SUPER_ADMIN" });
-        onLogin("super");
-        return;
-      }
-      if (isCity) {
-        setLoading(false);
-        userStorage.set({ id: "city-01", username: username || "spsshafiq_city", fullName: "Shafiq (DNCC Chief)", email: "spsshafiq95@gmail.com", role: "CITY_ADMIN", cityCorpId: "dncc" });
-        onLogin("city");
-        return;
-      }
-      if (isWard) {
-        setLoading(false);
-        userStorage.set({ id: "ward-01", username: username || "spsshafiq_ward", fullName: "Shafiq (Ward 01 Inspector)", email: "spsshafiq95@gmail.com", role: "WARD_ADMIN", wardId: ward });
-        onLogin("ward", ward);
-        return;
-      }
-      if (isDriver) {
-        setLoading(false);
-        userStorage.set({ id: "driver-01", username: "spsshafiq_driver", fullName: "Shafiq (Truck Driver)", email: "spsshafiq95@gmail.com", role: "DRIVER" });
-        onNavigate("collector");
-        return;
-      }
-      if (isCitizen) {
-        setLoading(false);
-        userStorage.set({ id: "citizen-01", username: "spsshafiq_citizen", fullName: "Shafiq (Citizen)", email: "spsshafiq95@gmail.com", role: "CITIZEN", points: 2847 });
-        onNavigate("citizen");
-        return;
-      }
-      if (isBiz) {
-        setLoading(false);
-        userStorage.set({ id: "biz-01", username: "spsshafiq_biz", fullName: "Shafiq Commercial Enterprise", email: "spsshafiq95@gmail.com", role: "BUSINESS" });
-        onNavigate("business");
-        return;
-      }
-
       setLoading(false);
       setError(apiError?.message || "Invalid username or password");
     }
@@ -188,7 +105,7 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
           {/* Role tabs */}
           <div className="flex flex-wrap gap-1 bg-[#061309] rounded-xl p-1 mb-5">
             <button
-              onClick={() => handleQuickFill("super")}
+              onClick={() => { setTab("super"); setError(""); }}
               className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
                 tab === "super" ? "bg-[#16a34a] text-white shadow" : "text-[#4b7a5a] hover:text-[#86efac]"
               }`}
@@ -197,7 +114,7 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
               Super
             </button>
             <button
-              onClick={() => handleQuickFill("city")}
+              onClick={() => { setTab("city"); setError(""); }}
               className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
                 tab === "city" ? "bg-[#16a34a] text-white shadow" : "text-[#4b7a5a] hover:text-[#86efac]"
               }`}
@@ -206,7 +123,7 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
               City Corp
             </button>
             <button
-              onClick={() => handleQuickFill("ward")}
+              onClick={() => { setTab("ward"); setError(""); }}
               className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
                 tab === "ward" ? "bg-[#16a34a] text-white shadow" : "text-[#4b7a5a] hover:text-[#86efac]"
               }`}
@@ -215,7 +132,7 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
               Ward
             </button>
             <button
-              onClick={() => handleQuickFill("driver")}
+              onClick={() => { setTab("driver"); setError(""); }}
               className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
                 tab === "driver" ? "bg-[#16a34a] text-white shadow" : "text-[#4b7a5a] hover:text-[#86efac]"
               }`}
@@ -224,7 +141,7 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
               Driver
             </button>
             <button
-              onClick={() => handleQuickFill("citizen")}
+              onClick={() => { setTab("citizen"); setError(""); }}
               className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
                 tab === "citizen" ? "bg-[#16a34a] text-white shadow" : "text-[#4b7a5a] hover:text-[#86efac]"
               }`}
@@ -272,7 +189,7 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
               <div>
                 <div className="text-[#38bdf8] font-mono text-xs mb-1">👤 CITIZEN USER (REWARDS & CASH OUT)</div>
                 <div className="text-[#4b7a5a] text-xs leading-relaxed">
-                  Public portal: 2,847 recycling points pre-loaded. Request cash voucher, schedule pickups, report garbage issues.
+                  Public portal: Earn recycling points, claim cash payout vouchers, schedule pickups, and report garbage issues.
                 </div>
               </div>
             )}
@@ -302,17 +219,7 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder={
-                tab === "super"
-                  ? "spsshafiq"
-                  : tab === "city"
-                  ? "spsshafiq_city"
-                  : tab === "ward"
-                  ? "spsshafiq_ward"
-                  : tab === "driver"
-                  ? "spsshafiq_driver"
-                  : "spsshafiq_citizen"
-              }
+              placeholder="Enter your registered username"
               autoComplete="username"
               className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm focus:border-[#4ade80] outline-none"
             />

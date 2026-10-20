@@ -105,14 +105,18 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
         setLoggedIn(true);
         return;
       }
-    } catch {
-      // Fallback to local credential check
-    }
-
-    if (driverPassword !== "Sps(#)12D" && driverPassword !== "driver123" && driverPassword !== driverResetPassword && driverPassword !== "admin123") {
-      setLoginError("Invalid driver credentials.");
+    } catch (err: any) {
+      if (driverResetPassword && driverPassword === driverResetPassword) {
+        setLoginError("");
+        setBalance(getDriverBalance());
+        setPickupRequests(getPickupRequests());
+        setLoggedIn(true);
+        return;
+      }
+      setLoginError(err?.message || "Invalid driver credentials. Please verify your phone or username and password.");
       return;
     }
+
     setLoginError("");
     setBalance(getDriverBalance());
     setPickupRequests(getPickupRequests());
