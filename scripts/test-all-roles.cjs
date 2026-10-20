@@ -12,6 +12,8 @@
  * 8. Account Security & Brevo Recovery (Forgot Password OTP, Reset Password, Backdoor Check)
  */
 
+process.env.NODE_ENV = "test";
+
 const http = require("http");
 
 // Mock Vercel Request & Response helper

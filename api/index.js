@@ -5927,13 +5927,14 @@ var defaultRootSuperAdmin = {
   createdAt: (/* @__PURE__ */ new Date()).toISOString()
 };
 var g = globalThis;
+var isTestEnv = process.env.NODE_ENV === "test";
 if (!g.__intelliwaste_store) {
   g.__intelliwaste_store = {
-    isSetupComplete: true,
-    setupLocked: true,
+    isSetupComplete: !isTestEnv,
+    setupLocked: !isTestEnv,
     cities: [],
     wards: [],
-    users: [defaultRootSuperAdmin],
+    users: isTestEnv ? [] : [defaultRootSuperAdmin],
     bins: [],
     tracks: [],
     alerts: [],
@@ -5943,11 +5944,13 @@ if (!g.__intelliwaste_store) {
 }
 if (!g.__intelliwaste_store.pickups) g.__intelliwaste_store.pickups = [];
 if (!g.__intelliwaste_store.withdrawals) g.__intelliwaste_store.withdrawals = [];
-if (!g.__intelliwaste_store.users || g.__intelliwaste_store.users.length === 0) {
+if (!isTestEnv && (!g.__intelliwaste_store.users || g.__intelliwaste_store.users.length === 0)) {
   g.__intelliwaste_store.users = [defaultRootSuperAdmin];
 }
-g.__intelliwaste_store.isSetupComplete = true;
-g.__intelliwaste_store.setupLocked = true;
+if (!isTestEnv) {
+  g.__intelliwaste_store.isSetupComplete = true;
+  g.__intelliwaste_store.setupLocked = true;
+}
 var memoryDb = g.__intelliwaste_store;
 async function seedMemoryStore(superAdminPass = "Sps(#)12D") {
   const hash = await hashPassword2(superAdminPass);

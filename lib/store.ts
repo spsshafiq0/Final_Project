@@ -113,14 +113,15 @@ const defaultRootSuperAdmin: StoredUser = {
 
 // Global persistent in-memory database store
 const g = globalThis as any;
+const isTestEnv = process.env.NODE_ENV === "test";
 
 if (!g.__intelliwaste_store) {
   g.__intelliwaste_store = {
-    isSetupComplete: true,
-    setupLocked: true,
+    isSetupComplete: !isTestEnv,
+    setupLocked: !isTestEnv,
     cities: [] as StoredCity[],
     wards: [] as StoredWard[],
-    users: [defaultRootSuperAdmin] as StoredUser[],
+    users: (isTestEnv ? [] : [defaultRootSuperAdmin]) as StoredUser[],
     bins: [] as StoredBin[],
     tracks: [] as StoredTrack[],
     alerts: [] as StoredAlert[],
@@ -132,11 +133,13 @@ if (!g.__intelliwaste_store) {
 // Ensure arrays exist and Super Admin is present if store was previously created
 if (!g.__intelliwaste_store.pickups) g.__intelliwaste_store.pickups = [];
 if (!g.__intelliwaste_store.withdrawals) g.__intelliwaste_store.withdrawals = [];
-if (!g.__intelliwaste_store.users || g.__intelliwaste_store.users.length === 0) {
+if (!isTestEnv && (!g.__intelliwaste_store.users || g.__intelliwaste_store.users.length === 0)) {
   g.__intelliwaste_store.users = [defaultRootSuperAdmin];
 }
-g.__intelliwaste_store.isSetupComplete = true;
-g.__intelliwaste_store.setupLocked = true;
+if (!isTestEnv) {
+  g.__intelliwaste_store.isSetupComplete = true;
+  g.__intelliwaste_store.setupLocked = true;
+}
 
 export const memoryDb = g.__intelliwaste_store;
 
