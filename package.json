@@ -6,13 +6,13 @@
   "packageManager": "pnpm@10.28.0",
   "scripts": {
     "dev": "vite",
-    "build": "prisma generate && vite build",
+    "build": "prisma generate && vite build && esbuild api/index.ts --bundle --platform=node --target=node20 --format=esm --packages=external --outfile=api/index.js && esbuild api/setup.ts --bundle --platform=node --target=node20 --format=esm --packages=external --outfile=api/setup.js",
     "preview": "vite preview",
     "format": "oxfmt",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
-    "vercel-build": "prisma generate && vite build"
+    "vercel-build": "prisma generate && vite build && esbuild api/index.ts --bundle --platform=node --target=node20 --format=esm --packages=external --outfile=api/index.js && esbuild api/setup.ts --bundle --platform=node --target=node20 --format=esm --packages=external --outfile=api/setup.js"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",
@@ -33,6 +33,7 @@
     "@types/react-dom": "^19.0.0",
     "@vercel/node": "^5.1.7",
     "@vitejs/plugin-react": "^6.0.0",
+    "esbuild": "^0.27.0",
     "oxfmt": "^0.2.0",
     "prisma": "^6.4.1",
     "tailwindcss": "^4.0.0",
