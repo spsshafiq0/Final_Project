@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { ArrowLeft, CheckCircle, Clock, Home, LogIn, LogOut, RefreshCw, ShieldCheck, Store, UserPlus, Wallet } from "lucide-react";
+import { ArrowLeft, CheckCircle, Clock, Home, LogIn, LogOut, RefreshCw, ShieldCheck, Store, UserPlus, Wallet, KeyRound } from "lucide-react";
 import NearbyBinsMap from "./NearbyBinsMap";
 import { addPickupRequest, completePickupRequest, getPickupRequests, type PickupRequest } from "../data/pickupStore";
+import api from "../lib/api";
+import ForgotPasswordModal from "./ForgotPasswordModal";
 
 interface BusinessPortalProps {
   onNavigate: (page: string) => void;
@@ -13,8 +15,6 @@ interface BusinessProfile {
   password: string;
 }
 
-import api from "../lib/api";
-
 const PROFILE_KEY = "intelliwaste-business-profile";
 
 export default function BusinessPortal({ onNavigate }: BusinessPortalProps) {
@@ -24,6 +24,7 @@ export default function BusinessPortal({ onNavigate }: BusinessPortalProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
+  const [forgotOpen, setForgotOpen] = useState(false);
   const [balance, setBalance] = useState(Number(localStorage.getItem("intelliwaste-business-balance") ?? "6000"));
   const [requests, setRequests] = useState<PickupRequest[]>(getPickupRequests());
   const [form, setForm] = useState({ area: "Mohammadpur", address: "", wasteType: "Restaurant Mixed Waste", date: "", amount: "450" });
@@ -142,6 +143,17 @@ export default function BusinessPortal({ onNavigate }: BusinessPortalProps) {
               {authMode === "register" && <input value={shopName} onChange={(event) => setShopName(event.target.value)} placeholder="Shop or restaurant name" className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#4ade80]" />}
               <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email address" autoComplete="email" className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#4ade80]" />
               <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} onKeyDown={(event) => event.key === "Enter" && login()} placeholder="Password" autoComplete={authMode === "login" ? "current-password" : "new-password"} className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#4ade80]" />
+              {authMode === "login" && (
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setForgotOpen(true)}
+                    className="text-xs text-[#4ade80] hover:underline flex items-center gap-1 font-medium"
+                  >
+                    <KeyRound size={12} /> Forgot password?
+                  </button>
+                </div>
+              )}
             </div>
             {authError && <div className="text-red-400 bg-red-500/10 rounded-lg px-3 py-2 text-xs mt-3">{authError}</div>}
             <button onClick={login} className="w-full bg-[#16a34a] text-white rounded-xl py-3 mt-5 font-semibold flex items-center justify-center gap-2">{authMode === "login" ? <LogIn size={16} /> : <UserPlus size={16} />}{authMode === "login" ? "Login" : "Create business account"}</button>
@@ -173,6 +185,16 @@ export default function BusinessPortal({ onNavigate }: BusinessPortalProps) {
             </div>
           </div>
         </div>
+
+        {/* Unified Brevo Email OTP Forgot Password Modal */}
+        <ForgotPasswordModal
+          isOpen={forgotOpen}
+          onClose={() => setForgotOpen(false)}
+          defaultIdentifier={email || "spsshafiq95@gmail.com"}
+          onSuccess={(newP) => {
+            setPassword(newP);
+          }}
+        />
       </div>
     );
   }

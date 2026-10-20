@@ -3,6 +3,9 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import authLogin from "../lib/handlers/auth/login";
 import authRegister from "../lib/handlers/auth/register";
 import authMe from "../lib/handlers/auth/me";
+import authForgotPassword from "../lib/handlers/auth/forgot-password";
+import authVerifyCode from "../lib/handlers/auth/verify-code";
+import authResetPassword from "../lib/handlers/auth/reset-password";
 
 import citiesIndex from "../lib/handlers/cities/index";
 import citiesId from "../lib/handlers/cities/[id]";
@@ -47,6 +50,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (subResource === "login") return authLogin(req, res);
     if (subResource === "register") return authRegister(req, res);
     if (subResource === "me") return authMe(req, res);
+    if (subResource === "forgot-password") return authForgotPassword(req, res);
+    if (subResource === "verify-code") return authVerifyCode(req, res);
+    if (subResource === "reset-password") return authResetPassword(req, res);
   }
 
   // 2. Dashboard

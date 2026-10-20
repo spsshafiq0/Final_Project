@@ -163,6 +163,10 @@ model User {
   // Points balance for gamification & cash withdrawals
   points   Int     @default(0)
 
+  // Password Reset Verification OTP
+  resetOtp        String?
+  resetOtpExpires DateTime?
+
   // A CITY_ADMIN belongs to one city corporation
   cityCorpId String?
   cityCorp   CityCorporation? @relation("CityCorpAdmins", fields: [cityCorpId], references: [id], onDelete: SetNull)

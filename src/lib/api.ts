@@ -210,6 +210,29 @@ export const api = {
       tokenStorage.remove();
       userStorage.remove();
     },
+    forgotPassword: async (identifier: string) => {
+      return request<{
+        success: boolean;
+        message: string;
+        emailMasked: string;
+        previewCode?: string;
+      }>("/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ identifier }),
+      });
+    },
+    verifyCode: async (identifier: string, code: string) => {
+      return request<{ valid: boolean; message: string }>("/auth/verify-code", {
+        method: "POST",
+        body: JSON.stringify({ identifier, code }),
+      });
+    },
+    resetPassword: async (identifier: string, code: string, newPassword: string) => {
+      return request<{ success: boolean; message: string }>("/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({ identifier, code, newPassword }),
+      });
+    },
   },
 
   // City Corporations

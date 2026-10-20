@@ -24,3 +24,5 @@ logs/
 /.opencode-skills/
 
 *.docx
+
+*.code-workspace

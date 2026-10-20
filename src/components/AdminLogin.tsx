@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Recycle, Shield, ChevronRight, Eye, EyeOff, AlertCircle, KeyRound, CheckCircle, Globe2, Loader2, Truck, Users } from "lucide-react";
 import api, { WardItem, CityCorporationItem, userStorage } from "../lib/api";
+import ForgotPasswordModal from "./ForgotPasswordModal";
 
 interface AdminLoginProps {
   onLogin: (role: "super" | "city" | "ward", targetId?: string | number) => void;
@@ -16,10 +17,6 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
-  const [resetStep, setResetStep] = useState<1 | 2 | 3>(1);
-  const [resetPhone, setResetPhone] = useState("");
-  const [resetCode, setResetCode] = useState("");
-  const [newPassword, setNewPassword] = useState("");
 
   const [dynamicWards, setDynamicWards] = useState<WardItem[]>([]);
   const [dynamicCities, setDynamicCities] = useState<CityCorporationItem[]>([]);
@@ -344,17 +341,15 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
             </div>
           </div>
 
-          {tab === "ward" && (
+          <div className="flex justify-end mb-4">
             <button
-              onClick={() => {
-                setForgotOpen(true);
-                setResetStep(1);
-              }}
-              className="text-xs text-[#4ade80] hover:underline mb-4 flex items-center gap-1.5"
+              type="button"
+              onClick={() => setForgotOpen(true)}
+              className="text-xs text-[#4ade80] hover:underline flex items-center gap-1.5 font-medium"
             >
               <KeyRound size={12} /> Forgot password?
             </button>
-          )}
+          </div>
 
           {error && (
             <div className="flex items-center gap-2 text-red-400 text-xs mb-4 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
@@ -458,91 +453,15 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
         </div>
       </div>
 
-      {/* Forgot Password Modal */}
-      {forgotOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center p-4"
-          onClick={() => setForgotOpen(false)}
-        >
-          <div
-            className="w-full max-w-md bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-5 sm:p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 bg-[#16a34a]/20 rounded-xl flex items-center justify-center">
-                <KeyRound size={18} className="text-[#4ade80]" />
-              </div>
-              <div>
-                <div className="font-display font-700 text-white">Reset ward password</div>
-                <div className="text-[#4b7a5a] text-xs">Secure mobile verification</div>
-              </div>
-            </div>
-            {resetStep === 1 && (
-              <div className="space-y-4">
-                <input
-                  value={resetPhone}
-                  onChange={(e) => setResetPhone(e.target.value)}
-                  placeholder="Account phone number"
-                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-3 text-white text-sm outline-none"
-                />
-                <button
-                  disabled={!resetPhone}
-                  onClick={() => setResetStep(2)}
-                  className="w-full bg-[#16a34a] disabled:opacity-40 text-white rounded-xl py-3 text-sm font-semibold"
-                >
-                  Send verification code
-                </button>
-              </div>
-            )}
-            {resetStep === 2 && (
-              <div className="space-y-4">
-                <div className="text-[#86efac] text-sm">
-                  A 6-digit code was sent to {resetPhone}. For this demo, use{" "}
-                  <span className="font-mono text-[#4ade80]">123456</span>.
-                </div>
-                <input
-                  value={resetCode}
-                  onChange={(e) => setResetCode(e.target.value)}
-                  inputMode="numeric"
-                  maxLength={6}
-                  placeholder="Enter 6-digit code"
-                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-3 text-white text-sm outline-none"
-                />
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Create new password"
-                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-3 text-white text-sm outline-none"
-                />
-                <button
-                  disabled={resetCode !== "123456" || newPassword.length < 6}
-                  onClick={() => {
-                    setPass(newPassword);
-                    setResetStep(3);
-                  }}
-                  className="w-full bg-[#16a34a] disabled:opacity-40 text-white rounded-xl py-3 text-sm font-semibold"
-                >
-                  Reset password
-                </button>
-              </div>
-            )}
-            {resetStep === 3 && (
-              <div className="text-center py-4">
-                <CheckCircle size={38} className="text-[#4ade80] mx-auto mb-3" />
-                <div className="text-white font-display font-700">Password updated</div>
-                <div className="text-[#4b7a5a] text-sm mt-1 mb-5">Your new password is ready to use.</div>
-                <button
-                  onClick={() => setForgotOpen(false)}
-                  className="w-full bg-[#16a34a] text-white rounded-xl py-3 text-sm font-semibold"
-                >
-                  Return to login
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Unified Brevo Email OTP Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={forgotOpen}
+        onClose={() => setForgotOpen(false)}
+        defaultIdentifier={username || "spsshafiq95@gmail.com"}
+        onSuccess={(newP) => {
+          setPass(newP);
+        }}
+      />
     </div>
   );
 }

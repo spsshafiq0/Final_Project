@@ -2,6 +2,7 @@ import type { VercelResponse } from "@vercel/node";
 import prisma from "../../prisma";
 import { hashPassword } from "../../auth";
 import { apiHandler, AuthenticatedRequest } from "../../middleware";
+import { sendWelcomeCredentialsEmail } from "../../email";
 
 export default apiHandler(
   async (req: AuthenticatedRequest, res: VercelResponse, currentUser: any) => {
@@ -58,8 +59,8 @@ export default apiHandler(
     }
 
     if (req.method === "POST") {
-      if (!currentUser || !["SUPER_ADMIN", "CITY_ADMIN"].includes(currentUser.role)) {
-        return res.status(403).json({ error: "Only Super Admin or City Corp Admin can create staff/admin accounts" });
+      if (!currentUser || !["SUPER_ADMIN", "CITY_ADMIN", "WARD_ADMIN"].includes(currentUser.role)) {
+        return res.status(403).json({ error: "Only administrators can create staff or driver accounts" });
       }
 
       const {
@@ -94,8 +95,10 @@ export default apiHandler(
       }
 
       if (role === "WARD_ADMIN") {
+        if (currentUser.role === "WARD_ADMIN") {
+          return res.status(403).json({ error: "Ward admins cannot create another ward admin" });
+        }
         if (currentUser.role === "CITY_ADMIN") {
-          // Verify ward belongs to City Admin's city
           if (!wardId) {
             return res.status(400).json({ error: "wardId is required for Ward Admin" });
           }
@@ -106,12 +109,21 @@ export default apiHandler(
         }
       }
 
+      if (role === "DRIVER" && currentUser.role === "WARD_ADMIN") {
+        // Automatically link driver to the ward of the Ward Admin
+        if (!wardId && currentUser.wardId) {
+          // Assigned below
+        }
+      }
+
       const existing = await prisma.user.findUnique({ where: { username } });
       if (existing) {
         return res.status(409).json({ error: "Username already exists" });
       }
 
       const hashedPassword = await hashPassword(password);
+
+      const assignedWardId = wardId || (currentUser.role === "WARD_ADMIN" ? currentUser.wardId : null);
 
       const user = await prisma.user.create({
         data: {
@@ -124,7 +136,7 @@ export default apiHandler(
           address: address || null,
           role,
           cityCorpId: cityCorpId || null,
-          wardId: wardId || null,
+          wardId: assignedWardId,
         },
         select: {
           id: true,
@@ -138,6 +150,17 @@ export default apiHandler(
           wardId: true,
         },
       });
+
+      // Send automated welcome email with credentials via Brevo
+      if (email && email.includes("@")) {
+        sendWelcomeCredentialsEmail({
+          email,
+          fullName,
+          username,
+          password,
+          role,
+        }).catch((err) => console.error("[Brevo Email Error]", err.message));
+      }
 
       return res.status(201).json(user);
     }

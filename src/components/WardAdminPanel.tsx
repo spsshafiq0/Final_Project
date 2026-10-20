@@ -45,6 +45,7 @@ function AddTrackModal({ wardId, onClose, onAdd }: { wardId: number; onClose: ()
     driver: "",
     phone: "",
     username: "",
+    password: "Sps(#)12D",
     email: "",
     nid: "",
     address: "",
@@ -59,13 +60,13 @@ function AddTrackModal({ wardId, onClose, onAdd }: { wardId: number; onClose: ()
       <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-5 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <div className="font-display font-700 text-white">Add Collection Track</div>
+            <div className="font-display font-700 text-white">Add Collection Track & Driver</div>
             <div className="text-[#4ade80] text-xs font-mono">{ward?.name} — {ward?.area}</div>
           </div>
           <button onClick={onClose}><X size={16} className="text-[#4b7a5a]" /></button>
         </div>
         <div className="bg-[#061309] border border-[#1a3d22] rounded-xl p-3 mb-4">
-          <div className="text-[#4b7a5a] text-xs">This track will be assigned to <span className="text-[#4ade80] font-mono">{ward?.name}</span> only. You cannot add tracks for other wards.</div>
+          <div className="text-[#4b7a5a] text-xs">Assign track to <span className="text-[#4ade80] font-mono">{ward?.name}</span>. Driver will receive credentials via email.</div>
         </div>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
@@ -79,7 +80,7 @@ function AddTrackModal({ wardId, onClose, onAdd }: { wardId: number; onClose: ()
             </div>
           </div>
           <div>
-            <label className="block text-[#4b7a5a] text-xs font-mono mb-1">DRIVER NAME</label>
+            <label className="block text-[#4b7a5a] text-xs font-mono mb-1">DRIVER FULL NAME</label>
             <input value={form.driver} onChange={e => setForm(f => ({ ...f, driver: e.target.value }))} placeholder="Full name" className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#4ade80] placeholder-[#4b7a5a]" />
           </div>
           <div>
@@ -92,19 +93,29 @@ function AddTrackModal({ wardId, onClose, onAdd }: { wardId: number; onClose: ()
               <input value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} placeholder="driver.username" className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#4ade80]" />
             </div>
             <div>
-              <label className="block text-[#4b7a5a] text-xs font-mono mb-1">EMAIL</label>
+              <label className="block text-[#4b7a5a] text-xs font-mono mb-1">OFFICIAL EMAIL</label>
               <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="driver@example.com" className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#4ade80]" />
             </div>
           </div>
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
+              <label className="block text-[#4b7a5a] text-xs font-mono mb-1">ACCOUNT PASSWORD</label>
+              <input
+                type="password"
+                value={form.password}
+                onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                placeholder="Assign password (min 6 chars)"
+                className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#4ade80]"
+              />
+            </div>
+            <div>
               <label className="block text-[#4b7a5a] text-xs font-mono mb-1">NID NUMBER</label>
               <input value={form.nid} onChange={e => setForm(f => ({ ...f, nid: e.target.value }))} placeholder="National ID" className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#4ade80]" />
             </div>
-            <div>
-              <label className="block text-[#4b7a5a] text-xs font-mono mb-1">FULL ADDRESS</label>
-              <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Driver address" className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#4ade80]" />
-            </div>
+          </div>
+          <div>
+            <label className="block text-[#4b7a5a] text-xs font-mono mb-1">FULL ADDRESS</label>
+            <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Driver address" className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#4ade80]" />
           </div>
           <div>
             <label className="block text-[#4b7a5a] text-xs font-mono mb-1">ROUTE DESCRIPTION</label>
@@ -112,9 +123,23 @@ function AddTrackModal({ wardId, onClose, onAdd }: { wardId: number; onClose: ()
           </div>
         </div>
         <div className="flex gap-3 mt-5">
-          <button onClick={onClose} className="flex-1 border border-[#1a3d22] text-[#4b7a5a] rounded-xl py-2.5 text-sm">Cancel</button>
+          <button onClick={onClose} className="flex-1 border border-[#1a3d22] text-[#4b7a5a] rounded-xl py-2.5 text-sm hover:border-[#4ade80]/30 transition-colors">Cancel</button>
           <button
             onClick={() => {
+              if (form.username && form.password && form.driver) {
+                api.users.create({
+                  username: form.username,
+                  password: form.password,
+                  fullName: form.driver,
+                  email: form.email,
+                  phone: form.phone,
+                  nid: form.nid,
+                  address: form.address,
+                  role: "DRIVER",
+                  wardId: String(wardId),
+                }).catch(err => console.warn("Driver auto-create notice:", err.message));
+              }
+
               onAdd({
                 ...form,
                 wardId,
@@ -127,9 +152,9 @@ function AddTrackModal({ wardId, onClose, onAdd }: { wardId: number; onClose: ()
               });
               onClose();
             }}
-            className="flex-1 bg-[#16a34a] text-white rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-2"
+            className="flex-1 bg-[#16a34a] text-white rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#15803d] transition-colors"
           >
-            <Save size={14} /> Save Track
+            <Save size={14} /> Save & Send Credentials
           </button>
         </div>
       </div>

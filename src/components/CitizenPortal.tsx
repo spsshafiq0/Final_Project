@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Award, Recycle, Camera, MapPin, Calendar, TrendingUp, Gift, Star, ChevronRight, Upload, CheckCircle, AlertTriangle, Clock, Leaf, Users, Trophy, ArrowLeft, UserPlus, LogIn, Wallet, ShieldCheck, RefreshCw, Banknote, CheckCircle2, Download, Building2, X } from "lucide-react";
+import { Award, Recycle, Camera, MapPin, Calendar, TrendingUp, Gift, Star, ChevronRight, Upload, CheckCircle, AlertTriangle, Clock, Leaf, Users, Trophy, ArrowLeft, UserPlus, LogIn, Wallet, ShieldCheck, RefreshCw, Banknote, CheckCircle2, Download, Building2, X, KeyRound } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import NearbyBinsMap from "./NearbyBinsMap";
 import { addPickupRequest, getPickupRequests, completePickupRequest, type PickupRequest } from "../data/pickupStore";
 import api, { WithdrawalItem } from "../lib/api";
 import { wards } from "../data/cityData";
+import ForgotPasswordModal from "./ForgotPasswordModal";
 
 interface CitizenPortalProps {
   onNavigate: (page: string) => void;
@@ -58,6 +59,7 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [authForm, setAuthForm] = useState({ contact: "", username: "", email: "", password: "" });
   const [authError, setAuthError] = useState("");
+  const [forgotOpen, setForgotOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [userPoints, setUserPoints] = useState(2847);
   const [reportStep, setReportStep] = useState(1);
@@ -272,6 +274,17 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
               <input value={authForm.username} onChange={e => setAuthForm(f => ({ ...f, username: e.target.value }))} placeholder={authMode === "login" ? "Username or contact number" : "Choose a username"} className="w-full border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm outline-none focus:border-[#16a34a]" />
               {authMode === "register" && <input type="email" value={authForm.email} onChange={e => setAuthForm(f => ({ ...f, email: e.target.value }))} placeholder="Email address" className="w-full border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm outline-none focus:border-[#16a34a]" />}
               <input type="password" value={authForm.password} onChange={e => setAuthForm(f => ({ ...f, password: e.target.value }))} onKeyDown={e => e.key === "Enter" && submitAuth()} placeholder="Password" className="w-full border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm outline-none focus:border-[#16a34a]" />
+              {authMode === "login" && (
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setForgotOpen(true)}
+                    className="text-xs text-[#16a34a] hover:underline flex items-center gap-1 font-medium"
+                  >
+                    <KeyRound size={12} /> Forgot password?
+                  </button>
+                </div>
+              )}
             </div>
             {authError && <div className="text-red-600 bg-red-50 rounded-lg px-3 py-2 text-xs mt-3">{authError}</div>}
             <button onClick={submitAuth} className="w-full bg-[#052e16] text-white rounded-xl py-3 mt-5 font-semibold flex items-center justify-center gap-2">
@@ -304,6 +317,16 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
             </div>
           </div>
         </div>
+
+        {/* Unified Brevo Email OTP Forgot Password Modal */}
+        <ForgotPasswordModal
+          isOpen={forgotOpen}
+          onClose={() => setForgotOpen(false)}
+          defaultIdentifier={authForm.email || authForm.username || "spsshafiq95@gmail.com"}
+          onSuccess={(newP) => {
+            setAuthForm(f => ({ ...f, password: newP }));
+          }}
+        />
       </div>
     );
   }
