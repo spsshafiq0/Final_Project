@@ -34,17 +34,30 @@ import seedDatabase from "../lib/handlers/seed";
 import setupHandler from "../lib/handlers/setup/index";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Extract path components
-  const urlClean = (req.url || "").split("?")[0];
-  const urlPath = urlClean.replace(/^\/api\/?/, "").replace(/^\//, "");
-  
-  const segments = Array.isArray(req.query.path)
-    ? req.query.path
-    : typeof req.query.path === "string"
-    ? req.query.path.split("/").filter(Boolean)
-    : urlPath.split("/").filter(Boolean);
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,PATCH,DELETE,POST,PUT");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
+  );
 
-  const [resource, subResource] = segments;
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  try {
+    // Extract path components
+    const urlClean = (req.url || "").split("?")[0];
+    const urlPath = urlClean.replace(/^\/api\/?/, "").replace(/^\//, "");
+    
+    const segments = Array.isArray(req.query.path)
+      ? req.query.path
+      : typeof req.query.path === "string"
+      ? req.query.path.split("/").filter(Boolean)
+      : urlPath.split("/").filter(Boolean);
+
+    const [resource, subResource] = segments;
 
   // 1. Auth routes
   if (resource === "auth") {
@@ -140,4 +153,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   return res.status(404).json({ error: `API route /api/${segments.join("/")} not found` });
+  } catch (err: any) {
+    console.error("[API Router Uncaught Error]", err);
+    return res.status(500).json({
+      error: err?.message || "Internal server error occurred in API router",
+    });
+  }
 }

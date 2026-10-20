@@ -338,7 +338,7 @@ export const api = {
       return request<TrackItem[]>(`/tracks${query}`);
     },
     getById: (id: string) => request<TrackItem>(`/tracks/${id}`),
-    create: (data: Partial<TrackItem>) =>
+    create: (data: Partial<TrackItem> & { driverName?: string; driverPhone?: string; driverUsername?: string; driverEmail?: string; driverPassword?: string; [key: string]: any }) =>
       request<TrackItem>("/tracks", {
         method: "POST",
         body: JSON.stringify(data),

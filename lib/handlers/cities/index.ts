@@ -108,7 +108,7 @@ export default apiHandler(
               cityCorpId: createdCity.id,
               active: true,
             },
-          }).catch((err) => console.warn("Admin create error in PG:", err.message));
+          }).catch((err: any) => console.warn("Admin create error in PG:", err.message));
         }
       } catch (dbErr: any) {
         console.warn("[City Create Notice] Operating in resilient memory mode:", dbErr.message);

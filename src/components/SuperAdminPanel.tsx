@@ -141,6 +141,10 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
       address: city.address || "",
       phone: city.phone || "",
       email: city.email || "",
+      adminName: "",
+      adminUsername: "",
+      adminEmail: "",
+      adminPassword: "",
     });
     setShowCityModal(true);
   };
