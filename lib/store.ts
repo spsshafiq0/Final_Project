@@ -109,8 +109,14 @@ if (!g.__intelliwaste_store) {
     bins: [] as StoredBin[],
     tracks: [] as StoredTrack[],
     alerts: [] as StoredAlert[],
+    pickups: [] as any[],
+    withdrawals: [] as any[],
   };
 }
+
+// Ensure arrays exist if store was previously created
+if (!g.__intelliwaste_store.pickups) g.__intelliwaste_store.pickups = [];
+if (!g.__intelliwaste_store.withdrawals) g.__intelliwaste_store.withdrawals = [];
 
 export const memoryDb = g.__intelliwaste_store;
 
