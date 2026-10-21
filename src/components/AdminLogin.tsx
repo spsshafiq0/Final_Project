@@ -94,7 +94,7 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
       setLoading(false)
 
       if (!result?.user) {
-        throw new Error(result?.error || "Login failed: Invalid server response")
+        throw new Error((result as any)?.error || "Login failed: Invalid server response")
       }
 
       if (result.user.role === "SUPER_ADMIN") {
