@@ -5888,7 +5888,7 @@ function apiHandler(handler2, options) {
     if (options?.allowedMethods && !options.allowedMethods.includes(req.method || "")) {
       return res.status(405).json({ error: `Method ${req.method} not allowed` });
     }
-    let user2;
+    let user;
     if (options?.requireAuth || options?.roles && options.roles.length > 0) {
       const authUser = authenticate(req);
       if (!authUser) {
@@ -5897,22 +5897,21 @@ function apiHandler(handler2, options) {
       if (options?.roles && !options.roles.includes(authUser.role)) {
         return res.status(403).json({ error: "Forbidden: Insufficient permissions" });
       }
-      user2 = authUser;
+      user = authUser;
     } else {
       const authUser = authenticate(req);
-      if (authUser) user2 = authUser;
+      if (authUser) user = authUser;
     }
     try {
-      await handler2(req, res, user2);
+      await handler2(req, res, user);
     } catch (error) {
       console.warn("[API Resilient Interceptor Caught Error]", error?.message || error);
       if (!res.writableEnded) {
         if (req.method === "GET") {
           return res.status(200).json([]);
         }
-        return res.status(200).json({
-          success: true,
-          message: "Request handled via resilient fallback mode"
+        return res.status(500).json({
+          error: error?.message || "Internal server error occurred"
         });
       }
     }
@@ -5980,6 +5979,7 @@ var login_default = apiHandler(
       return res.status(400).json({ error: "Username and password are required" });
     }
     const cleanUsername = String(username).toLowerCase().trim();
+    let user = null;
     let dbError = null;
     try {
       user = await prisma_default.user.findFirst({
@@ -6192,30 +6192,30 @@ var me_default = apiHandler(
     if (!currentUser) {
       return res.status(401).json({ error: "Not authenticated" });
     }
-    const user2 = await prisma_default.user.findUnique({
+    const user = await prisma_default.user.findUnique({
       where: { id: currentUser.userId },
       include: {
         cityCorp: true,
         ward: true
       }
     });
-    if (!user2 || !user2.active) {
+    if (!user || !user.active) {
       return res.status(401).json({ error: "User account inactive or not found" });
     }
     return res.status(200).json({
       user: {
-        id: user2.id,
-        username: user2.username,
-        fullName: user2.fullName,
-        email: user2.email,
-        phone: user2.phone,
-        role: user2.role,
-        points: user2.points,
-        address: user2.address,
-        cityCorpId: user2.cityCorpId,
-        cityCorp: user2.cityCorp,
-        wardId: user2.wardId,
-        ward: user2.ward
+        id: user.id,
+        username: user.username,
+        fullName: user.fullName,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        points: user.points,
+        address: user.address,
+        cityCorpId: user.cityCorpId,
+        cityCorp: user.cityCorp,
+        wardId: user.wardId,
+        ward: user.ward
       }
     });
   },
@@ -6590,7 +6590,7 @@ var forgot_password_default = apiHandler(
       return res.status(400).json({ error: "Please provide your registered email or username." });
     }
     const cleanInput = identifier.trim().toLowerCase();
-    let user2 = null;
+    let user = null;
     let dbError = null;
     try {
       const whereCondition = {
@@ -6602,10 +6602,10 @@ var forgot_password_default = apiHandler(
       if (role && typeof role === "string") {
         whereCondition.role = role;
       }
-      user2 = await prisma_default.user.findFirst({
+      user = await prisma_default.user.findFirst({
         where: whereCondition
       });
-      if (!user2 && role) {
+      if (!user && role) {
         const otherRoleUser = await prisma_default.user.findFirst({
           where: {
             OR: [
@@ -6624,12 +6624,12 @@ var forgot_password_default = apiHandler(
       dbError = e?.message || String(e);
       console.warn("Prisma lookup failed, checking resilient memory store:", e.message);
     }
-    if (!user2) {
+    if (!user) {
       const memUser = memoryDb.users.find(
         (u) => (u.username.toLowerCase() === cleanInput || u.email && u.email.toLowerCase() === cleanInput) && (!role || u.role === role)
       );
       if (memUser) {
-        user2 = {
+        user = {
           id: memUser.id,
           username: memUser.username,
           fullName: memUser.fullName,
@@ -6647,7 +6647,7 @@ var forgot_password_default = apiHandler(
         }
       }
     }
-    if (!user2) {
+    if (!user) {
       if (dbError && Boolean(process.env.VERCEL || process.env.NODE_ENV === "production")) {
         return res.status(503).json({
           error: `Database connection error: Unable to lookup account because PostgreSQL is unreachable (${dbError}). Please verify your DATABASE_URL in Vercel settings.`
@@ -6657,7 +6657,7 @@ var forgot_password_default = apiHandler(
         error: "No account found matching this username or email address."
       });
     }
-    const recipientEmail = user2.email;
+    const recipientEmail = user.email;
     if (!recipientEmail || !recipientEmail.includes("@")) {
       return res.status(400).json({
         error: "No official email address is registered for this account. Please contact system support."
@@ -6667,23 +6667,23 @@ var forgot_password_default = apiHandler(
     const expiresInMinutes = 10;
     const expiresAt = Date.now() + expiresInMinutes * 60 * 1e3;
     const recoveryToken = signRecoveryToken({
-      userId: user2.id,
-      username: user2.username,
+      userId: user.id,
+      username: user.username,
       email: recipientEmail,
       otpCode,
-      role: user2.role
+      role: user.role
     });
-    otpStore_default.set(user2.username, {
+    otpStore_default.set(user.username, {
       code: otpCode,
-      userId: user2.id,
-      fullName: user2.fullName,
+      userId: user.id,
+      fullName: user.fullName,
       email: recipientEmail,
       expiresAt
     });
     otpStore_default.set(recipientEmail, {
       code: otpCode,
-      userId: user2.id,
-      fullName: user2.fullName,
+      userId: user.id,
+      fullName: user.fullName,
       email: recipientEmail,
       expiresAt
     });
@@ -6691,8 +6691,8 @@ var forgot_password_default = apiHandler(
       await prisma_default.user.updateMany({
         where: {
           OR: [
-            { id: user2.id },
-            { username: user2.username },
+            { id: user.id },
+            { username: user.username },
             { email: recipientEmail }
           ]
         },
@@ -6707,7 +6707,7 @@ var forgot_password_default = apiHandler(
     try {
       await sendPasswordResetOtpEmail({
         email: recipientEmail,
-        fullName: user2.fullName,
+        fullName: user.fullName,
         otpCode,
         expiresInMinutes
       });
@@ -6747,7 +6747,7 @@ var verify_code_default = apiHandler(
       return res.status(200).json({ valid: true, message: "Verification code is valid." });
     }
     try {
-      const user2 = await prisma_default.user.findFirst({
+      const user = await prisma_default.user.findFirst({
         where: {
           OR: [
             { username: { equals: cleanId, mode: "insensitive" } },
@@ -6755,7 +6755,7 @@ var verify_code_default = apiHandler(
           ]
         }
       });
-      if (user2 && user2.resetOtp === cleanCode && user2.resetOtpExpires && new Date(user2.resetOtpExpires).getTime() > Date.now()) {
+      if (user && user.resetOtp === cleanCode && user.resetOtpExpires && new Date(user.resetOtpExpires).getTime() > Date.now()) {
         return res.status(200).json({ valid: true, message: "Verification code is valid." });
       }
     } catch (e) {
@@ -6795,9 +6795,9 @@ var reset_password_default = apiHandler(
         isCodeValid = true;
       }
     }
-    let user2 = null;
+    let user = null;
     try {
-      user2 = await prisma_default.user.findFirst({
+      user = await prisma_default.user.findFirst({
         where: {
           OR: [
             { username: { equals: cleanId, mode: "insensitive" } },
@@ -6805,7 +6805,7 @@ var reset_password_default = apiHandler(
           ]
         }
       });
-      if (!isCodeValid && user2 && user2.resetOtp === cleanCode && user2.resetOtpExpires && new Date(user2.resetOtpExpires).getTime() > Date.now()) {
+      if (!isCodeValid && user && user.resetOtp === cleanCode && user.resetOtpExpires && new Date(user.resetOtpExpires).getTime() > Date.now()) {
         isCodeValid = true;
       }
     } catch (e) {
@@ -7643,7 +7643,7 @@ var tracks_default = apiHandler(
         const cleanUser = String(driverUsername).toLowerCase().trim();
         const hashedPass = await hashPassword(driverPassword);
         try {
-          const user2 = await prisma_default.user.create({
+          const user = await prisma_default.user.create({
             data: {
               username: cleanUser,
               password: hashedPass,
@@ -7657,7 +7657,7 @@ var tracks_default = apiHandler(
               active: true
             }
           });
-          assignedDriverId = user2.id;
+          assignedDriverId = user.id;
         } catch (uErr) {
           console.warn("[Driver User PG Create Notice]", uErr.message);
         }
@@ -8124,9 +8124,9 @@ var id_default5 = apiHandler(
     if (!id) {
       return res.status(400).json({ error: "User ID is required" });
     }
-    let user2 = null;
+    let user = null;
     try {
-      user2 = await prisma_default.user.findUnique({
+      user = await prisma_default.user.findUnique({
         where: { id },
         select: {
           id: true,
@@ -8145,20 +8145,20 @@ var id_default5 = apiHandler(
       });
     } catch {
     }
-    if (!user2) {
-      user2 = memoryDb.users.find((u) => u.id === id || u.username === id);
+    if (!user) {
+      user = memoryDb.users.find((u) => u.id === id || u.username === id);
     }
-    if (!user2) {
+    if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
     if (req.method === "GET") {
-      return res.status(200).json(user2);
+      return res.status(200).json(user);
     }
     if (req.method === "PUT") {
       const isSuper = currentUser?.role === "SUPER_ADMIN";
-      const isSelf = currentUser?.userId === id || currentUser?.username === user2.username;
-      const isCityAdmin = currentUser?.role === "CITY_ADMIN" && currentUser?.cityCorpId && user2.cityCorpId === currentUser.cityCorpId;
-      const isWardAdmin = currentUser?.role === "WARD_ADMIN" && currentUser?.wardId && user2.wardId === currentUser.wardId;
+      const isSelf = currentUser?.userId === id || currentUser?.username === user.username;
+      const isCityAdmin = currentUser?.role === "CITY_ADMIN" && currentUser?.cityCorpId && user.cityCorpId === currentUser.cityCorpId;
+      const isWardAdmin = currentUser?.role === "WARD_ADMIN" && currentUser?.wardId && user.wardId === currentUser.wardId;
       if (!isSuper && !isSelf && !isCityAdmin && !isWardAdmin) {
         return res.status(403).json({ error: "Forbidden: You do not have permission to modify this user account" });
       }
@@ -8172,7 +8172,7 @@ var id_default5 = apiHandler(
         cityCorpId,
         wardId
       } = req.body || {};
-      if (role && role !== user2.role && !isSuper) {
+      if (role && role !== user.role && !isSuper) {
         return res.status(403).json({ error: "Forbidden: Only Super Admin can change account roles" });
       }
       let hashedPassword;
@@ -8182,14 +8182,14 @@ var id_default5 = apiHandler(
         }
         hashedPassword = await hashPassword(password);
       }
-      if (fullName) user2.fullName = fullName;
-      if (email !== void 0) user2.email = email;
-      if (phone !== void 0) user2.phone = phone;
-      if (hashedPassword) user2.password = hashedPassword;
-      if (active !== void 0 && (isSuper || isCityAdmin)) user2.active = Boolean(active);
-      if (role && isSuper) user2.role = role;
-      if (cityCorpId !== void 0 && isSuper) user2.cityCorpId = cityCorpId;
-      if (wardId !== void 0 && (isSuper || isCityAdmin)) user2.wardId = wardId;
+      if (fullName) user.fullName = fullName;
+      if (email !== void 0) user.email = email;
+      if (phone !== void 0) user.phone = phone;
+      if (hashedPassword) user.password = hashedPassword;
+      if (active !== void 0 && (isSuper || isCityAdmin)) user.active = Boolean(active);
+      if (role && isSuper) user.role = role;
+      if (cityCorpId !== void 0 && isSuper) user.cityCorpId = cityCorpId;
+      if (wardId !== void 0 && (isSuper || isCityAdmin)) user.wardId = wardId;
       const memUserIdx = memoryDb.users.findIndex((u) => u.id === id || u.username === id);
       if (memUserIdx >= 0) {
         if (fullName) memoryDb.users[memUserIdx].fullName = fullName;
@@ -8217,15 +8217,15 @@ var id_default5 = apiHandler(
         }).catch(() => null);
       } catch {
       }
-      return res.status(200).json(user2);
+      return res.status(200).json(user);
     }
     if (req.method === "DELETE") {
       const isSuper = currentUser?.role === "SUPER_ADMIN";
-      const isCityAdmin = currentUser?.role === "CITY_ADMIN" && currentUser?.cityCorpId && user2.cityCorpId === currentUser.cityCorpId;
+      const isCityAdmin = currentUser?.role === "CITY_ADMIN" && currentUser?.cityCorpId && user.cityCorpId === currentUser.cityCorpId;
       if (!isSuper && !isCityAdmin) {
         return res.status(403).json({ error: "Forbidden: Only administrators can delete users" });
       }
-      if (user2.role === "SUPER_ADMIN") {
+      if (user.role === "SUPER_ADMIN") {
         return res.status(403).json({ error: "Forbidden: Super Admin accounts cannot be deleted" });
       }
       try {

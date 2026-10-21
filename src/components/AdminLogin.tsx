@@ -93,6 +93,10 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
       const result = await api.auth.login(username, pass)
       setLoading(false)
 
+      if (!result?.user) {
+        throw new Error(result?.error || "Login failed: Invalid server response")
+      }
+
       if (result.user.role === "SUPER_ADMIN") {
         onLogin("super")
       } else if (result.user.role === "CITY_ADMIN") {

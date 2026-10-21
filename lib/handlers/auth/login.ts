@@ -17,6 +17,7 @@ export default apiHandler(
 
     const cleanUsername = String(username).toLowerCase().trim()
 
+    let user: any = null
     let dbError: string | null = null
 
     // 1. Try Prisma DB

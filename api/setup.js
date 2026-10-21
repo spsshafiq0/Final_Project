@@ -5897,9 +5897,8 @@ function apiHandler(handler, options) {
         if (req.method === "GET") {
           return res.status(200).json([]);
         }
-        return res.status(200).json({
-          success: true,
-          message: "Request handled via resilient fallback mode"
+        return res.status(500).json({
+          error: error?.message || "Internal server error occurred"
         });
       }
     }
