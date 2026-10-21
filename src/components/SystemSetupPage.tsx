@@ -24,24 +24,19 @@ export default function SystemSetupPage({ onSetupSuccess, onNavigate }: SystemSe
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    // 1. Check if browser has permanently recorded setup completion
-    const localLocked = localStorage.getItem("intelliwaste_setup_locked") === "true";
-    if (localLocked) {
-      setIsLocked(true);
-      setChecking(false);
-      return;
-    }
-
-    // 2. Query backend to verify if Super Admin is already initialized
     async function checkStatus() {
       try {
         const res = await api.setup.getStatus();
-        if (res.isSetupComplete) {
+        if (res?.isSetupComplete) {
           localStorage.setItem("intelliwaste_setup_locked", "true");
           setIsLocked(true);
+        } else {
+          localStorage.removeItem("intelliwaste_setup_locked");
+          setIsLocked(false);
         }
       } catch (e) {
-        // If status cannot be retrieved, fallback to local check
+        const localLocked = localStorage.getItem("intelliwaste_setup_locked") === "true";
+        setIsLocked(localLocked);
       } finally {
         setChecking(false);
       }

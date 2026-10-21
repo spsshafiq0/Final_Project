@@ -18,6 +18,7 @@ export default apiHandler(
 
     // 1. Look up user by username or email in Prisma DB
     let user: any = null;
+    let dbError: string | null = null;
     try {
       const whereCondition: any = {
         OR: [
@@ -50,6 +51,7 @@ export default apiHandler(
         }
       }
     } catch (e: any) {
+      dbError = e?.message || String(e);
       console.warn("Prisma lookup failed, checking resilient memory store:", e.message);
     }
 
@@ -85,6 +87,11 @@ export default apiHandler(
     }
 
     if (!user) {
+      if (dbError && Boolean(process.env.VERCEL || process.env.NODE_ENV === "production")) {
+        return res.status(503).json({
+          error: `Database connection error: Unable to lookup account because PostgreSQL is unreachable (${dbError}). Please verify your DATABASE_URL in Vercel settings.`,
+        });
+      }
       return res.status(404).json({
         error: "No account found matching this username or email address.",
       });

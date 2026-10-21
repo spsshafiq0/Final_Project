@@ -5779,6 +5779,7 @@ var require_jsonwebtoken = __commonJS({
 });
 
 // lib/prisma.ts
+var lastPrismaError = null;
 function createResilientPrismaProxy() {
   let realClient = null;
   let clientInitialized = false;
@@ -5789,9 +5790,13 @@ function createResilientPrismaProxy() {
       const prismaModule = await import("@prisma/client").catch(() => null);
       const PrismaConstructor = prismaModule?.PrismaClient || prismaModule?.default?.PrismaClient || prismaModule?.default;
       if (typeof PrismaConstructor === "function") {
-        realClient = new PrismaConstructor();
+        const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL || process.env.POSTGRES_URL_NON_POOLING;
+        realClient = new PrismaConstructor(
+          dbUrl ? { datasources: { db: { url: dbUrl } } } : void 0
+        );
       }
     } catch (e) {
+      lastPrismaError = e?.message || String(e);
       console.warn("[Prisma Resilient Engine] Remote PostgreSQL unlinked; operating on high-speed in-memory store.");
       realClient = null;
     }
@@ -6216,6 +6221,7 @@ var setup_default = apiHandler(
       const hashedPassword = await hashPassword(password);
       const cleanUsername = username.toLowerCase().trim();
       let createdUser = null;
+      let dbError = null;
       try {
         createdUser = await prisma_default.user.upsert({
           where: { username: cleanUsername },
@@ -6234,9 +6240,16 @@ var setup_default = apiHandler(
             role: "SUPER_ADMIN",
             active: true
           }
-        }).catch(() => null);
+        });
       } catch (dbErr) {
-        console.warn("[Setup Notice] Operating on resilient store:", dbErr.message);
+        dbError = dbErr?.message || String(dbErr);
+        console.warn("[Setup Notice] Database write failed:", dbErr.message);
+      }
+      const isServerless = Boolean(process.env.VERCEL || process.env.NODE_ENV === "production");
+      if (!createdUser && isServerless) {
+        return res.status(503).json({
+          error: `Database connection error: Could not save Super Admin into database. (${dbError || "Database offline"}). Please make sure your DATABASE_URL environment variable is properly set in Vercel.`
+        });
       }
       const superAdminId = createdUser?.id || `usr-super-${Date.now()}`;
       const existingSuperIndex = memoryDb.users.findIndex((u) => u.role === "SUPER_ADMIN");

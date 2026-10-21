@@ -1,6 +1,12 @@
 // IntelliWaste Zero-Crash Resilient Prisma Bridge
 // Completely eliminates module-level crashes on serverless lambdas (Vercel)
 
+let lastPrismaError: string | null = null;
+
+export function getLastDatabaseError(): string | null {
+  return lastPrismaError;
+}
+
 function createResilientPrismaProxy() {
   let realClient: any = null;
   let clientInitialized = false;
@@ -18,9 +24,18 @@ function createResilientPrismaProxy() {
         prismaModule?.default;
 
       if (typeof PrismaConstructor === "function") {
-        realClient = new PrismaConstructor();
+        const dbUrl =
+          process.env.DATABASE_URL ||
+          process.env.POSTGRES_PRISMA_URL ||
+          process.env.POSTGRES_URL ||
+          process.env.POSTGRES_URL_NON_POOLING;
+
+        realClient = new PrismaConstructor(
+          dbUrl ? { datasources: { db: { url: dbUrl } } } : undefined
+        );
       }
     } catch (e: any) {
+      lastPrismaError = e?.message || String(e);
       console.warn("[Prisma Resilient Engine] Remote PostgreSQL unlinked; operating on high-speed in-memory store.");
       realClient = null;
     }

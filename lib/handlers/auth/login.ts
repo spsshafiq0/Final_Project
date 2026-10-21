@@ -17,7 +17,7 @@ export default apiHandler(
 
     const cleanUsername = String(username).toLowerCase().trim()
 
-    let user: any = null
+    let dbError: string | null = null
 
     // 1. Try Prisma DB
     try {
@@ -34,7 +34,8 @@ export default apiHandler(
         },
       })
     } catch (e: any) {
-      console.warn("[Auth Login Notice] Fallback to memory store:", e.message)
+      dbError = e?.message || String(e)
+      console.warn("[Auth Login Notice] Database error:", e.message)
     }
 
     // 2. Fallback to memory store
@@ -59,6 +60,11 @@ export default apiHandler(
     }
 
     if (!user || !user.active) {
+      if (dbError && Boolean(process.env.VERCEL || process.env.NODE_ENV === "production")) {
+        return res.status(503).json({
+          error: `Database connection error: Unable to verify credentials because PostgreSQL is unreachable (${dbError}). Please verify your DATABASE_URL in Vercel settings.`,
+        })
+      }
       return res.status(401).json({ error: "Invalid username or password" })
     }
 

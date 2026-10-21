@@ -82,6 +82,8 @@ export default apiHandler(
 
       let createdUser: any = null;
 
+      let dbError: string | null = null;
+
       // 1. Persist to PostgreSQL if database connection is available
       try {
         createdUser = await prisma.user.upsert({
@@ -101,9 +103,18 @@ export default apiHandler(
             role: "SUPER_ADMIN",
             active: true,
           },
-        }).catch(() => null);
+        });
       } catch (dbErr: any) {
-        console.warn("[Setup Notice] Operating on resilient store:", dbErr.message);
+        dbError = dbErr?.message || String(dbErr);
+        console.warn("[Setup Notice] Database write failed:", dbErr.message);
+      }
+
+      // If on Vercel/production, a working database is mandatory for persistence
+      const isServerless = Boolean(process.env.VERCEL || process.env.NODE_ENV === "production");
+      if (!createdUser && isServerless) {
+        return res.status(503).json({
+          error: `Database connection error: Could not save Super Admin into database. (${dbError || "Database offline"}). Please make sure your DATABASE_URL environment variable is properly set in Vercel.`,
+        });
       }
 
       // 2. Persist to resilient high-speed store
