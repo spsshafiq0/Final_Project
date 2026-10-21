@@ -16,11 +16,9 @@
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",
-    "@types/pg": "^8.23.1",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^1.44.0",
-    "pg": "^8.23.1",
     "prisma": "^6.4.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
