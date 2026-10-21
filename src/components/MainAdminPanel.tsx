@@ -10,7 +10,7 @@ import {
   Navigation, ExternalLink, ClipboardList, Loader2, Coins, Wallet
 } from "lucide-react";
 import { type Ward, type Bin, type Track } from "../data/cityData";
-import api, { WardItem, BinItem, TrackItem, UserProfile, WithdrawalItem, ReportItem, userStorage } from "../lib/api";
+import api, { WardItem, BinItem, TrackItem, UserProfile, WithdrawalItem, ReportItem, AlertItem, userStorage } from "../lib/api";
 
 interface MainAdminPanelProps {
   onLogout: () => void;
@@ -18,7 +18,14 @@ interface MainAdminPanelProps {
   cityCorpId?: string;
 }
 
-const SIDEBAR = [
+interface SidebarItem {
+  id: string;
+  icon: any;
+  label: string;
+  badge?: number;
+}
+
+const SIDEBAR: SidebarItem[] = [
   { id: "overview",    icon: BarChart2, label: "City Overview" },
   { id: "wards",       icon: Globe,     label: "Ward Management" },
   { id: "rewards",     icon: Coins,     label: "Points & Cash Policy" },
@@ -26,7 +33,7 @@ const SIDEBAR = [
   { id: "tracks",      icon: Truck,     label: "All Tracks" },
   { id: "subadmins",   icon: Users,     label: "Sub-Admins" },
   { id: "waste",       icon: ClipboardList, label: "Waste Reports" },
-  { id: "alerts",      icon: Bell,      label: "Alerts", badge: 3 },
+  { id: "alerts",      icon: Bell,      label: "Alerts" },
   { id: "compliance",  icon: Shield,    label: "Compliance" },
 ];
 
@@ -582,18 +589,20 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
   const [policySaved, setPolicySaved] = useState<boolean>(false);
   const [withdrawals, setWithdrawals] = useState<WithdrawalItem[]>([]);
   const [wasteReports, setWasteReports] = useState<ReportItem[]>([]);
+  const [localAlerts, setLocalAlerts] = useState<AlertItem[]>([]);
 
   // Load from API on mount
   useEffect(() => {
     async function fetchData() {
       try {
-        const [apiWards, apiBins, apiTracks, apiUsers, apiWithdrawals, apiReports] = await Promise.all([
+        const [apiWards, apiBins, apiTracks, apiUsers, apiWithdrawals, apiReports, apiAlerts] = await Promise.all([
           api.wards.getAll(cityCorpId).catch(() => []),
           api.bins.getAll({ cityCorpId }).catch(() => []),
           api.tracks.getAll().catch(() => []),
           api.users.getAll({ role: "WARD_ADMIN", cityCorpId }).catch(() => []),
           api.withdrawals.getAll().catch(() => []),
           api.reports.getAll().catch(() => []),
+          api.alerts.getAll({ resolved: false }).catch(() => []),
         ]);
 
         if (apiReports && apiReports.length > 0) {
@@ -673,6 +682,10 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
 
         if (apiWithdrawals && apiWithdrawals.length > 0) {
           setWithdrawals(apiWithdrawals);
+        }
+
+        if (apiAlerts && apiAlerts.length > 0) {
+          setLocalAlerts(apiAlerts);
         }
 
         // Fetch reward policy for this city
@@ -924,6 +937,25 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
     document.body.removeChild(link);
   };
 
+  const handleResolveAlert = async (id: string) => {
+    try {
+      await api.alerts.resolve(id);
+      setLocalAlerts(prev => prev.filter(a => a.id !== id));
+    } catch (e) {
+      console.warn("Failed to resolve alert:", e);
+      setLocalAlerts(prev => prev.filter(a => a.id !== id));
+    }
+  };
+
+  const handleRefreshAlerts = async () => {
+    try {
+      const fresh = await api.alerts.getAll({ resolved: false });
+      setLocalAlerts(fresh || []);
+    } catch (e) {
+      console.warn("Failed to refresh alerts:", e);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-[#061309] text-[#e2f5e9] overflow-hidden">
       {/* Sidebar */}
@@ -953,6 +985,11 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
               <item.icon size={16} />
               <span className="flex-1 text-left">{item.label}</span>
               {item.badge && <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{item.badge}</span>}
+              {item.id === "alerts" && localAlerts.length > 0 && (
+                <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-mono font-bold animate-pulse">
+                  {localAlerts.length}
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -1719,28 +1756,73 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
 
           {/* ── ALERTS ── */}
           {activeTab === "alerts" && (
-            <div className="space-y-3">
-              {[
-                { type: "fire",     msg: "Bin B-012 — Fire/Smoke detected · Market Corner",  ward: localWards[0]?.name || "Ward 01", time: "3 min ago",  priority: "critical" },
-                { type: "overflow", msg: "Bin B-003 — Fill 94% · Commercial Road",          ward: localWards[1]?.name || "Ward 02", time: "11 min ago", priority: "critical" },
-                { type: "gas",      msg: "Bin B-005 — Elevated methane detected",           ward: localWards[2]?.name || "Ward 03", time: "18 min ago", priority: "high" },
-              ].map((a, i) => (
-                <div key={i} className={`bg-[#0d2414] border rounded-xl p-4 flex items-start gap-3 ${a.priority === "critical" ? "border-red-500/40" : a.priority === "high" ? "border-orange-500/30" : "border-yellow-500/20"}`}>
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${a.type === "fire" ? "bg-red-500/20" : a.type === "gas" ? "bg-yellow-500/20" : "bg-orange-500/20"}`}>
-                    {a.type === "fire" ? <Flame size={16} className="text-red-400" /> : a.type === "gas" ? <Wind size={16} className="text-yellow-400" /> : <AlertTriangle size={16} className="text-orange-400" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-white text-sm mb-0.5">{a.msg}</div>
-                    <div className="flex items-center gap-3 text-xs text-[#4b7a5a]">
-                      <span className="font-mono text-[#4ade80]">{a.ward}</span>
-                      <span>{a.time}</span>
-                    </div>
-                  </div>
-                  <span className={`text-xs px-2 py-1 rounded-full font-mono shrink-0 ${a.priority === "critical" ? "bg-red-500/20 text-red-400" : "bg-orange-500/20 text-orange-400"}`}>
-                    {a.priority.toUpperCase()}
-                  </span>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-white font-display font-700 text-base">System & IoT Alerts</h3>
+                  <p className="text-xs text-[#4b7a5a]">Live sensors and hazard warnings across all wards</p>
                 </div>
-              ))}
+                <button
+                  onClick={handleRefreshAlerts}
+                  className="flex items-center gap-1.5 text-xs text-[#4ade80] hover:text-[#86efac] bg-[#0d2414] border border-[#1a3d22] px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <RefreshCw size={12} /> Refresh
+                </button>
+              </div>
+
+              {localAlerts.length === 0 ? (
+                <div className="text-center py-16 bg-[#0d2414] border border-[#1a3d22] rounded-2xl">
+                  <div className="w-14 h-14 rounded-2xl bg-green-500/10 flex items-center justify-center mx-auto mb-4 border border-green-500/20">
+                    <CheckCircle size={28} className="text-[#4ade80]" />
+                  </div>
+                  <div className="text-lg font-display font-700 text-white mb-1">No Active Alerts</div>
+                  <div className="text-sm text-[#4b7a5a]">All bins and sensors across the city are operating normally.</div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {localAlerts.map((a) => {
+                    const timeAgo = a.createdAt ? (() => {
+                      const diff = Date.now() - new Date(a.createdAt).getTime();
+                      const mins = Math.floor(diff / 60000);
+                      if (mins < 1) return "Just now";
+                      if (mins < 60) return `${mins} min ago`;
+                      const hrs = Math.floor(mins / 60);
+                      if (hrs < 24) return `${hrs}h ago`;
+                      return `${Math.floor(hrs / 24)}d ago`;
+                    })() : "";
+                    return (
+                      <div key={a.id} className={`bg-[#0d2414] border rounded-xl p-4 flex items-center justify-between gap-3 ${a.priority === "critical" ? "border-red-500/40" : a.priority === "high" ? "border-orange-500/30" : "border-yellow-500/20"}`}>
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${a.type === "fire" ? "bg-red-500/20" : a.type === "gas" ? "bg-yellow-500/20" : "bg-orange-500/20"}`}>
+                            {a.type === "fire" ? <Flame size={16} className="text-red-400" /> : a.type === "gas" ? <Wind size={16} className="text-yellow-400" /> : <AlertTriangle size={16} className="text-orange-400" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-white text-sm font-medium mb-0.5">{a.message}</div>
+                            <div className="flex items-center gap-3 text-xs text-[#4b7a5a]">
+                              <span className="font-mono text-[#4ade80]">{a.ward?.name || "Unknown Ward"}</span>
+                              {a.bin?.binCode && <span className="font-mono text-[#86efac]">{a.bin.binCode}</span>}
+                              {timeAgo && <span>{timeAgo}</span>}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-xs px-2.5 py-1 rounded-full font-mono ${a.priority === "critical" ? "bg-red-500/20 text-red-400 border border-red-500/30" : a.priority === "high" ? "bg-orange-500/20 text-orange-400 border border-orange-500/30" : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"}`}>
+                            {a.priority.toUpperCase()}
+                          </span>
+                          <button
+                            onClick={() => handleResolveAlert(a.id)}
+                            title="Mark Resolved"
+                            className="text-xs px-2.5 py-1 rounded-lg border border-[#1a3d22] text-[#4b7a5a] hover:text-[#4ade80] hover:border-[#4ade80]/40 transition-colors flex items-center gap-1"
+                          >
+                            <CheckCircle size={13} /> Resolve
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 

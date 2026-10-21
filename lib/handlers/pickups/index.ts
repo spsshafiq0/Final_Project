@@ -58,6 +58,7 @@ export default apiHandler(
         requesterId,
         contactName,
         contactPhone,
+        wardId,
       } = req.body || {};
 
       if (!area || !address || !wasteType || !date) {
@@ -65,19 +66,21 @@ export default apiHandler(
       }
 
       const finalRequesterId = currentUser?.userId || requesterId || `usr-guest-${Date.now()}`;
+      const finalWardId = wardId || currentUser?.wardId || null;
       const secCode = Math.floor(1000 + Math.random() * 9000).toString();
 
       const newPickup = {
         id: `pick-${Date.now()}`,
         requesterType,
-        area,
-        address,
-        wasteType,
-        date,
+        area: String(area).trim(),
+        address: String(address).trim(),
+        wasteType: String(wasteType).trim(),
+        date: String(date).trim(),
         amount: Number(amount) || 0,
         status: "open",
         securityCode: secCode,
         requesterId: finalRequesterId,
+        wardId: finalWardId,
         requester: {
           id: finalRequesterId,
           fullName: contactName || currentUser?.fullName || "Citizen User",
@@ -91,14 +94,15 @@ export default apiHandler(
         await prisma.pickupRequest.create({
           data: {
             requesterType,
-            area,
-            address,
-            wasteType,
-            date,
-            amount: Number(amount) || 0,
+            area: newPickup.area,
+            address: newPickup.address,
+            wasteType: newPickup.wasteType,
+            date: newPickup.date,
+            amount: newPickup.amount,
             status: "open",
             securityCode: secCode,
             requesterId: finalRequesterId,
+            wardId: finalWardId,
           },
         }).catch(() => null);
       } catch {}

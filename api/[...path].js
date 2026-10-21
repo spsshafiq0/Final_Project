@@ -5933,8 +5933,152 @@ if (!g.__intelliwaste_store) {
     pickups: [],
     withdrawals: [],
     wasteReports: [],
-    auditLogs: []
+    auditLogs: [],
+    rankTiers: [
+      { id: "tier-1", level: 1, name: "Eco Beginner", minPoints: 0, maxPoints: 200, badge: "\u{1F331}" },
+      { id: "tier-2", level: 2, name: "Green Scout", minPoints: 201, maxPoints: 600, badge: "\u{1F33F}" },
+      { id: "tier-3", level: 3, name: "Waste Warrior", minPoints: 601, maxPoints: 1500, badge: "\u2B50" },
+      { id: "tier-4", level: 4, name: "Eco Champion", minPoints: 1501, maxPoints: 3e3, badge: "\u{1F3C5}" },
+      { id: "tier-5", level: 5, name: "Earth Guardian", minPoints: 3001, maxPoints: null, badge: "\u{1F3C6}" }
+    ],
+    rewards: [
+      {
+        id: "rew-1",
+        name: "Shajgoj 20% Off",
+        partner: "Shajgoj",
+        points: 500,
+        icon: "\u{1F6CD}\uFE0F",
+        category: "Shopping",
+        description: "20% off on skincare and cosmetics orders",
+        active: true,
+        codes: [
+          { id: "c-1-1", code: "SHAJ-20-8491", isRedeemed: false },
+          { id: "c-1-2", code: "SHAJ-20-3329", isRedeemed: false },
+          { id: "c-1-3", code: "SHAJ-20-7714", isRedeemed: false }
+        ],
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      },
+      {
+        id: "rew-2",
+        name: "Pathao Ride Credit \u09F3100",
+        partner: "Pathao",
+        points: 800,
+        icon: "\u{1F6F5}",
+        category: "Rides",
+        description: "\u09F3100 credit for bike or car ride across the city",
+        active: true,
+        codes: [
+          { id: "c-2-1", code: "PATH-100-9921", isRedeemed: false },
+          { id: "c-2-2", code: "PATH-100-4482", isRedeemed: false }
+        ],
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      },
+      {
+        id: "rew-3",
+        name: "Shohoz Movie Ticket",
+        partner: "Shohoz",
+        points: 1200,
+        icon: "\u{1F3AC}",
+        category: "Entertainment",
+        description: "1 Free movie ticket voucher on Star Cineplex",
+        active: true,
+        codes: [
+          { id: "c-3-1", code: "SHOZ-MOV-1192", isRedeemed: false }
+        ],
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      },
+      {
+        id: "rew-4",
+        name: "Tree Planted in Your Name",
+        partner: "Green Bangladesh",
+        points: 200,
+        icon: "\u{1F333}",
+        category: "Eco Action",
+        description: "A native tree sapling planted in urban green belt with certificate",
+        active: true,
+        codes: [
+          { id: "c-4-1", code: "TREE-DNCC-0012", isRedeemed: false },
+          { id: "c-4-2", code: "TREE-DNCC-0013", isRedeemed: false },
+          { id: "c-4-3", code: "TREE-DNCC-0014", isRedeemed: false }
+        ],
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      }
+    ]
   };
+}
+if (!g.__intelliwaste_store.rankTiers || g.__intelliwaste_store.rankTiers.length === 0) {
+  g.__intelliwaste_store.rankTiers = [
+    { id: "tier-1", level: 1, name: "Eco Beginner", minPoints: 0, maxPoints: 200, badge: "\u{1F331}" },
+    { id: "tier-2", level: 2, name: "Green Scout", minPoints: 201, maxPoints: 600, badge: "\u{1F33F}" },
+    { id: "tier-3", level: 3, name: "Waste Warrior", minPoints: 601, maxPoints: 1500, badge: "\u2B50" },
+    { id: "tier-4", level: 4, name: "Eco Champion", minPoints: 1501, maxPoints: 3e3, badge: "\u{1F3C5}" },
+    { id: "tier-5", level: 5, name: "Earth Guardian", minPoints: 3001, maxPoints: null, badge: "\u{1F3C6}" }
+  ];
+}
+if (!g.__intelliwaste_store.rewards || g.__intelliwaste_store.rewards.length === 0) {
+  g.__intelliwaste_store.rewards = [
+    {
+      id: "rew-1",
+      name: "Shajgoj 20% Off",
+      partner: "Shajgoj",
+      points: 500,
+      icon: "\u{1F6CD}\uFE0F",
+      category: "Shopping",
+      description: "20% off on skincare and cosmetics orders",
+      active: true,
+      codes: [
+        { id: "c-1-1", code: "SHAJ-20-8491", isRedeemed: false },
+        { id: "c-1-2", code: "SHAJ-20-3329", isRedeemed: false },
+        { id: "c-1-3", code: "SHAJ-20-7714", isRedeemed: false }
+      ],
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    },
+    {
+      id: "rew-2",
+      name: "Pathao Ride Credit \u09F3100",
+      partner: "Pathao",
+      points: 800,
+      icon: "\u{1F6F5}",
+      category: "Rides",
+      description: "\u09F3100 credit for bike or car ride across the city",
+      active: true,
+      codes: [
+        { id: "c-2-1", code: "PATH-100-9921", isRedeemed: false },
+        { id: "c-2-2", code: "PATH-100-4482", isRedeemed: false }
+      ],
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    },
+    {
+      id: "rew-3",
+      name: "Shohoz Movie Ticket",
+      partner: "Shohoz",
+      points: 1200,
+      icon: "\u{1F3AC}",
+      category: "Entertainment",
+      description: "1 Free movie ticket voucher on Star Cineplex",
+      active: true,
+      codes: [
+        { id: "c-3-1", code: "SHOZ-MOV-1192", isRedeemed: false }
+      ],
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    },
+    {
+      id: "rew-4",
+      name: "Tree Planted in Your Name",
+      partner: "Green Bangladesh",
+      points: 200,
+      icon: "\u{1F333}",
+      category: "Eco Action",
+      description: "A native tree sapling planted in urban green belt with certificate",
+      active: true,
+      codes: [
+        { id: "c-4-1", code: "TREE-DNCC-0012", isRedeemed: false },
+        { id: "c-4-2", code: "TREE-DNCC-0013", isRedeemed: false },
+        { id: "c-4-3", code: "TREE-DNCC-0014", isRedeemed: false }
+      ],
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    }
+  ];
 }
 var memoryDb = g.__intelliwaste_store;
 
@@ -5971,6 +6115,98 @@ async function logAudit(params) {
   }
 }
 
+// lib/security.ts
+var rateLimitStore = /* @__PURE__ */ new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of rateLimitStore.entries()) {
+    if (now > record.resetAt) {
+      rateLimitStore.delete(key);
+    }
+  }
+}, 5 * 60 * 1e3);
+function checkRateLimit(key, maxAttempts = 5, windowMs = 60 * 1e3) {
+  const now = Date.now();
+  const record = rateLimitStore.get(key);
+  if (!record || now > record.resetAt) {
+    rateLimitStore.set(key, {
+      count: 1,
+      resetAt: now + windowMs
+    });
+    return {
+      allowed: true,
+      remaining: maxAttempts - 1,
+      retryAfterSec: 0
+    };
+  }
+  if (record.count >= maxAttempts) {
+    const retryAfterSec = Math.ceil((record.resetAt - now) / 1e3);
+    return {
+      allowed: false,
+      remaining: 0,
+      retryAfterSec: Math.max(retryAfterSec, 1)
+    };
+  }
+  record.count += 1;
+  return {
+    allowed: true,
+    remaining: maxAttempts - record.count,
+    retryAfterSec: 0
+  };
+}
+function resetRateLimit(key) {
+  rateLimitStore.delete(key);
+}
+function validateUsername(username) {
+  if (typeof username !== "string" || !username.trim()) {
+    return { valid: false, error: "Username is required.", clean: "" };
+  }
+  const clean = username.trim().toLowerCase();
+  if (clean.length < 3) {
+    return { valid: false, error: "Username must be at least 3 characters long.", clean };
+  }
+  if (clean.length > 30) {
+    return { valid: false, error: "Username cannot exceed 30 characters.", clean };
+  }
+  const usernameRegex = /^[a-zA-Z0-9._-]+$/;
+  if (!usernameRegex.test(clean)) {
+    return {
+      valid: false,
+      error: "Username can only contain alphanumeric characters, dots, underscores, and hyphens.",
+      clean
+    };
+  }
+  return { valid: true, clean };
+}
+function validateEmail(email) {
+  if (typeof email !== "string" || !email.trim()) {
+    return { valid: false, error: "Email is required.", clean: "" };
+  }
+  const clean = email.trim().toLowerCase();
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(clean)) {
+    return { valid: false, error: "Please enter a valid email address.", clean };
+  }
+  return { valid: true, clean };
+}
+function validatePassword(password) {
+  if (typeof password !== "string" || !password) {
+    return { valid: false, error: "Password is required." };
+  }
+  if (password.length < 6) {
+    return { valid: false, error: "Password must be at least 6 characters long." };
+  }
+  if (password.length > 128) {
+    return { valid: false, error: "Password cannot exceed 128 characters." };
+  }
+  return { valid: true };
+}
+function sanitizeString(input, maxLength = 255) {
+  if (typeof input !== "string") return "";
+  const stripped = input.replace(/<[^>]*>?/gm, "").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").trim();
+  return stripped.slice(0, maxLength);
+}
+
 // lib/handlers/auth/login.ts
 var login_default = apiHandler(
   async (req, res) => {
@@ -5978,7 +6214,15 @@ var login_default = apiHandler(
     if (!username || !password) {
       return res.status(400).json({ error: "Username and password are required" });
     }
+    const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "anonymous";
     const cleanUsername = String(username).toLowerCase().trim();
+    const rateLimitKey = `login:${ip}:${cleanUsername}`;
+    const rateCheck = checkRateLimit(rateLimitKey, 5, 60 * 1e3);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        error: `Too many login attempts. Please wait ${rateCheck.retryAfterSec} seconds before trying again.`
+      });
+    }
     let user = null;
     let dbError = null;
     try {
@@ -6026,6 +6270,7 @@ var login_default = apiHandler(
     if (!isMatch) {
       return res.status(401).json({ error: "Invalid username or password" });
     }
+    resetRateLimit(rateLimitKey);
     const token = signToken({
       userId: user.id,
       username: user.username,
@@ -6077,9 +6322,27 @@ var register_default = apiHandler(
       cityCorpId,
       wardId
     } = req.body || {};
-    if (!username || !password || !fullName) {
-      return res.status(400).json({ error: "Username, password, and full name are required" });
+    const userCheck = validateUsername(username);
+    if (!userCheck.valid) {
+      return res.status(400).json({ error: userCheck.error });
     }
+    const passCheck = validatePassword(password);
+    if (!passCheck.valid) {
+      return res.status(400).json({ error: passCheck.error });
+    }
+    const cleanFullName = sanitizeString(fullName, 100);
+    if (!cleanFullName) {
+      return res.status(400).json({ error: "Full name is required" });
+    }
+    let cleanEmail = null;
+    if (email && String(email).trim()) {
+      const emailCheck = validateEmail(email);
+      if (!emailCheck.valid) {
+        return res.status(400).json({ error: emailCheck.error });
+      }
+      cleanEmail = emailCheck.clean;
+    }
+    const cleanUsername = userCheck.clean;
     if (role === "SUPER_ADMIN") {
       if (!currentUser || currentUser.role !== "SUPER_ADMIN") {
         return res.status(403).json({ error: "Only Super Admin can create another Super Admin" });
@@ -6106,28 +6369,35 @@ var register_default = apiHandler(
     }
     let isTaken = false;
     try {
-      const existing = await prisma_default.user.findUnique({ where: { username } }).catch(() => null);
+      const existing = await prisma_default.user.findFirst({
+        where: {
+          OR: [
+            { username: { equals: cleanUsername, mode: "insensitive" } },
+            ...cleanEmail ? [{ email: { equals: cleanEmail, mode: "insensitive" } }] : []
+          ]
+        }
+      }).catch(() => null);
       if (existing) isTaken = true;
     } catch {
     }
-    if (!isTaken && memoryDb.users.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
+    if (!isTaken && memoryDb.users.some((u) => u.username.toLowerCase() === cleanUsername || cleanEmail && u.email && u.email.toLowerCase() === cleanEmail)) {
       isTaken = true;
     }
     if (isTaken) {
-      return res.status(409).json({ error: "Username is already taken" });
+      return res.status(409).json({ error: "Username or email is already taken" });
     }
     const hashedPassword = await hashPassword(password);
     let newUser = null;
     try {
       newUser = await prisma_default.user.create({
         data: {
-          username,
+          username: cleanUsername,
           password: hashedPassword,
-          fullName,
-          email: email || null,
-          phone: phone || null,
-          nid: nid || null,
-          address: address || null,
+          fullName: cleanFullName,
+          email: cleanEmail,
+          phone: phone ? String(phone).trim() : null,
+          nid: nid ? String(nid).trim() : null,
+          address: address ? sanitizeString(address, 200) : null,
           role,
           cityCorpId: cityCorpId || null,
           wardId: wardId || null
@@ -6143,13 +6413,13 @@ var register_default = apiHandler(
     const userId = newUser?.id || `usr-reg-${Date.now()}`;
     const memUser = {
       id: userId,
-      username,
+      username: cleanUsername,
       password: hashedPassword,
-      fullName,
-      email: email || null,
-      phone: phone || null,
-      nid: nid || null,
-      address: address || null,
+      fullName: cleanFullName,
+      email: cleanEmail,
+      phone: phone ? String(phone).trim() : null,
+      nid: nid ? String(nid).trim() : null,
+      address: address ? sanitizeString(address, 200) : null,
       role,
       active: true,
       points: 0,
@@ -6157,9 +6427,16 @@ var register_default = apiHandler(
       wardId: wardId || null,
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
     };
-    if (!memoryDb.users.some((u) => u.username === username)) {
+    if (!memoryDb.users.some((u) => u.username === cleanUsername)) {
       memoryDb.users.push(memUser);
     }
+    await logAudit({
+      userId: memUser.id,
+      action: "USER_REGISTER",
+      resource: "users",
+      details: `New account registered: ${cleanUsername} (${role})`,
+      ipAddress: req.headers["x-forwarded-for"] || req.socket?.remoteAddress
+    });
     const token = signToken({
       userId: memUser.id,
       username: memUser.username,
@@ -6589,7 +6866,15 @@ var forgot_password_default = apiHandler(
     if (!identifier || typeof identifier !== "string" || !identifier.trim()) {
       return res.status(400).json({ error: "Please provide your registered email or username." });
     }
+    const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "anonymous";
     const cleanInput = identifier.trim().toLowerCase();
+    const rateLimitKey = `otp:${ip}:${cleanInput}`;
+    const rateCheck = checkRateLimit(rateLimitKey, 3, 5 * 60 * 1e3);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        error: `Too many password reset requests. Please wait ${rateCheck.retryAfterSec} seconds before requesting a new code.`
+      });
+    }
     let user = null;
     let dbError = null;
     try {
@@ -7895,6 +8180,7 @@ var users_default = apiHandler(
             cityCorp: { select: { id: true, name: true, code: true } },
             wardId: true,
             ward: { select: { id: true, name: true, area: true } },
+            points: true,
             createdAt: true
           },
           orderBy: { createdAt: "desc" }
@@ -7922,6 +8208,7 @@ var users_default = apiHandler(
           address: u.address,
           role: u.role,
           active: u.active,
+          points: u.points || 0,
           cityCorpId: u.cityCorpId,
           cityCorp: city ? { id: city.id, name: city.name, code: city.code } : null,
           wardId: u.wardId,
@@ -8338,18 +8625,42 @@ var withdrawals_default = apiHandler(
       };
       const bdtAmount = Math.round(pointsToDeduct * (cityCorp.pointRate || 0.2) * 100) / 100;
       const code = `WDR-${Math.floor(1e3 + Math.random() * 9e3)}`;
-      const newWithdrawal = {
+      const finalCitizenId = currentUser?.userId || `usr-guest-${Date.now()}`;
+      const finalWardId = ward?.id || wardId;
+      let createdWithdrawal = null;
+      try {
+        createdWithdrawal = await prisma_default.withdrawalRequest.create({
+          data: {
+            verificationCode: code,
+            points: pointsToDeduct,
+            amount: bdtAmount,
+            status: "pending",
+            citizenId: finalCitizenId,
+            citizenName: citizenName || currentUser?.fullName || "Citizen User",
+            citizenPhone: citizenPhone || currentUser?.phone || "017XXXXXXXX",
+            wardId: finalWardId,
+            notes: notes || null
+          },
+          include: {
+            citizen: { select: { id: true, fullName: true, username: true, phone: true } },
+            ward: { select: { id: true, name: true, area: true } }
+          }
+        }).catch(() => null);
+      } catch (err) {
+        console.warn("[Withdrawals Create PG Notice]", err?.message);
+      }
+      const newWithdrawal = createdWithdrawal || {
         id: `wdr-${Date.now()}`,
         verificationCode: code,
         points: pointsToDeduct,
         amount: bdtAmount,
         status: "pending",
-        citizenId: currentUser?.userId || `usr-guest-${Date.now()}`,
+        citizenId: finalCitizenId,
         citizenName: citizenName || currentUser?.fullName || "Citizen User",
         citizenPhone: citizenPhone || currentUser?.phone || "017XXXXXXXX",
-        wardId: ward?.id || wardId,
+        wardId: finalWardId,
         ward: {
-          id: ward?.id || wardId,
+          id: finalWardId,
           name: ward?.name || "Ward 01",
           area: ward?.area || "Uttara",
           cityCorp
@@ -8357,6 +8668,7 @@ var withdrawals_default = apiHandler(
         notes: notes || null,
         createdAt: (/* @__PURE__ */ new Date()).toISOString()
       };
+      if (!memoryDb.withdrawals) memoryDb.withdrawals = [];
       memoryDb.withdrawals.unshift(newWithdrawal);
       return res.status(201).json({
         message: "Withdrawal request submitted successfully",
@@ -8504,24 +8816,27 @@ var pickups_default = apiHandler(
         amount = 0,
         requesterId,
         contactName,
-        contactPhone
+        contactPhone,
+        wardId
       } = req.body || {};
       if (!area || !address || !wasteType || !date) {
         return res.status(400).json({ error: "Area, address, wasteType, and date are required" });
       }
       const finalRequesterId = currentUser?.userId || requesterId || `usr-guest-${Date.now()}`;
+      const finalWardId = wardId || currentUser?.wardId || null;
       const secCode = Math.floor(1e3 + Math.random() * 9e3).toString();
       const newPickup = {
         id: `pick-${Date.now()}`,
         requesterType,
-        area,
-        address,
-        wasteType,
-        date,
+        area: String(area).trim(),
+        address: String(address).trim(),
+        wasteType: String(wasteType).trim(),
+        date: String(date).trim(),
         amount: Number(amount) || 0,
         status: "open",
         securityCode: secCode,
         requesterId: finalRequesterId,
+        wardId: finalWardId,
         requester: {
           id: finalRequesterId,
           fullName: contactName || currentUser?.fullName || "Citizen User",
@@ -8534,14 +8849,15 @@ var pickups_default = apiHandler(
         await prisma_default.pickupRequest.create({
           data: {
             requesterType,
-            area,
-            address,
-            wasteType,
-            date,
-            amount: Number(amount) || 0,
+            area: newPickup.area,
+            address: newPickup.address,
+            wasteType: newPickup.wasteType,
+            date: newPickup.date,
+            amount: newPickup.amount,
             status: "open",
             securityCode: secCode,
-            requesterId: finalRequesterId
+            requesterId: finalRequesterId,
+            wardId: finalWardId
           }
         }).catch(() => null);
       } catch {
@@ -8697,8 +9013,11 @@ var alerts_default = apiHandler(
       memoryDb.alerts.unshift(memAlert);
       return res.status(201).json(createdAlert || memAlert);
     }
-    if (req.method === "PATCH") {
-      const { id } = req.query;
+    if (req.method === "PATCH" || req.method === "PUT") {
+      const id = req.query?.id || req.body?.id;
+      if (!id) {
+        return res.status(400).json({ error: "Alert ID is required" });
+      }
       try {
         await prisma_default.alert.update({
           where: { id },
@@ -8712,7 +9031,7 @@ var alerts_default = apiHandler(
     }
     return res.status(405).json({ error: "Method not allowed" });
   },
-  { allowedMethods: ["GET", "POST", "PATCH"] }
+  { allowedMethods: ["GET", "POST", "PATCH", "PUT"] }
 );
 
 // lib/handlers/reports/index.ts
@@ -8772,7 +9091,9 @@ var reports_default = apiHandler(
         wardId,
         citizenId
       } = req.body || {};
-      if (!location || !description) {
+      const cleanLocation = sanitizeString(location, 150);
+      const cleanDescription = sanitizeString(description, 1e3);
+      if (!cleanLocation || !cleanDescription) {
         return res.status(400).json({ error: "Location and description are required" });
       }
       const finalCitizenId = currentUser?.userId || citizenId;
@@ -8786,8 +9107,8 @@ var reports_default = apiHandler(
         createdReport = await prisma_default.wasteReport.create({
           data: {
             reportCode,
-            location,
-            description,
+            location: cleanLocation,
+            description: cleanDescription,
             imageUrl: imageUrl || null,
             wasteType,
             status: "pending",
@@ -8809,7 +9130,7 @@ var reports_default = apiHandler(
           await prisma_default.alert.create({
             data: {
               type: "overflow",
-              message: `Citizen Report [${reportCode}]: ${description.slice(0, 80)} at ${location}`,
+              message: `Citizen Report [${reportCode}]: ${cleanDescription.slice(0, 80)} at ${cleanLocation}`,
               priority: priority === "critical" ? "critical" : "high",
               wardId: wardId || null
             }
@@ -8821,8 +9142,8 @@ var reports_default = apiHandler(
       const memReport = {
         id: createdReport?.id || `rpt-${Date.now()}`,
         reportCode,
-        location,
-        description,
+        location: cleanLocation,
+        description: cleanDescription,
         imageUrl: imageUrl || null,
         wasteType,
         status: "pending",
@@ -9208,6 +9529,343 @@ var audit_default = apiHandler(
   { requireAuth: true, allowedMethods: ["GET"] }
 );
 
+// lib/handlers/ranks/index.ts
+var ranks_default = apiHandler(
+  async (req, res, currentUser) => {
+    if (!memoryDb.rankTiers) {
+      memoryDb.rankTiers = [
+        { id: "tier-1", level: 1, name: "Eco Beginner", minPoints: 0, maxPoints: 200, badge: "\u{1F331}" },
+        { id: "tier-2", level: 2, name: "Green Scout", minPoints: 201, maxPoints: 600, badge: "\u{1F33F}" },
+        { id: "tier-3", level: 3, name: "Waste Warrior", minPoints: 601, maxPoints: 1500, badge: "\u2B50" },
+        { id: "tier-4", level: 4, name: "Eco Champion", minPoints: 1501, maxPoints: 3e3, badge: "\u{1F3C5}" },
+        { id: "tier-5", level: 5, name: "Earth Guardian", minPoints: 3001, maxPoints: null, badge: "\u{1F3C6}" }
+      ];
+    }
+    if (req.method === "GET") {
+      const sorted = [...memoryDb.rankTiers].sort((a, b) => a.level - b.level);
+      return res.status(200).json(sorted);
+    }
+    if (currentUser && currentUser.role !== "SUPER_ADMIN" && currentUser.role !== "CITY_ADMIN") {
+      return res.status(403).json({ error: "Only administrators can configure rank tiers" });
+    }
+    if (req.method === "POST") {
+      const { level, name, minPoints, maxPoints, badge } = req.body || {};
+      if (!name || level === void 0 || minPoints === void 0) {
+        return res.status(400).json({ error: "Level, Name, and Minimum Points are required" });
+      }
+      const newTier = {
+        id: `tier-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        level: Number(level) || 1,
+        name: String(name).trim(),
+        minPoints: Number(minPoints) || 0,
+        maxPoints: maxPoints === null || maxPoints === "" || maxPoints === void 0 ? null : Number(maxPoints),
+        badge: badge || "\u{1F3C5}"
+      };
+      memoryDb.rankTiers.push(newTier);
+      memoryDb.rankTiers.sort((a, b) => a.level - b.level);
+      return res.status(201).json(newTier);
+    }
+    if (req.method === "PUT") {
+      const id = req.query?.id || req.body?.id;
+      if (!id) {
+        return res.status(400).json({ error: "Tier ID is required" });
+      }
+      const idx = memoryDb.rankTiers.findIndex((t) => t.id === id);
+      if (idx === -1) {
+        return res.status(404).json({ error: "Rank tier not found" });
+      }
+      const { level, name, minPoints, maxPoints, badge } = req.body || {};
+      if (level !== void 0) memoryDb.rankTiers[idx].level = Number(level);
+      if (name !== void 0) memoryDb.rankTiers[idx].name = String(name).trim();
+      if (minPoints !== void 0) memoryDb.rankTiers[idx].minPoints = Number(minPoints);
+      if (maxPoints !== void 0) {
+        memoryDb.rankTiers[idx].maxPoints = maxPoints === null || maxPoints === "" ? null : Number(maxPoints);
+      }
+      if (badge !== void 0) memoryDb.rankTiers[idx].badge = badge;
+      memoryDb.rankTiers.sort((a, b) => a.level - b.level);
+      return res.status(200).json(memoryDb.rankTiers[idx]);
+    }
+    if (req.method === "DELETE") {
+      const id = req.query?.id || req.body?.id;
+      if (!id) {
+        return res.status(400).json({ error: "Tier ID is required" });
+      }
+      memoryDb.rankTiers = memoryDb.rankTiers.filter((t) => t.id !== id);
+      return res.status(200).json({ success: true, message: "Rank tier deleted" });
+    }
+    return res.status(405).json({ error: "Method not allowed" });
+  },
+  { allowedMethods: ["GET", "POST", "PUT", "DELETE"] }
+);
+
+// lib/handlers/rewards/index.ts
+var rewards_default = apiHandler(
+  async (req, res, currentUser) => {
+    if (!memoryDb.rewards) {
+      memoryDb.rewards = [];
+    }
+    const generateUniqueCode = (prefix = "IW") => {
+      const cleanPrefix = prefix.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 6) || "IW";
+      const p1 = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const p2 = Math.random().toString(36).substring(2, 6).toUpperCase();
+      return `${cleanPrefix}-${p1}-${p2}`;
+    };
+    if (req.method === "GET") {
+      const isAdmin = currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "CITY_ADMIN";
+      const citizenId = currentUser?.id || req.query?.citizenId;
+      if (isAdmin) {
+        const enriched = memoryDb.rewards.map((r) => {
+          const totalCodes = r.codes?.length || 0;
+          const availableCodes = r.codes?.filter((c) => !c.isRedeemed).length || 0;
+          const redeemedCodes = totalCodes - availableCodes;
+          return {
+            ...r,
+            totalCodes,
+            availableCodes,
+            redeemedCodes,
+            stockCount: availableCodes,
+            available: availableCodes > 0 && r.active
+          };
+        });
+        return res.status(200).json(enriched);
+      }
+      const publicRewards = memoryDb.rewards.filter((r) => r.active).map((r) => {
+        const availableCodes = r.codes?.filter((c) => !c.isRedeemed).length || 0;
+        const myVouchers = citizenId ? (r.codes || []).filter((c) => c.isRedeemed && c.redeemedByUserId === citizenId).map((c) => ({
+          id: c.id,
+          code: c.code,
+          rewardName: r.name,
+          partner: r.partner,
+          redeemedAt: c.redeemedAt
+        })) : [];
+        return {
+          id: r.id,
+          name: r.name,
+          partner: r.partner,
+          points: r.points,
+          icon: r.icon,
+          category: r.category,
+          description: r.description,
+          stockCount: availableCodes,
+          available: availableCodes > 0,
+          myRedeemedCodes: myVouchers
+        };
+      });
+      return res.status(200).json(publicRewards);
+    }
+    if (req.method === "POST") {
+      const isRedeemAction = req.body?.action === "redeem" || req.query?.action === "redeem";
+      if (isRedeemAction) {
+        const rewardId = req.body?.rewardId;
+        if (!rewardId) {
+          return res.status(400).json({ error: "Reward ID is required for redemption" });
+        }
+        const reward = memoryDb.rewards.find((r) => r.id === rewardId);
+        if (!reward || !reward.active) {
+          return res.status(404).json({ error: "Reward item not found or currently inactive" });
+        }
+        const citizenId = currentUser?.id || req.body?.citizenId;
+        if (!citizenId) {
+          return res.status(401).json({ error: "Authentication required to redeem vouchers" });
+        }
+        let currentPoints = 0;
+        let dbUser = null;
+        try {
+          dbUser = await prisma_default.user.findUnique({ where: { id: citizenId } });
+          if (dbUser) currentPoints = dbUser.points || 0;
+        } catch {
+        }
+        if (!dbUser) {
+          const memU = memoryDb.users.find((u) => u.id === citizenId);
+          if (memU) currentPoints = memU.points || 0;
+        }
+        if (currentPoints < reward.points) {
+          return res.status(400).json({
+            error: `Insufficient points. You have ${currentPoints} pts, but this reward requires ${reward.points} pts.`
+          });
+        }
+        const unusedCodeIdx = reward.codes.findIndex((c) => !c.isRedeemed);
+        if (unusedCodeIdx === -1) {
+          return res.status(400).json({
+            error: "Sorry, this voucher is out of stock! No unused codes are available."
+          });
+        }
+        const assignedCode = reward.codes[unusedCodeIdx];
+        const now = (/* @__PURE__ */ new Date()).toISOString();
+        assignedCode.isRedeemed = true;
+        assignedCode.redeemedByUserId = citizenId;
+        assignedCode.redeemedByUserName = currentUser?.fullName || currentUser?.username || "Citizen";
+        assignedCode.redeemedAt = now;
+        const newPoints = currentPoints - reward.points;
+        try {
+          await prisma_default.user.update({
+            where: { id: citizenId },
+            data: { points: { decrement: reward.points } }
+          });
+        } catch {
+        }
+        const memUserIdx = memoryDb.users.findIndex((u) => u.id === citizenId);
+        if (memUserIdx !== -1) {
+          memoryDb.users[memUserIdx].points = newPoints;
+        }
+        logAudit({
+          userId: citizenId,
+          action: "REDEEM_VOUCHER",
+          resource: "rewards",
+          details: `Redeemed ${reward.name} (${reward.points} pts). Unique Voucher: ${assignedCode.code}`,
+          ipAddress: req.headers["x-forwarded-for"]
+        });
+        return res.status(200).json({
+          success: true,
+          voucherCode: assignedCode.code,
+          rewardName: reward.name,
+          partner: reward.partner,
+          pointsDeducted: reward.points,
+          remainingPoints: newPoints,
+          redeemedAt: now,
+          message: `Successfully redeemed! Your unique code is ${assignedCode.code}.`
+        });
+      }
+      if (currentUser && currentUser.role !== "SUPER_ADMIN" && currentUser.role !== "CITY_ADMIN") {
+        return res.status(403).json({ error: "Only administrators can create reward vouchers" });
+      }
+      const {
+        name,
+        partner,
+        points,
+        icon = "\u{1F381}",
+        category = "Gift",
+        description = "",
+        codes: rawCodes,
+        generateCount,
+        codePrefix
+      } = req.body || {};
+      if (!name || !partner || points === void 0) {
+        return res.status(400).json({ error: "Name, Partner, and Points are required" });
+      }
+      const voucherCodes = [];
+      if (rawCodes) {
+        const codeList = Array.isArray(rawCodes) ? rawCodes : String(rawCodes).split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
+        for (const codeStr of codeList) {
+          voucherCodes.push({
+            id: `c-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            code: codeStr.toUpperCase(),
+            isRedeemed: false
+          });
+        }
+      }
+      const countToGen = Number(generateCount) || 0;
+      if (countToGen > 0) {
+        const prefix = codePrefix || partner.replace(/[^A-Za-z0-9]/g, "").slice(0, 4).toUpperCase();
+        for (let i = 0; i < countToGen; i++) {
+          voucherCodes.push({
+            id: `c-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 7)}`,
+            code: generateUniqueCode(prefix),
+            isRedeemed: false
+          });
+        }
+      }
+      const newReward = {
+        id: `rew-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        name: String(name).trim(),
+        partner: String(partner).trim(),
+        points: Math.max(1, Number(points) || 100),
+        icon: icon || "\u{1F381}",
+        category: category || "General",
+        description: description || "",
+        active: true,
+        codes: voucherCodes,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      memoryDb.rewards.push(newReward);
+      return res.status(201).json({
+        ...newReward,
+        totalCodes: newReward.codes.length,
+        availableCodes: newReward.codes.length,
+        stockCount: newReward.codes.length
+      });
+    }
+    if (req.method === "PUT") {
+      if (currentUser && currentUser.role !== "SUPER_ADMIN" && currentUser.role !== "CITY_ADMIN") {
+        return res.status(403).json({ error: "Only administrators can modify rewards" });
+      }
+      const id = req.query?.id || req.body?.id;
+      if (!id) {
+        return res.status(400).json({ error: "Reward ID is required" });
+      }
+      const idx = memoryDb.rewards.findIndex((r) => r.id === id);
+      if (idx === -1) {
+        return res.status(404).json({ error: "Reward item not found" });
+      }
+      const {
+        name,
+        partner,
+        points,
+        icon,
+        category,
+        description,
+        active,
+        addCodes,
+        generateCount,
+        codePrefix
+      } = req.body || {};
+      if (name !== void 0) memoryDb.rewards[idx].name = String(name).trim();
+      if (partner !== void 0) memoryDb.rewards[idx].partner = String(partner).trim();
+      if (points !== void 0) memoryDb.rewards[idx].points = Math.max(1, Number(points) || 100);
+      if (icon !== void 0) memoryDb.rewards[idx].icon = icon;
+      if (category !== void 0) memoryDb.rewards[idx].category = category;
+      if (description !== void 0) memoryDb.rewards[idx].description = description;
+      if (active !== void 0) memoryDb.rewards[idx].active = Boolean(active);
+      if (addCodes) {
+        const codeList = Array.isArray(addCodes) ? addCodes : String(addCodes).split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
+        for (const codeStr of codeList) {
+          const exists = memoryDb.rewards[idx].codes.some(
+            (c) => c.code.toUpperCase() === codeStr.toUpperCase()
+          );
+          if (!exists) {
+            memoryDb.rewards[idx].codes.push({
+              id: `c-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+              code: codeStr.toUpperCase(),
+              isRedeemed: false
+            });
+          }
+        }
+      }
+      const countToGen = Number(generateCount) || 0;
+      if (countToGen > 0) {
+        const prefix = codePrefix || memoryDb.rewards[idx].partner.replace(/[^A-Za-z0-9]/g, "").slice(0, 4).toUpperCase();
+        for (let i = 0; i < countToGen; i++) {
+          memoryDb.rewards[idx].codes.push({
+            id: `c-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 7)}`,
+            code: generateUniqueCode(prefix),
+            isRedeemed: false
+          });
+        }
+      }
+      const available = memoryDb.rewards[idx].codes.filter((c) => !c.isRedeemed).length;
+      return res.status(200).json({
+        ...memoryDb.rewards[idx],
+        totalCodes: memoryDb.rewards[idx].codes.length,
+        availableCodes: available,
+        stockCount: available
+      });
+    }
+    if (req.method === "DELETE") {
+      if (currentUser && currentUser.role !== "SUPER_ADMIN" && currentUser.role !== "CITY_ADMIN") {
+        return res.status(403).json({ error: "Only administrators can delete rewards" });
+      }
+      const id = req.query?.id || req.body?.id;
+      if (!id) {
+        return res.status(400).json({ error: "Reward ID is required" });
+      }
+      memoryDb.rewards = memoryDb.rewards.filter((r) => r.id !== id);
+      return res.status(200).json({ success: true, message: "Reward deleted successfully" });
+    }
+    return res.status(405).json({ error: "Method not allowed" });
+  },
+  { allowedMethods: ["GET", "POST", "PUT", "DELETE"] }
+);
+
 // api-src/[...path].ts
 async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -9301,6 +9959,18 @@ async function handler(req, res) {
     }
     if (resource === "audit") {
       return audit_default(req, res);
+    }
+    if (resource === "alerts") {
+      return alerts_default(req, res);
+    }
+    if (resource === "ranks") {
+      return ranks_default(req, res);
+    }
+    if (resource === "rewards") {
+      if (subResource === "redeem") {
+        req.body = { ...req.body, action: "redeem" };
+      }
+      return rewards_default(req, res);
     }
     return res.status(404).json({ error: `API route /api/${segments.join("/")} not found` });
   } catch (err) {

@@ -4,6 +4,7 @@ import { comparePassword, signToken } from "../../auth"
 import { apiHandler } from "../../middleware"
 import { memoryDb, StoredUser } from "../../store"
 import { logAudit } from "../../audit"
+import { checkRateLimit, resetRateLimit, validateUsername } from "../../security"
 
 export default apiHandler(
   async (req: VercelRequest, res: VercelResponse) => {
@@ -15,7 +16,17 @@ export default apiHandler(
         .json({ error: "Username and password are required" })
     }
 
+    const ip = (req.headers["x-forwarded-for"] as string) || (req.socket?.remoteAddress as string) || "anonymous"
     const cleanUsername = String(username).toLowerCase().trim()
+    const rateLimitKey = `login:${ip}:${cleanUsername}`
+
+    // Brute-force rate limiting: 5 attempts per 60 seconds
+    const rateCheck = checkRateLimit(rateLimitKey, 5, 60 * 1000)
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        error: `Too many login attempts. Please wait ${rateCheck.retryAfterSec} seconds before trying again.`,
+      })
+    }
 
     let user: any = null
     let dbError: string | null = null
@@ -73,6 +84,8 @@ export default apiHandler(
     if (!isMatch) {
       return res.status(401).json({ error: "Invalid username or password" })
     }
+
+    resetRateLimit(rateLimitKey);
 
     const token = signToken({
       userId: user.id,

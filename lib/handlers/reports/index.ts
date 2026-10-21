@@ -2,6 +2,7 @@ import type { VercelResponse } from "@vercel/node";
 import prisma from "../../prisma";
 import { apiHandler, AuthenticatedRequest } from "../../middleware";
 import { memoryDb, StoredWasteReport } from "../../store";
+import { sanitizeString } from "../../security";
 
 export default apiHandler(
   async (req: AuthenticatedRequest, res: VercelResponse, currentUser: any) => {
@@ -71,7 +72,10 @@ export default apiHandler(
         citizenId,
       } = req.body || {};
 
-      if (!location || !description) {
+      const cleanLocation = sanitizeString(location, 150);
+      const cleanDescription = sanitizeString(description, 1000);
+
+      if (!cleanLocation || !cleanDescription) {
         return res.status(400).json({ error: "Location and description are required" });
       }
 
@@ -89,8 +93,8 @@ export default apiHandler(
         createdReport = await prisma.wasteReport.create({
           data: {
             reportCode,
-            location,
-            description,
+            location: cleanLocation,
+            description: cleanDescription,
             imageUrl: imageUrl || null,
             wasteType,
             status: "pending",
@@ -116,7 +120,7 @@ export default apiHandler(
           await prisma.alert.create({
             data: {
               type: "overflow",
-              message: `Citizen Report [${reportCode}]: ${description.slice(0, 80)} at ${location}`,
+              message: `Citizen Report [${reportCode}]: ${cleanDescription.slice(0, 80)} at ${cleanLocation}`,
               priority: priority === "critical" ? "critical" : "high",
               wardId: wardId || null,
             },
@@ -130,8 +134,8 @@ export default apiHandler(
       const memReport: StoredWasteReport = {
         id: createdReport?.id || `rpt-${Date.now()}`,
         reportCode,
-        location,
-        description,
+        location: cleanLocation,
+        description: cleanDescription,
         imageUrl: imageUrl || null,
         wasteType,
         status: "pending",

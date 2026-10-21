@@ -150,6 +150,43 @@ export interface ReportItem {
   createdAt: string;
 }
 
+export interface RankTierItem {
+  id: string;
+  level: number;
+  name: string;
+  minPoints: number;
+  maxPoints: number | null;
+  badge: string;
+}
+
+export interface VoucherCodeItem {
+  id: string;
+  code: string;
+  isRedeemed: boolean;
+  redeemedByUserId?: string | null;
+  redeemedByUserName?: string | null;
+  redeemedAt?: string | null;
+}
+
+export interface RewardItem {
+  id: string;
+  name: string;
+  partner: string;
+  points: number;
+  icon: string;
+  category: string;
+  description?: string;
+  active: boolean;
+  stockCount: number;
+  available: boolean;
+  totalCodes?: number;
+  availableCodes?: number;
+  redeemedCodes?: number;
+  codes?: VoucherCodeItem[];
+  myRedeemedCodes?: { id: string; code: string; rewardName: string; partner: string; redeemedAt: string }[];
+  createdAt?: string;
+}
+
 export interface AuditLogItem {
   id: string;
   userId?: string | null;
@@ -199,6 +236,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   const data = isJson ? await response.json() : await response.text();
 
   if (!response.ok) {
+    if (response.status === 401 && endpoint !== "/auth/login") {
+      tokenStorage.remove();
+      userStorage.remove();
+    }
     const errorMsg = (isJson && data?.error) || response.statusText || "Request failed";
     throw new Error(errorMsg);
   }
@@ -450,8 +491,8 @@ export const api = {
         body: JSON.stringify(data),
       }),
     resolve: (id: string) =>
-      request<AlertItem>("/alerts", {
-        method: "PUT",
+      request<{ success: boolean; message: string }>(`/alerts?id=${encodeURIComponent(id)}`, {
+        method: "PATCH",
         body: JSON.stringify({ id, resolved: true }),
       }),
   },
@@ -487,8 +528,72 @@ export const api = {
     },
   },
 
-  // Reward Policy (Point to Money Rate set by City Corporation Admin)
+  // Rank Tiers Configuration (Managed by Super Admin)
+  ranks: {
+    getAll: () => request<RankTierItem[]>("/ranks"),
+    create: (data: Partial<RankTierItem>) =>
+      request<RankTierItem>("/ranks", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Partial<RankTierItem>) =>
+      request<RankTierItem>(`/ranks?id=${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body: JSON.stringify({ id, ...data }),
+      }),
+    delete: (id: string) =>
+      request<{ success: boolean }>(`/ranks?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      }),
+  },
+
+  // Partner Rewards & Unique Voucher Gift Cards (Managed by Super Admin)
   rewards: {
+    getAll: (citizenId?: string) => {
+      const query = citizenId ? `?citizenId=${encodeURIComponent(citizenId)}` : "";
+      return request<RewardItem[]>(`/rewards${query}`);
+    },
+    create: (data: {
+      name: string;
+      partner: string;
+      points: number;
+      icon?: string;
+      category?: string;
+      description?: string;
+      codes?: string[] | string;
+      generateCount?: number;
+      codePrefix?: string;
+    }) =>
+      request<RewardItem>("/rewards", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (
+      id: string,
+      data: Partial<RewardItem> & { addCodes?: string[] | string; generateCount?: number; codePrefix?: string }
+    ) =>
+      request<RewardItem>(`/rewards?id=${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body: JSON.stringify({ id, ...data }),
+      }),
+    delete: (id: string) =>
+      request<{ success: boolean }>(`/rewards?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      }),
+    redeem: (rewardId: string, citizenId?: string) =>
+      request<{
+        success: boolean;
+        voucherCode: string;
+        rewardName: string;
+        partner: string;
+        pointsDeducted: number;
+        remainingPoints: number;
+        redeemedAt: string;
+        message: string;
+      }>("/rewards", {
+        method: "POST",
+        body: JSON.stringify({ action: "redeem", rewardId, citizenId }),
+      }),
     getPolicy: async (cityCorpId?: string) => {
       try {
         const path = cityCorpId ? `/cities/${cityCorpId}` : "/cities";

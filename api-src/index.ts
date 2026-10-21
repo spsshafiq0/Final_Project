@@ -34,6 +34,8 @@ import dashboardStats from "../lib/handlers/dashboard/stats";
 import seedDatabase from "../lib/handlers/seed";
 import setupHandler from "../lib/handlers/setup/index";
 import auditHandler from "../lib/handlers/audit/index";
+import ranksIndex from "../lib/handlers/ranks/index";
+import rewardsIndex from "../lib/handlers/rewards/index";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -164,6 +166,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 13. System Audit Logs
     if (resource === "audit") {
       return auditHandler(req, res);
+    }
+
+    // 14. IoT & System Alerts
+    if (resource === "alerts") {
+      return alertsIndex(req, res);
+    }
+
+    // 15. Rank Tiers Configuration
+    if (resource === "ranks") {
+      return ranksIndex(req, res);
+    }
+
+    // 16. Partner Rewards & Unique Vouchers
+    if (resource === "rewards") {
+      if (subResource === "redeem") {
+        req.body = { ...req.body, action: "redeem" };
+      }
+      return rewardsIndex(req, res);
     }
 
     return res.status(200).json({ status: "healthy", endpoint: segments.join("/") });

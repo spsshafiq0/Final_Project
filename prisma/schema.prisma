@@ -90,6 +90,7 @@ model Ward {
   alerts      Alert[]
   withdrawals WithdrawalRequest[]
   wasteReports WasteReport[]
+  pickups     PickupRequest[]
 
   @@index([cityCorpId])
   @@map("wards")
@@ -230,11 +231,15 @@ model PickupRequest {
   driverId String?
   driver   User?  @relation("PickupDriver", fields: [driverId], references: [id], onDelete: SetNull)
 
+  wardId   String?
+  ward     Ward?  @relation(fields: [wardId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([requesterId])
   @@index([driverId])
+  @@index([wardId])
   @@index([status])
   @@map("pickup_requests")
 }

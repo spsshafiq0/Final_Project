@@ -52,6 +52,8 @@ export default function App() {
         setState({ page: "collector" });
       } else if (user.role === "CITIZEN") {
         setState({ page: "citizen" });
+      } else if (user.role === "BUSINESS") {
+        setState({ page: "business" });
       }
     }
   }, []);
@@ -98,7 +100,7 @@ export default function App() {
     case "super-admin":
       return <SuperAdminPanel onLogout={handleLogout} />;
     case "ward-admin":
-      return <WardAdminPanel wardId={Number(state.wardId) || 1} onLogout={handleLogout} />;
+      return <WardAdminPanel wardId={state.wardId || "1"} onLogout={handleLogout} />;
     case "citizen":
       return <CitizenPortal onNavigate={navigate} />;
     case "collector":

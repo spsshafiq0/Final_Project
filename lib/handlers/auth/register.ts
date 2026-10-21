@@ -3,6 +3,8 @@ import prisma from "../../prisma";
 import { hashPassword, signToken } from "../../auth";
 import { apiHandler, AuthenticatedRequest } from "../../middleware";
 import { memoryDb } from "../../store";
+import { logAudit } from "../../audit";
+import { validateUsername, validatePassword, validateEmail, sanitizeString } from "../../security";
 
 export default apiHandler(
   async (req: AuthenticatedRequest, res: VercelResponse, currentUser: any) => {
@@ -19,9 +21,31 @@ export default apiHandler(
       wardId,
     } = req.body || {};
 
-    if (!username || !password || !fullName) {
-      return res.status(400).json({ error: "Username, password, and full name are required" });
+    const userCheck = validateUsername(username);
+    if (!userCheck.valid) {
+      return res.status(400).json({ error: userCheck.error });
     }
+
+    const passCheck = validatePassword(password);
+    if (!passCheck.valid) {
+      return res.status(400).json({ error: passCheck.error });
+    }
+
+    const cleanFullName = sanitizeString(fullName, 100);
+    if (!cleanFullName) {
+      return res.status(400).json({ error: "Full name is required" });
+    }
+
+    let cleanEmail: string | null = null;
+    if (email && String(email).trim()) {
+      const emailCheck = validateEmail(email);
+      if (!emailCheck.valid) {
+        return res.status(400).json({ error: emailCheck.error });
+      }
+      cleanEmail = emailCheck.clean;
+    }
+
+    const cleanUsername = userCheck.clean;
 
     // Role creation security check
     if (role === "SUPER_ADMIN") {
@@ -53,16 +77,23 @@ export default apiHandler(
     // Check if username already exists in Prisma or memoryDb
     let isTaken = false;
     try {
-      const existing = await prisma.user.findUnique({ where: { username } }).catch(() => null);
+      const existing = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { username: { equals: cleanUsername, mode: "insensitive" } },
+            ...(cleanEmail ? [{ email: { equals: cleanEmail, mode: "insensitive" } }] : []),
+          ],
+        },
+      }).catch(() => null);
       if (existing) isTaken = true;
     } catch {}
 
-    if (!isTaken && memoryDb.users.some((u: any) => u.username.toLowerCase() === username.toLowerCase())) {
+    if (!isTaken && memoryDb.users.some((u: any) => u.username.toLowerCase() === cleanUsername || (cleanEmail && u.email && u.email.toLowerCase() === cleanEmail))) {
       isTaken = true;
     }
 
     if (isTaken) {
-      return res.status(409).json({ error: "Username is already taken" });
+      return res.status(409).json({ error: "Username or email is already taken" });
     }
 
     const hashedPassword = await hashPassword(password);
@@ -71,13 +102,13 @@ export default apiHandler(
     try {
       newUser = await prisma.user.create({
         data: {
-          username,
+          username: cleanUsername,
           password: hashedPassword,
-          fullName,
-          email: email || null,
-          phone: phone || null,
-          nid: nid || null,
-          address: address || null,
+          fullName: cleanFullName,
+          email: cleanEmail,
+          phone: phone ? String(phone).trim() : null,
+          nid: nid ? String(nid).trim() : null,
+          address: address ? sanitizeString(address, 200) : null,
           role,
           cityCorpId: cityCorpId || null,
           wardId: wardId || null,
@@ -94,13 +125,13 @@ export default apiHandler(
     const userId = newUser?.id || `usr-reg-${Date.now()}`;
     const memUser = {
       id: userId,
-      username,
+      username: cleanUsername,
       password: hashedPassword,
-      fullName,
-      email: email || null,
-      phone: phone || null,
-      nid: nid || null,
-      address: address || null,
+      fullName: cleanFullName,
+      email: cleanEmail,
+      phone: phone ? String(phone).trim() : null,
+      nid: nid ? String(nid).trim() : null,
+      address: address ? sanitizeString(address, 200) : null,
       role,
       active: true,
       points: 0,
@@ -109,9 +140,17 @@ export default apiHandler(
       createdAt: new Date().toISOString(),
     };
 
-    if (!memoryDb.users.some((u: any) => u.username === username)) {
+    if (!memoryDb.users.some((u: any) => u.username === cleanUsername)) {
       memoryDb.users.push(memUser);
     }
+
+    await logAudit({
+      userId: memUser.id,
+      action: "USER_REGISTER",
+      resource: "users",
+      details: `New account registered: ${cleanUsername} (${role})`,
+      ipAddress: (req.headers["x-forwarded-for"] as string) || (req.socket?.remoteAddress as string),
+    });
 
     const token = signToken({
       userId: memUser.id,

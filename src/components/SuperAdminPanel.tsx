@@ -24,15 +24,20 @@ import {
   Loader2,
   Eye,
   EyeOff,
+  Gift,
+  Award,
+  Ticket,
+  Copy,
+  CheckSquare,
 } from "lucide-react";
-import api, { CityCorporationItem, UserProfile } from "../lib/api";
+import api, { CityCorporationItem, UserProfile, RankTierItem, RewardItem, VoucherCodeItem } from "../lib/api";
 
 interface SuperAdminPanelProps {
   onLogout: () => void;
 }
 
 export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
-  const [tab, setTab] = useState<"overview" | "cities" | "accounts" | "system">("overview");
+  const [tab, setTab] = useState<"overview" | "cities" | "accounts" | "rewards" | "system">("overview");
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [notification, setNotification] = useState<{ type: "success" | "error"; msg: string } | null>(null);
@@ -82,17 +87,56 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
   });
 
   // Load all data
+  // Rank Tiers & Partner Rewards State
+  const [rankTiers, setRankTiers] = useState<RankTierItem[]>([]);
+  const [rewards, setRewards] = useState<RewardItem[]>([]);
+
+  // Rank Modal State
+  const [showRankModal, setShowRankModal] = useState(false);
+  const [editingRank, setEditingRank] = useState<RankTierItem | null>(null);
+  const [rankForm, setRankForm] = useState({
+    level: 1,
+    name: "",
+    minPoints: 0,
+    maxPoints: "200",
+    badge: "🌱",
+  });
+
+  // Reward Modal State
+  const [showRewardModal, setShowRewardModal] = useState(false);
+  const [editingReward, setEditingReward] = useState<RewardItem | null>(null);
+  const [rewardForm, setRewardForm] = useState({
+    name: "",
+    partner: "",
+    points: 500,
+    icon: "🛍️",
+    category: "Shopping",
+    description: "",
+    codes: "",
+    generateCount: 5,
+    codePrefix: "",
+  });
+
+  // Manage Codes / Restock Modal State
+  const [activeCodesReward, setActiveCodesReward] = useState<RewardItem | null>(null);
+  const [restockCodes, setRestockCodes] = useState("");
+  const [restockGenerateCount, setRestockGenerateCount] = useState(5);
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const [citiesData, usersData, statsData] = await Promise.all([
+      const [citiesData, usersData, statsData, ranksData, rewardsData] = await Promise.all([
         api.cities.getAll().catch(() => []),
         api.users.getAll().catch(() => []),
         api.dashboard.getStats().catch(() => null),
+        api.ranks.getAll().catch(() => []),
+        api.rewards.getAll().catch(() => []),
       ]);
       setCities(citiesData || []);
       setUsers(usersData || []);
       setStats(statsData);
+      setRankTiers(ranksData || []);
+      setRewards(rewardsData || []);
     } catch (err: any) {
       console.error("Failed to load super admin data", err);
     } finally {
@@ -347,6 +391,193 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
     }
   };
 
+  // Rank Tiers & Rewards Handlers
+  const openCreateRank = () => {
+    setEditingRank(null);
+    const nextLevel = rankTiers.length > 0 ? Math.max(...rankTiers.map((r) => r.level)) + 1 : 1;
+    const lastTier = rankTiers[rankTiers.length - 1];
+    const nextMin = lastTier && lastTier.maxPoints !== null ? lastTier.maxPoints + 1 : 0;
+    setRankForm({
+      level: nextLevel,
+      name: "",
+      minPoints: nextMin,
+      maxPoints: String(nextMin + 500),
+      badge: "🏅",
+    });
+    setShowRankModal(true);
+  };
+
+  const openEditRank = (tier: RankTierItem) => {
+    setEditingRank(tier);
+    setRankForm({
+      level: tier.level,
+      name: tier.name,
+      minPoints: tier.minPoints,
+      maxPoints: tier.maxPoints === null ? "" : String(tier.maxPoints),
+      badge: tier.badge,
+    });
+    setShowRankModal(true);
+  };
+
+  const handleSaveRank = async () => {
+    if (!rankForm.name.trim()) {
+      showNotify("error", "Rank tier name is required");
+      return;
+    }
+    setLoading(true);
+    try {
+      const payload = {
+        level: Number(rankForm.level) || 1,
+        name: rankForm.name.trim(),
+        minPoints: Number(rankForm.minPoints) || 0,
+        maxPoints: rankForm.maxPoints.trim() === "" ? null : Number(rankForm.maxPoints),
+        badge: rankForm.badge || "🏅",
+      };
+
+      if (editingRank) {
+        await api.ranks.update(editingRank.id, payload);
+        showNotify("success", `Updated rank tier "${payload.name}"`);
+      } else {
+        await api.ranks.create(payload);
+        showNotify("success", `Created new rank tier "${payload.name}"`);
+      }
+      setShowRankModal(false);
+      const updated = await api.ranks.getAll();
+      setRankTiers(updated || []);
+    } catch (err: any) {
+      showNotify("error", err.message || "Failed to save rank tier");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteRank = async (id: string, name: string) => {
+    if (!confirm(`Delete rank tier "${name}"?`)) return;
+    setLoading(true);
+    try {
+      await api.ranks.delete(id);
+      showNotify("success", `Rank tier "${name}" deleted`);
+      setRankTiers((prev) => prev.filter((r) => r.id !== id));
+    } catch (err: any) {
+      showNotify("error", err.message || "Failed to delete rank tier");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openCreateReward = () => {
+    setEditingReward(null);
+    setRewardForm({
+      name: "",
+      partner: "",
+      points: 500,
+      icon: "🛍️",
+      category: "Shopping",
+      description: "",
+      codes: "",
+      generateCount: 5,
+      codePrefix: "",
+    });
+    setShowRewardModal(true);
+  };
+
+  const openEditReward = (reward: RewardItem) => {
+    setEditingReward(reward);
+    setRewardForm({
+      name: reward.name,
+      partner: reward.partner,
+      points: reward.points,
+      icon: reward.icon || "🎁",
+      category: reward.category || "General",
+      description: reward.description || "",
+      codes: "",
+      generateCount: 0,
+      codePrefix: "",
+    });
+    setShowRewardModal(true);
+  };
+
+  const handleSaveReward = async () => {
+    if (!rewardForm.name.trim() || !rewardForm.partner.trim()) {
+      showNotify("error", "Reward title and partner name are required");
+      return;
+    }
+    setLoading(true);
+    try {
+      if (editingReward) {
+        await api.rewards.update(editingReward.id, {
+          name: rewardForm.name,
+          partner: rewardForm.partner,
+          points: Number(rewardForm.points) || 100,
+          icon: rewardForm.icon,
+          category: rewardForm.category,
+          description: rewardForm.description,
+          addCodes: rewardForm.codes,
+          generateCount: Number(rewardForm.generateCount) || 0,
+          codePrefix: rewardForm.codePrefix,
+        });
+        showNotify("success", `Updated reward voucher "${rewardForm.name}"`);
+      } else {
+        await api.rewards.create({
+          name: rewardForm.name,
+          partner: rewardForm.partner,
+          points: Number(rewardForm.points) || 100,
+          icon: rewardForm.icon,
+          category: rewardForm.category,
+          description: rewardForm.description,
+          codes: rewardForm.codes,
+          generateCount: Number(rewardForm.generateCount) || 0,
+          codePrefix: rewardForm.codePrefix,
+        });
+        showNotify("success", `Created reward voucher "${rewardForm.name}" with unique codes`);
+      }
+      setShowRewardModal(false);
+      const updated = await api.rewards.getAll();
+      setRewards(updated || []);
+    } catch (err: any) {
+      showNotify("error", err.message || "Failed to save reward");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteReward = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete reward "${name}"? All codes will be removed.`)) return;
+    setLoading(true);
+    try {
+      await api.rewards.delete(id);
+      showNotify("success", `Reward "${name}" deleted`);
+      setRewards((prev) => prev.filter((r) => r.id !== id));
+    } catch (err: any) {
+      showNotify("error", err.message || "Failed to delete reward");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRestockCodes = async () => {
+    if (!activeCodesReward) return;
+    setLoading(true);
+    try {
+      await api.rewards.update(activeCodesReward.id, {
+        addCodes: restockCodes,
+        generateCount: Number(restockGenerateCount) || 0,
+        codePrefix: activeCodesReward.partner.replace(/[^A-Za-z0-9]/g, "").slice(0, 4).toUpperCase(),
+      });
+      showNotify("success", `Added more unique codes to "${activeCodesReward.name}"`);
+      setRestockCodes("");
+      setRestockGenerateCount(0);
+      const updated = await api.rewards.getAll();
+      setRewards(updated || []);
+      const ref = updated.find((r) => r.id === activeCodesReward.id);
+      if (ref) setActiveCodesReward(ref);
+    } catch (err: any) {
+      showNotify("error", err.message || "Failed to restock codes");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredCities = cities.filter((c) =>
     `${c.name} ${c.code} ${c.address}`.toLowerCase().includes(search.toLowerCase())
   );
@@ -399,6 +630,7 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
             { id: "overview", label: "National Overview", icon: Globe2 },
             { id: "cities", label: `City Corporations (${cities.length})`, icon: Building2 },
             { id: "accounts", label: `Account Control (${users.length})`, icon: Users },
+            { id: "rewards", label: `Ranks & Rewards (${rewards.length})`, icon: Gift },
             { id: "system", label: "System Health", icon: Activity },
           ].map((item) => (
             <button
@@ -791,7 +1023,176 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
           </div>
         )}
 
-        {/* TAB 4: SYSTEM HEALTH */}
+        {/* TAB 4: RANKS & REWARDS CONFIGURATION (SUPER ADMIN) */}
+        {tab === "rewards" && (
+          <div className="space-y-8">
+            {/* Header Description */}
+            <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="font-display font-800 text-xl text-white flex items-center gap-2">
+                    <Award size={22} className="text-[#4ade80]" /> Citizen Ranks & Reward Vouchers
+                  </h2>
+                  <p className="text-[#4b7a5a] text-xs mt-1">
+                    Configure citizen level point thresholds and manage exclusive partner gift vouchers with guaranteed unique codes.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION 1: RANK TIERS */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-display font-bold text-lg text-white">Citizen Rank Levels & Point Ranges</h3>
+                  <p className="text-[#4b7a5a] text-xs">Define what rank level and title a citizen gets based on their points</p>
+                </div>
+                <button
+                  onClick={openCreateRank}
+                  className="bg-[#16a34a] hover:bg-[#15803d] text-white rounded-xl px-3.5 py-2 text-xs font-semibold flex items-center gap-1.5 transition-all shadow"
+                >
+                  <Plus size={14} /> Add Rank Level
+                </button>
+              </div>
+
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {rankTiers.map((tier) => (
+                  <div
+                    key={tier.id}
+                    className="bg-[#0d2414] border border-[#1a3d22] hover:border-[#4ade80]/40 rounded-xl p-5 transition-all relative group"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="text-3xl">{tier.badge}</div>
+                        <div>
+                          <div className="text-[11px] font-mono text-[#4ade80]">LEVEL {tier.level}</div>
+                          <div className="font-display font-bold text-white text-base">{tier.name}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => openEditRank(tier)}
+                          className="p-1.5 text-[#4b7a5a] hover:text-[#4ade80] rounded-lg hover:bg-[#1a3d22]"
+                          title="Edit Tier"
+                        >
+                          <Edit3 size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRank(tier.id, tier.name)}
+                          className="p-1.5 text-[#4b7a5a] hover:text-red-400 rounded-lg hover:bg-red-500/10"
+                          title="Delete Tier"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="bg-[#061309] border border-[#1a3d22] rounded-lg p-3 text-xs">
+                      <div className="text-[#4b7a5a] font-mono mb-0.5">POINT RANGE</div>
+                      <div className="text-white font-mono font-bold text-sm">
+                        {tier.minPoints.toLocaleString()} pts {tier.maxPoints !== null ? `— ${tier.maxPoints.toLocaleString()} pts` : "+ (Max Rank)"}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* SECTION 2: PARTNER REWARDS & UNIQUE VOUCHERS */}
+            <div className="space-y-4 pt-4 border-t border-[#1a3d22]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-display font-bold text-lg text-white">Partner Gift Cards & Coupons</h3>
+                  <p className="text-[#4b7a5a] text-xs">
+                    Manage digital rewards. Each voucher has its own unique code and is never given to more than one citizen.
+                  </p>
+                </div>
+                <button
+                  onClick={openCreateReward}
+                  className="bg-[#16a34a] hover:bg-[#15803d] text-white rounded-xl px-3.5 py-2 text-xs font-semibold flex items-center gap-1.5 transition-all shadow"
+                >
+                  <Plus size={14} /> Add New Voucher Offer
+                </button>
+              </div>
+
+              {rewards.length === 0 ? (
+                <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-12 text-center text-[#4b7a5a]">
+                  <Gift size={40} className="mx-auto mb-3 opacity-40 text-[#4ade80]" />
+                  <div className="font-bold text-base text-white">No partner vouchers created yet</div>
+                  <div className="text-xs mt-1">Click "Add New Voucher Offer" to add discounts from Shajgoj, Pathao, etc.</div>
+                </div>
+              ) : (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {rewards.map((reward) => (
+                    <div
+                      key={reward.id}
+                      className="bg-[#0d2414] border border-[#1a3d22] hover:border-[#4ade80]/40 rounded-xl p-5 transition-all flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="text-3xl">{reward.icon || "🎁"}</div>
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                                (reward.availableCodes || 0) > 0
+                                  ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                                  : "bg-red-500/20 text-red-400 border border-red-500/30"
+                              }`}
+                            >
+                              {(reward.availableCodes || 0) > 0
+                                ? `${reward.availableCodes} codes available`
+                                : "Out of stock"}
+                            </span>
+                            <button
+                              onClick={() => openEditReward(reward)}
+                              className="p-1 text-[#4b7a5a] hover:text-[#4ade80]"
+                              title="Edit"
+                            >
+                              <Edit3 size={13} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteReward(reward.id, reward.name)}
+                              className="p-1 text-[#4b7a5a] hover:text-red-400"
+                              title="Delete"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="font-display font-bold text-white text-base mb-0.5">{reward.name}</div>
+                        <div className="text-xs text-[#4ade80] font-mono mb-2">Partner: {reward.partner}</div>
+                        {reward.description && (
+                          <p className="text-xs text-[#4b7a5a] mb-4 line-clamp-2">{reward.description}</p>
+                        )}
+                      </div>
+
+                      <div className="pt-3 border-t border-[#1a3d22]/80 space-y-3">
+                        <div className="flex items-center justify-between text-xs font-mono">
+                          <span className="text-[#4b7a5a]">POINTS COST</span>
+                          <span className="font-bold text-[#4ade80]">{reward.points} pts</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs font-mono">
+                          <span className="text-[#4b7a5a]">REDEEMED</span>
+                          <span className="text-white">{reward.redeemedCodes || 0} users</span>
+                        </div>
+
+                        <button
+                          onClick={() => setActiveCodesReward(reward)}
+                          className="w-full bg-[#061309] hover:bg-[#1a3d22] border border-[#1a3d22] text-[#86efac] py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                        >
+                          <Ticket size={13} /> Manage Codes & Inventory
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: SYSTEM HEALTH */}
         {tab === "system" && (
           <div className="space-y-5">
             <div className="grid sm:grid-cols-3 gap-4">
@@ -1167,6 +1568,341 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
                 {loading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                 Save & Assign Admin
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: ADD / EDIT RANK TIER ── */}
+      {showRankModal && (
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={() => setShowRankModal(false)}>
+          <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-display font-bold text-white text-base">
+                  {editingRank ? "Edit Rank Level" : "Create New Citizen Rank Level"}
+                </h3>
+                <p className="text-xs text-[#4b7a5a]">Set point range and level title</p>
+              </div>
+              <button onClick={() => setShowRankModal(false)} className="text-[#4b7a5a] hover:text-white"><X size={18} /></button>
+            </div>
+
+            <div className="space-y-3.5">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[#4b7a5a] text-xs font-mono mb-1">LEVEL NUMBER</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={rankForm.level}
+                    onChange={e => setRankForm({ ...rankForm, level: Number(e.target.value) })}
+                    className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2 text-sm text-white outline-none focus:border-[#4ade80]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[#4b7a5a] text-xs font-mono mb-1">EMOJI BADGE</label>
+                  <select
+                    value={rankForm.badge}
+                    onChange={e => setRankForm({ ...rankForm, badge: e.target.value })}
+                    className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2 text-sm text-white outline-none focus:border-[#4ade80]"
+                  >
+                    <option value="🌱">🌱 Sprout</option>
+                    <option value="🌿">🌿 Leaf</option>
+                    <option value="⭐">⭐ Star</option>
+                    <option value="🏅">🏅 Medal</option>
+                    <option value="🏆">🏆 Trophy</option>
+                    <option value="👑">👑 Crown</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[#4b7a5a] text-xs font-mono mb-1">RANK TITLE / NAME</label>
+                <input
+                  value={rankForm.name}
+                  onChange={e => setRankForm({ ...rankForm, name: e.target.value })}
+                  placeholder="e.g. Eco Beginner, Waste Warrior"
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2 text-sm text-white outline-none focus:border-[#4ade80]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[#4b7a5a] text-xs font-mono mb-1">MIN POINTS</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={rankForm.minPoints}
+                    onChange={e => setRankForm({ ...rankForm, minPoints: Number(e.target.value) })}
+                    className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2 text-sm text-white outline-none focus:border-[#4ade80]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[#4b7a5a] text-xs font-mono mb-1">MAX POINTS</label>
+                  <input
+                    type="text"
+                    value={rankForm.maxPoints}
+                    onChange={e => setRankForm({ ...rankForm, maxPoints: e.target.value })}
+                    placeholder="Leave blank for max"
+                    className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2 text-sm text-white outline-none focus:border-[#4ade80]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowRankModal(false)}
+                className="flex-1 border border-[#1a3d22] text-[#4b7a5a] py-2.5 rounded-xl text-xs hover:border-[#4ade80]/30 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveRank}
+                disabled={loading}
+                className="flex-1 bg-[#16a34a] hover:bg-[#15803d] text-white py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow"
+              >
+                <Save size={14} /> Save Rank Level
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: ADD / EDIT REWARD OFFER ── */}
+      {showRewardModal && (
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={() => setShowRewardModal(false)}>
+          <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-display font-bold text-white text-base">
+                  {editingReward ? "Edit Reward Voucher" : "Add New Partner Voucher Offer"}
+                </h3>
+                <p className="text-xs text-[#4b7a5a]">Super Admin control: configure digital gift vouchers and unique codes</p>
+              </div>
+              <button onClick={() => setShowRewardModal(false)} className="text-[#4b7a5a] hover:text-white"><X size={18} /></button>
+            </div>
+
+            <div className="space-y-3.5">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[#4b7a5a] text-xs font-mono mb-1">PARTNER BRAND</label>
+                  <input
+                    value={rewardForm.partner}
+                    onChange={e => setRewardForm({ ...rewardForm, partner: e.target.value })}
+                    placeholder="e.g. Shajgoj, Pathao, Shohoz"
+                    className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2 text-sm text-white outline-none focus:border-[#4ade80]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[#4b7a5a] text-xs font-mono mb-1">ICON</label>
+                  <select
+                    value={rewardForm.icon}
+                    onChange={e => setRewardForm({ ...rewardForm, icon: e.target.value })}
+                    className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2 text-sm text-white outline-none focus:border-[#4ade80]"
+                  >
+                    <option value="🛍️">🛍️ Shopping</option>
+                    <option value="🛵">🛵 Ride / Transport</option>
+                    <option value="🎬">🎬 Movie / Entertainment</option>
+                    <option value="🛒">🛒 Grocery / Supermarket</option>
+                    <option value="📱">📱 Mobile / Data</option>
+                    <option value="🌳">🌳 Tree Planting / Eco</option>
+                    <option value="🍔">🍔 Food / Restaurant</option>
+                    <option value="🎁">🎁 Special Gift</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[#4b7a5a] text-xs font-mono mb-1">VOUCHER TITLE / OFFER</label>
+                <input
+                  value={rewardForm.name}
+                  onChange={e => setRewardForm({ ...rewardForm, name: e.target.value })}
+                  placeholder="e.g. 20% Off Skincare, ৳100 Ride Credit"
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2 text-sm text-white outline-none focus:border-[#4ade80]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[#4b7a5a] text-xs font-mono mb-1">REQUIRED POINTS</label>
+                  <input
+                    type="number"
+                    min="10"
+                    value={rewardForm.points}
+                    onChange={e => setRewardForm({ ...rewardForm, points: Number(e.target.value) })}
+                    className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2 text-sm text-white outline-none focus:border-[#4ade80]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[#4b7a5a] text-xs font-mono mb-1">CATEGORY</label>
+                  <input
+                    value={rewardForm.category}
+                    onChange={e => setRewardForm({ ...rewardForm, category: e.target.value })}
+                    placeholder="e.g. Shopping, Rides"
+                    className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2 text-sm text-white outline-none focus:border-[#4ade80]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[#4b7a5a] text-xs font-mono mb-1">DESCRIPTION</label>
+                <textarea
+                  rows={2}
+                  value={rewardForm.description}
+                  onChange={e => setRewardForm({ ...rewardForm, description: e.target.value })}
+                  placeholder="Terms or redemption description..."
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2 text-sm text-white outline-none focus:border-[#4ade80]"
+                />
+              </div>
+
+              <div className="p-4 bg-[#061309] border border-[#1a3d22] rounded-xl space-y-3">
+                <div className="text-xs font-mono text-[#4ade80] font-bold">UNIQUE VOUCHER CODES INVENTORY</div>
+                <p className="text-[11px] text-[#4b7a5a]">
+                  Each code is single-use only. When a user redeems, one unique code is permanently assigned to them so it is never reused.
+                </p>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[#4b7a5a] text-[11px] font-mono mb-1">AUTO-GENERATE CODES</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={rewardForm.generateCount}
+                      onChange={e => setRewardForm({ ...rewardForm, generateCount: Number(e.target.value) })}
+                      placeholder="e.g. 5"
+                      className="w-full bg-[#0d2414] border border-[#1a3d22] rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-[#4ade80]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#4b7a5a] text-[11px] font-mono mb-1">CODE PREFIX</label>
+                    <input
+                      value={rewardForm.codePrefix}
+                      onChange={e => setRewardForm({ ...rewardForm, codePrefix: e.target.value })}
+                      placeholder="e.g. SHAJ-"
+                      className="w-full bg-[#0d2414] border border-[#1a3d22] rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-[#4ade80]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[#4b7a5a] text-[11px] font-mono mb-1">OR PASTE CUSTOM CODES (COMMA OR LINE SEPARATED)</label>
+                  <textarea
+                    rows={2}
+                    value={rewardForm.codes}
+                    onChange={e => setRewardForm({ ...rewardForm, codes: e.target.value })}
+                    placeholder="CODE-1, CODE-2, CODE-3"
+                    className="w-full bg-[#0d2414] border border-[#1a3d22] rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-[#4ade80] font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowRewardModal(false)}
+                className="flex-1 border border-[#1a3d22] text-[#4b7a5a] py-2.5 rounded-xl text-xs hover:border-[#4ade80]/30 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveReward}
+                disabled={loading}
+                className="flex-1 bg-[#16a34a] hover:bg-[#15803d] text-white py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow"
+              >
+                <Save size={14} /> Save Reward Offer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: MANAGE CODES & RESTOCK FOR A REWARD ── */}
+      {activeCodesReward && (
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={() => setActiveCodesReward(null)}>
+          <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6 w-full max-w-xl shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between pb-4 border-b border-[#1a3d22]">
+              <div>
+                <h3 className="font-display font-bold text-white text-base">
+                  Voucher Inventory: {activeCodesReward.name}
+                </h3>
+                <p className="text-xs text-[#4b7a5a]">
+                  Partner: {activeCodesReward.partner} · {activeCodesReward.availableCodes || 0} available of {activeCodesReward.totalCodes || 0} total codes
+                </p>
+              </div>
+              <button onClick={() => setActiveCodesReward(null)} className="text-[#4b7a5a] hover:text-white"><X size={18} /></button>
+            </div>
+
+            {/* List of codes */}
+            <div className="flex-1 overflow-y-auto py-4 space-y-2">
+              {(activeCodesReward.codes || []).length === 0 ? (
+                <div className="text-center py-8 text-xs text-[#4b7a5a]">No voucher codes in inventory. Restock below!</div>
+              ) : (
+                (activeCodesReward.codes || []).map((code) => (
+                  <div
+                    key={code.id}
+                    className={`flex items-center justify-between p-2.5 rounded-lg border text-xs ${
+                      code.isRedeemed
+                        ? "bg-[#061309]/60 border-[#1a3d22] opacity-75"
+                        : "bg-[#061309] border-[#4ade80]/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-white tracking-wider">{code.code}</span>
+                      <span
+                        className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                          code.isRedeemed
+                            ? "bg-blue-500/20 text-blue-300"
+                            : "bg-green-500/20 text-green-400"
+                        }`}
+                      >
+                        {code.isRedeemed ? "REDEEMED" : "AVAILABLE"}
+                      </span>
+                    </div>
+
+                    {code.isRedeemed ? (
+                      <div className="text-[11px] text-[#4b7a5a] text-right font-mono">
+                        by {code.redeemedByUserName || "User"} on {code.redeemedAt ? new Date(code.redeemedAt).toLocaleDateString() : ""}
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-[#4ade80] font-mono">Guaranteed Unique</span>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Restock Section */}
+            <div className="pt-4 border-t border-[#1a3d22] space-y-3">
+              <div className="text-xs font-mono text-[#4ade80] font-bold">ADD MORE CODES TO RESTOCK</div>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={restockGenerateCount}
+                  onChange={e => setRestockGenerateCount(Number(e.target.value))}
+                  placeholder="Qty"
+                  className="w-24 bg-[#061309] border border-[#1a3d22] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#4ade80]"
+                />
+                <button
+                  onClick={handleRestockCodes}
+                  disabled={loading}
+                  className="bg-[#16a34a] hover:bg-[#15803d] text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0"
+                >
+                  <Plus size={14} /> Auto-Generate {restockGenerateCount} Unique Codes
+                </button>
+              </div>
+
+              <div>
+                <input
+                  value={restockCodes}
+                  onChange={e => setRestockCodes(e.target.value)}
+                  placeholder="Or paste custom codes (comma separated)..."
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2 text-xs text-white outline-none focus:border-[#4ade80]"
+                />
+              </div>
             </div>
           </div>
         </div>

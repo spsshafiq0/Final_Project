@@ -5,6 +5,7 @@ import { sendPasswordResetOtpEmail } from "../../email";
 import otpStore from "../../otpStore";
 import { memoryDb } from "../../store";
 import { signRecoveryToken } from "../../auth";
+import { checkRateLimit } from "../../security";
 
 export default apiHandler(
   async (req: VercelRequest, res: VercelResponse) => {
@@ -14,7 +15,17 @@ export default apiHandler(
       return res.status(400).json({ error: "Please provide your registered email or username." });
     }
 
+    const ip = (req.headers["x-forwarded-for"] as string) || (req.socket?.remoteAddress as string) || "anonymous";
     const cleanInput = identifier.trim().toLowerCase();
+    const rateLimitKey = `otp:${ip}:${cleanInput}`;
+
+    // Rate limit: 3 OTP requests per 5 minutes
+    const rateCheck = checkRateLimit(rateLimitKey, 3, 5 * 60 * 1000);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        error: `Too many password reset requests. Please wait ${rateCheck.retryAfterSec} seconds before requesting a new code.`,
+      });
+    }
 
     // 1. Look up user by username or email in Prisma DB
     let user: any = null;

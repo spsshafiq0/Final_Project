@@ -114,19 +114,44 @@ export default apiHandler(
 
       const bdtAmount = Math.round(pointsToDeduct * (cityCorp.pointRate || 0.20) * 100) / 100;
       const code = `WDR-${Math.floor(1000 + Math.random() * 9000)}`;
+      const finalCitizenId = currentUser?.userId || `usr-guest-${Date.now()}`;
+      const finalWardId = ward?.id || wardId;
 
-      const newWithdrawal = {
+      let createdWithdrawal: any = null;
+      try {
+        createdWithdrawal = await prisma.withdrawalRequest.create({
+          data: {
+            verificationCode: code,
+            points: pointsToDeduct,
+            amount: bdtAmount,
+            status: "pending",
+            citizenId: finalCitizenId,
+            citizenName: citizenName || currentUser?.fullName || "Citizen User",
+            citizenPhone: citizenPhone || currentUser?.phone || "017XXXXXXXX",
+            wardId: finalWardId,
+            notes: notes || null,
+          },
+          include: {
+            citizen: { select: { id: true, fullName: true, username: true, phone: true } },
+            ward: { select: { id: true, name: true, area: true } },
+          },
+        }).catch(() => null);
+      } catch (err: any) {
+        console.warn("[Withdrawals Create PG Notice]", err?.message);
+      }
+
+      const newWithdrawal = createdWithdrawal || {
         id: `wdr-${Date.now()}`,
         verificationCode: code,
         points: pointsToDeduct,
         amount: bdtAmount,
         status: "pending",
-        citizenId: currentUser?.userId || `usr-guest-${Date.now()}`,
+        citizenId: finalCitizenId,
         citizenName: citizenName || currentUser?.fullName || "Citizen User",
         citizenPhone: citizenPhone || currentUser?.phone || "017XXXXXXXX",
-        wardId: ward?.id || wardId,
+        wardId: finalWardId,
         ward: {
-          id: ward?.id || wardId,
+          id: finalWardId,
           name: ward?.name || "Ward 01",
           area: ward?.area || "Uttara",
           cityCorp,
@@ -135,6 +160,7 @@ export default apiHandler(
         createdAt: new Date().toISOString(),
       };
 
+      if (!memoryDb.withdrawals) memoryDb.withdrawals = [];
       memoryDb.withdrawals.unshift(newWithdrawal);
 
       return res.status(201).json({

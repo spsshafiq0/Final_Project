@@ -11,7 +11,7 @@ import { getBinsForWard, getTracksForWard, getWardById, type Bin, type Track, wa
 import api, { WithdrawalItem } from "../lib/api";
 
 interface WardAdminPanelProps {
-  wardId: number;
+  wardId: string | number;
   onLogout: () => void;
 }
 
@@ -38,8 +38,8 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 // ── Add Track Modal (Ward-level) ────────────────────────────────────────
-function AddTrackModal({ wardId, onClose, onAdd }: { wardId: number; onClose: () => void; onAdd: (t: Partial<Track>) => void }) {
-  const ward = getWardById(wardId) || wards[0];
+function AddTrackModal({ wardId, onClose, onAdd }: { wardId: number | string; onClose: () => void; onAdd: (t: Partial<Track>) => void }) {
+  const ward = getWardById(Number(wardId)) || wards[0];
   const [form, setForm] = useState({
     truckId: "",
     driver: "",
@@ -142,7 +142,7 @@ function AddTrackModal({ wardId, onClose, onAdd }: { wardId: number; onClose: ()
 
               onAdd({
                 ...form,
-                wardId,
+                wardId: Number(wardId) || 1,
                 status: "idle",
                 progress: 0,
                 load: "0t",
@@ -326,15 +326,22 @@ function UpdateWasteModal({
 
 // ── Main Component ─────────────────────────────────────────────────────
 export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps) {
-  const ward = getWardById(wardId) || wards[0];
+  const [dynamicWard, setDynamicWard] = useState<any>(null);
+  const ward = dynamicWard || getWardById(Number(wardId)) || wards[0] || {
+    id: wardId,
+    name: `Ward ${wardId}`,
+    area: "Smart City Ward",
+    population: 35000,
+    councilor: "Ward Councilor",
+  };
   const [activeTab, setActiveTab] = useState("overview");
   const [search, setSearch] = useState("");
   const [showAddTrack, setShowAddTrack] = useState(false);
   const [editTrack, setEditTrack] = useState<Track | null>(null);
   const [updateBin, setUpdateBin] = useState<string | null>(null);
   const [expandedBin, setExpandedBin] = useState<string | null>(null);
-  const [localBins, setLocalBins] = useState<Bin[]>(getBinsForWard(wardId));
-  const [localTracks, setLocalTracks] = useState<Track[]>(getTracksForWard(wardId));
+  const [localBins, setLocalBins] = useState<Bin[]>(() => getBinsForWard(Number(wardId) || 1));
+  const [localTracks, setLocalTracks] = useState<Track[]>(() => getTracksForWard(Number(wardId) || 1));
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [recentSubmissions, setRecentSubmissions] = useState([
     { bin: "B-013", organic: 18, plastic: 9, paper: 7, metal: 4, total: 42, time: "Today 10:30", done: true },
@@ -359,44 +366,83 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
       const data = await api.withdrawals.getAll({ wardId: String(wardId) });
       if (Array.isArray(data)) {
         setWithdrawals(data);
+      } else {
+        setWithdrawals([]);
       }
     } catch {
-      // Mock fallback
-      setWithdrawals([
-        {
-          id: "wdr-demo-1",
-          citizenId: "c-1",
-          wardId: String(wardId),
-          points: 500,
-          amount: 100,
-          pointRate: 0.20,
-          status: "pending",
-          verificationCode: "WDR-8921",
-          createdAt: new Date().toISOString(),
-          citizen: { id: "c-1", fullName: "Tanvir Ahmed", phone: "01712345678" },
-        },
-        {
-          id: "wdr-demo-2",
-          citizenId: "c-2",
-          wardId: String(wardId),
-          points: 1200,
-          amount: 240,
-          pointRate: 0.20,
-          status: "paid",
-          verificationCode: "WDR-3310",
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-          paidAt: new Date(Date.now() - 3600000).toISOString(),
-          citizen: { id: "c-2", fullName: "Sadia Sultana", phone: "01898765432" },
-        }
-      ]);
+      setWithdrawals([]);
     } finally {
       setLoadingWithdrawals(false);
     }
   };
 
   useEffect(() => {
-    setLocalBins(getBinsForWard(wardId));
-    setLocalTracks(getTracksForWard(wardId));
+    async function loadWardData() {
+      try {
+        const [binsRes, tracksRes, wardRes] = await Promise.all([
+          api.bins.getAll({ wardId: String(wardId) }).catch(() => []),
+          api.tracks.getAll().catch(() => []),
+          api.wards.getById(String(wardId)).catch(() => null),
+        ]);
+
+        if (Array.isArray(binsRes) && binsRes.length > 0) {
+          setLocalBins(
+            binsRes.map((b) => ({
+              id: b.binCode,
+              wardId: typeof wardId === "number" ? wardId : 1,
+              location: b.location,
+              area: b.ward?.area || "Ward Locality",
+              fill: b.fill,
+              weight: b.weight,
+              temp: b.temp,
+              gas: b.gas,
+              fire: b.fire,
+              status: b.status,
+              capacity: b.capacity,
+              qr: b.qr || `QR-${b.binCode}`,
+              lastCollected: b.lastCollected || "Today",
+              lat: b.lat,
+              lng: b.lng,
+            }))
+          );
+        }
+
+        if (Array.isArray(tracksRes)) {
+          const filteredTracks = tracksRes.filter(
+            (t: any) => String(t.wardId) === String(wardId)
+          );
+          if (filteredTracks.length > 0) {
+            setLocalTracks(
+              filteredTracks.map((t: any) => ({
+                id: t.id,
+                wardId: typeof wardId === "number" ? wardId : 1,
+                truckId: t.truckId,
+                driver: t.driver?.fullName || "Assigned Driver",
+                phone: t.driver?.phone || "017XX-XXXXXX",
+                route: t.route,
+                stops: t.stops,
+                status: t.status,
+                progress: t.progress,
+                load: t.load,
+                fuel: t.fuel,
+                startTime: t.startTime || "07:00 AM",
+                gpsLat: t.gpsLat,
+                gpsLng: t.gpsLng,
+                mapsRouteUrl: t.mapsRouteUrl || "",
+              }))
+            );
+          }
+        }
+
+        if (wardRes) {
+          setDynamicWard(wardRes);
+        }
+      } catch (e) {
+        console.warn("Ward data fetch notice, using fallback.");
+      }
+    }
+
+    loadWardData();
     fetchWardWithdrawals();
   }, [wardId]);
 

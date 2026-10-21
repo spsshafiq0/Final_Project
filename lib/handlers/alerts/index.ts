@@ -97,12 +97,16 @@ export default apiHandler(
       return res.status(201).json(createdAlert || memAlert);
     }
 
-    // ── PATCH: Resolve Alert ───────────────────────────────────────────
-    if (req.method === "PATCH") {
-      const { id } = req.query;
+    // ── PATCH / PUT: Resolve Alert ───────────────────────────────────────
+    if (req.method === "PATCH" || req.method === "PUT") {
+      const id = ((req.query?.id as string) || req.body?.id) as string;
+      if (!id) {
+        return res.status(400).json({ error: "Alert ID is required" });
+      }
+
       try {
         await prisma.alert.update({
-          where: { id: id as string },
+          where: { id },
           data: { resolved: true },
         });
       } catch (dbErr: any) {}
@@ -115,5 +119,5 @@ export default apiHandler(
 
     return res.status(405).json({ error: "Method not allowed" });
   },
-  { allowedMethods: ["GET", "POST", "PATCH"] }
+  { allowedMethods: ["GET", "POST", "PATCH", "PUT"] }
 );
