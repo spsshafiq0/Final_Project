@@ -60,23 +60,27 @@ model CityCorporation {
   pointRate         Float   @default(0.20) // e.g. 1 point = 0.20 BDT (100 pts = 20 BDT)
   minWithdrawPoints Int     @default(100)  // Minimum points required for cash withdrawal
   rewardActive      Boolean @default(true) // Program active / suspended
+  withdrawEnabled   Boolean @default(true) // City-wide cash withdrawal toggle
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  wards  Ward[]
-  admins User[]   @relation("CityCorpAdmins")
+  wards     Ward[]
+  admins    User[]           @relation("CityCorpAdmins")
+  schedules PickupSchedule[]
 
   @@map("city_corporations")
 }
 
 // ─── Ward ──────────────────────────────────────────────────────────────
 model Ward {
-  id         String @id @default(cuid())
-  name       String // e.g. "Ward 01"
-  area       String // e.g. "Uttara North"
-  population Int    @default(0)
-  councilor  String @default("")
+  id              String  @id @default(cuid())
+  name            String  // e.g. "Ward 01"
+  area            String  // e.g. "Uttara North"
+  population      Int     @default(0)
+  councilor       String  @default("")
+  reportEnabled   Boolean @default(true) // Ward admin toggle for issue reports
+  withdrawEnabled Boolean @default(true) // Ward admin toggle for cash payouts
 
   cityCorpId String
   cityCorp   CityCorporation @relation(fields: [cityCorpId], references: [id], onDelete: Cascade)
@@ -84,13 +88,14 @@ model Ward {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  bins        Bin[]
-  tracks      Track[]
-  admins      User[]              @relation("WardAdmins")
-  alerts      Alert[]
-  withdrawals WithdrawalRequest[]
+  bins         Bin[]
+  tracks       Track[]
+  admins       User[]              @relation("WardAdmins")
+  alerts       Alert[]
+  withdrawals  WithdrawalRequest[]
   wasteReports WasteReport[]
-  pickups     PickupRequest[]
+  pickups      PickupRequest[]
+  schedules    PickupSchedule[]
 
   @@index([cityCorpId])
   @@map("wards")
@@ -130,6 +135,7 @@ model Bin {
 model Track {
   id           String      @id @default(cuid())
   truckId      String      // e.g. "DNCC-T01"
+  truckType    String      @default("NORMAL") // "NORMAL" (Organic/Recyclable/General) | "HAZARDOUS" (Hazardous only)
   route        String
   stops        Int         @default(0)
   status       TrackStatus @default(idle)
@@ -339,3 +345,40 @@ model AuditLog {
   @@index([createdAt])
   @@map("audit_logs")
 }
+
+// ─── Pickup Schedule (Managed by City Admin & Ward Admin) ────────────────
+model PickupSchedule {
+  id            String   @id @default(cuid())
+  date          String   // e.g. "Tue, Sep 12" or "2026-09-12"
+  time          String   // e.g. "8:00 – 11:00 AM"
+  wasteType     String   // "Organic" | "Recyclable" | "General" | "Hazardous"
+  zone          String   // e.g. "Mohammadpur" or Ward area
+  status        String   @default("CONFIRMED") // "PENDING_APPROVAL" | "CONFIRMED" | "REJECTED"
+  available     Boolean  @default(true)
+
+  wardId     String?
+  ward       Ward?            @relation(fields: [wardId], references: [id], onDelete: SetNull)
+  cityCorpId String?
+  cityCorp   CityCorporation? @relation(fields: [cityCorpId], references: [id], onDelete: SetNull)
+
+  createdById   String?
+  createdByRole String?  // "CITY_ADMIN" | "WARD_ADMIN"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([wardId])
+  @@index([cityCorpId])
+  @@index([status])
+  @@map("pickup_schedules")
+}
+
+// ─── System Settings (Controlled by Super Admin) ─────────────────────────
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
+

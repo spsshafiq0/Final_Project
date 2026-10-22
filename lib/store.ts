@@ -18,6 +18,7 @@ export interface StoredCity {
   pointRate: number;
   minWithdrawPoints: number;
   rewardActive: boolean;
+  withdrawEnabled?: boolean;
   createdAt: string;
 }
 
@@ -28,6 +29,8 @@ export interface StoredWard {
   population: number;
   councilor: string;
   cityCorpId: string;
+  reportEnabled?: boolean;
+  withdrawEnabled?: boolean;
   createdAt: string;
 }
 
@@ -73,6 +76,7 @@ export interface StoredBin {
 export interface StoredTrack {
   id: string;
   truckId: string;
+  truckType?: "NORMAL" | "HAZARDOUS";
   driver?: string;
   phone?: string;
   route: string;
@@ -88,6 +92,29 @@ export interface StoredTrack {
   wardId: string;
   driverId?: string | null;
   createdAt: string;
+}
+
+export interface StoredPickupSchedule {
+  id: string;
+  date: string;
+  time: string;
+  wasteType: "Organic" | "Recyclable" | "General" | "Hazardous";
+  zone: string;
+  status: "PENDING_APPROVAL" | "CONFIRMED" | "REJECTED";
+  available: boolean;
+  wardId?: string | null;
+  cityCorpId?: string | null;
+  createdById?: string | null;
+  createdByRole?: string | null;
+  createdAt: string;
+}
+
+export interface StoredReportTypeConfig {
+  id: string;
+  type: string;
+  pts: number;
+  icon: string;
+  wardId?: string | null;
 }
 
 export interface StoredAlert {
@@ -154,6 +181,8 @@ if (!g.__intelliwaste_store) {
   g.__intelliwaste_store = {
     isSetupComplete: false,
     setupLocked: false,
+    withdrawGloballyEnabled: true,
+    couponsGloballyEnabled: true,
     cities: [] as StoredCity[],
     wards: [] as StoredWard[],
     users: [] as StoredUser[],
@@ -161,8 +190,15 @@ if (!g.__intelliwaste_store) {
     tracks: [] as StoredTrack[],
     alerts: [] as StoredAlert[],
     pickups: [] as any[],
+    schedules: [] as StoredPickupSchedule[],
     withdrawals: [] as any[],
     wasteReports: [] as StoredWasteReport[],
+    reportTypes: [
+      { id: "rt-1", type: "Illegal Dumping", pts: 150, icon: "⚠️" },
+      { id: "rt-2", type: "Hazardous Waste", pts: 200, icon: "☢️" },
+      { id: "rt-3", type: "Bin Damage / Vandalism", pts: 75, icon: "🔧" },
+      { id: "rt-4", type: "Missed Collection", pts: 30, icon: "📅" },
+    ] as StoredReportTypeConfig[],
     auditLogs: [] as any[],
     rankTiers: [
       { id: "tier-1", level: 1, name: "Eco Beginner", minPoints: 0, maxPoints: 200, badge: "🌱" },

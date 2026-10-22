@@ -24,6 +24,17 @@ export default apiHandler(
       const isAdmin = currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "CITY_ADMIN";
       const citizenId = currentUser?.id || (req.query?.citizenId as string);
 
+      if (req.query?.type === "policy" || req.query?.policy === "true") {
+        return res.status(200).json({
+          couponsGloballyEnabled: memoryDb.couponsGloballyEnabled !== false,
+          withdrawGloballyEnabled: memoryDb.withdrawGloballyEnabled !== false,
+        });
+      }
+
+      if (!isAdmin && memoryDb.couponsGloballyEnabled === false) {
+        return res.status(200).json([]);
+      }
+
       if (isAdmin) {
         // Admins see full data including voucher codes and redemption history
         const enriched = memoryDb.rewards.map((r: StoredReward) => {
@@ -249,6 +260,30 @@ export default apiHandler(
     if (req.method === "PUT") {
       if (currentUser && currentUser.role !== "SUPER_ADMIN" && currentUser.role !== "CITY_ADMIN") {
         return res.status(403).json({ error: "Only administrators can modify rewards" });
+      }
+
+      if (req.body?.toggleCouponsGlobal !== undefined) {
+        memoryDb.couponsGloballyEnabled = Boolean(req.body.toggleCouponsGlobal);
+        try {
+          await prisma.systemSetting.upsert({
+            where: { key: "couponsGloballyEnabled" },
+            update: { value: String(memoryDb.couponsGloballyEnabled) },
+            create: { key: "couponsGloballyEnabled", value: String(memoryDb.couponsGloballyEnabled) },
+          });
+        } catch {}
+        return res.status(200).json({ couponsGloballyEnabled: memoryDb.couponsGloballyEnabled });
+      }
+
+      if (req.body?.toggleWithdrawGlobal !== undefined) {
+        memoryDb.withdrawGloballyEnabled = Boolean(req.body.toggleWithdrawGlobal);
+        try {
+          await prisma.systemSetting.upsert({
+            where: { key: "withdrawGloballyEnabled" },
+            update: { value: String(memoryDb.withdrawGloballyEnabled) },
+            create: { key: "withdrawGloballyEnabled", value: String(memoryDb.withdrawGloballyEnabled) },
+          });
+        } catch {}
+        return res.status(200).json({ withdrawGloballyEnabled: memoryDb.withdrawGloballyEnabled });
       }
 
       const id = ((req.query?.id as string) || req.body?.id) as string;

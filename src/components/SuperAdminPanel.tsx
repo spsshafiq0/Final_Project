@@ -122,25 +122,65 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
   const [restockCodes, setRestockCodes] = useState("");
   const [restockGenerateCount, setRestockGenerateCount] = useState(5);
 
+  // Master Global Policies (Simple ON/OFF for non-tech users)
+  const [globalWithdrawEnabled, setGlobalWithdrawEnabled] = useState(true);
+  const [globalCouponsEnabled, setGlobalCouponsEnabled] = useState(true);
+  const [togglingPolicy, setTogglingPolicy] = useState(false);
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const [citiesData, usersData, statsData, ranksData, rewardsData] = await Promise.all([
+      const [citiesData, usersData, statsData, ranksData, rewardsData, policyData] = await Promise.all([
         api.cities.getAll().catch(() => []),
         api.users.getAll().catch(() => []),
         api.dashboard.getStats().catch(() => null),
         api.ranks.getAll().catch(() => []),
         api.rewards.getAll().catch(() => []),
+        api.rewards.getGlobalPolicy().catch(() => ({ couponsGloballyEnabled: true, withdrawGloballyEnabled: true })),
       ]);
       setCities(citiesData || []);
       setUsers(usersData || []);
       setStats(statsData);
       setRankTiers(ranksData || []);
       setRewards(rewardsData || []);
+      if (policyData) {
+        setGlobalWithdrawEnabled(policyData.withdrawGloballyEnabled !== false);
+        setGlobalCouponsEnabled(policyData.couponsGloballyEnabled !== false);
+      }
     } catch (err: any) {
       console.error("Failed to load super admin data", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleGlobalWithdraw = async () => {
+    const nextVal = !globalWithdrawEnabled;
+    setGlobalWithdrawEnabled(nextVal);
+    setTogglingPolicy(true);
+    try {
+      await api.rewards.toggleGlobalWithdraw(nextVal);
+      showNotify("success", `System-wide cash withdrawals are now ${nextVal ? "ENABLED (ON)" : "PAUSED (OFF)"}`);
+    } catch {
+      setGlobalWithdrawEnabled(!nextVal);
+      showNotify("error", "Failed to update global cash withdrawal policy");
+    } finally {
+      setTogglingPolicy(false);
+    }
+  };
+
+  const handleToggleGlobalCoupons = async () => {
+    const nextVal = !globalCouponsEnabled;
+    setGlobalCouponsEnabled(nextVal);
+    setTogglingPolicy(true);
+    try {
+      await api.rewards.toggleGlobalCoupons(nextVal);
+      showNotify("success", `Partner digital vouchers are now ${nextVal ? "ENABLED (ON)" : "PAUSED (OFF)"}`);
+    } catch {
+      setGlobalCouponsEnabled(!nextVal);
+      showNotify("error", "Failed to update global vouchers policy");
+    } finally {
+      setTogglingPolicy(false);
     }
   };
 
@@ -1036,6 +1076,83 @@ export default function SuperAdminPanel({ onLogout }: SuperAdminPanelProps) {
                   <p className="text-[#4b7a5a] text-xs mt-1">
                     Configure citizen level point thresholds and manage exclusive partner gift vouchers with guaranteed unique codes.
                   </p>
+                </div>
+              </div>
+            </div>
+
+            {/* MASTER SYSTEM-WIDE SWITCHES (NON-TECH FRIENDLY) */}
+            <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6 shadow-md">
+              <div className="mb-4">
+                <span className="text-[11px] font-mono text-[#86efac] uppercase tracking-wider block">SUPER ADMIN MASTER SWITCHES</span>
+                <h3 className="font-display font-bold text-white text-lg mt-0.5">Global Program Controls</h3>
+                <p className="text-xs text-[#4b7a5a] mt-0.5">Toggle system-wide access to cash withdrawals and partner digital vouchers across all City Corporations with one click.</p>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                {/* Master Cash Withdrawals Switch */}
+                <div className="bg-[#061309] border border-[#1a3d22] rounded-xl p-5 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-semibold text-sm">System-Wide Cash Withdrawals</span>
+                      <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${globalWithdrawEnabled ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-red-500/20 text-red-400 border border-red-500/30"}`}>
+                        {globalWithdrawEnabled ? "ACTIVE (ON)" : "PAUSED (OFF)"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#4b7a5a] mt-1.5">
+                      {globalWithdrawEnabled
+                        ? "Citizens in authorized wards can redeem their points for cash pickup vouchers."
+                        : "All cash payouts are paused system-wide. Citizens will see that cash withdrawals are temporarily disabled."}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleToggleGlobalWithdraw}
+                    disabled={togglingPolicy}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      globalWithdrawEnabled ? "bg-[#16a34a]" : "bg-gray-700"
+                    }`}
+                    role="switch"
+                    aria-checked={globalWithdrawEnabled}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        globalWithdrawEnabled ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Master Partner Coupons Switch */}
+                <div className="bg-[#061309] border border-[#1a3d22] rounded-xl p-5 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-semibold text-sm">Partner Gift Cards & Coupons</span>
+                      <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${globalCouponsEnabled ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-red-500/20 text-red-400 border border-red-500/30"}`}>
+                        {globalCouponsEnabled ? "ACTIVE (ON)" : "PAUSED (OFF)"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#4b7a5a] mt-1.5">
+                      {globalCouponsEnabled
+                        ? "Citizens can browse and redeem digital partner gift cards using their earned points."
+                        : "Partner coupons are hidden/paused system-wide for maintenance or stock replenishment."}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleToggleGlobalCoupons}
+                    disabled={togglingPolicy}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      globalCouponsEnabled ? "bg-[#16a34a]" : "bg-gray-700"
+                    }`}
+                    role="switch"
+                    aria-checked={globalCouponsEnabled}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        globalCouponsEnabled ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
                 </div>
               </div>
             </div>

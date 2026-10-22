@@ -165,12 +165,13 @@ export default apiHandler(
         createdTrack = await prisma.track.create({
           data: {
             truckId,
+            truckType: (req.body?.truckType === "HAZARDOUS" ? "HAZARDOUS" : "NORMAL") as any,
             route,
             stops: stops ? Number(stops) : 6,
             fuel: fuel ? Number(fuel) : 100,
             status: status || "active",
             wardId: assignedWardId,
-            driverId: assignedDriverId,
+            driverId: assignedDriverId || req.body?.driverId || null,
             mapsRouteUrl: mapsRouteUrl || "",
             gpsLat: gpsLat ? Number(gpsLat) : 23.78,
             gpsLng: gpsLng ? Number(gpsLng) : 90.40,
@@ -188,6 +189,7 @@ export default apiHandler(
       const memTrack: StoredTrack = {
         id: createdTrack?.id || `TR-${Date.now()}`,
         truckId,
+        truckType: req.body?.truckType === "HAZARDOUS" ? "HAZARDOUS" : "NORMAL",
         driver: finalDriverName,
         phone: finalDriverPhone,
         route,
@@ -201,7 +203,7 @@ export default apiHandler(
         gpsLng: gpsLng ? Number(gpsLng) : 90.40,
         mapsRouteUrl: mapsRouteUrl || "",
         wardId: assignedWardId,
-        driverId: assignedDriverId,
+        driverId: assignedDriverId || req.body?.driverId || null,
         createdAt: new Date().toISOString(),
       };
 
@@ -210,7 +212,61 @@ export default apiHandler(
       return res.status(201).json(createdTrack || memTrack);
     }
 
+    // ── PUT: Assign / Change Driver & Update Track Type ─────────────────
+    if (req.method === "PUT" || req.method === "PATCH") {
+      const { id, trackId, driverId, truckType, route, status, stops, fuel } = req.body || {};
+      const targetId = String(trackId || id || req.query.id);
+
+      if (!targetId) {
+        return res.status(400).json({ error: "Track ID is required to assign or update driver" });
+      }
+
+      let updatedTrack: any = null;
+
+      try {
+        const updateData: any = {};
+        if (driverId !== undefined) updateData.driverId = driverId || null;
+        if (truckType) updateData.truckType = truckType === "HAZARDOUS" ? "HAZARDOUS" : "NORMAL";
+        if (route) updateData.route = route;
+        if (status) updateData.status = status;
+        if (stops !== undefined) updateData.stops = Number(stops);
+        if (fuel !== undefined) updateData.fuel = Number(fuel);
+
+        updatedTrack = await prisma.track.update({
+          where: { id: targetId },
+          data: updateData,
+          include: {
+            ward: true,
+            driver: { select: { id: true, username: true, fullName: true, phone: true } },
+          },
+        });
+      } catch (e: any) {
+        console.warn("[Track Update Notice] Fallback to memory store:", e.message);
+      }
+
+      // Memory store update
+      const memTrack = memoryDb.tracks.find((t: StoredTrack) => t.id === targetId || t.truckId === targetId);
+      if (memTrack) {
+        if (driverId !== undefined) {
+          memTrack.driverId = driverId || null;
+          const assignedUser = memoryDb.users.find((u: any) => u.id === driverId);
+          if (assignedUser) {
+            memTrack.driver = assignedUser.fullName;
+            memTrack.phone = assignedUser.phone || "";
+          } else {
+            memTrack.driver = "Unassigned";
+            memTrack.phone = "";
+          }
+        }
+        if (truckType) memTrack.truckType = truckType === "HAZARDOUS" ? "HAZARDOUS" : "NORMAL";
+        if (route) memTrack.route = route;
+        if (status) memTrack.status = status;
+      }
+
+      return res.status(200).json(updatedTrack || memTrack || { success: true });
+    }
+
     return res.status(405).json({ error: "Method not allowed" });
   },
-  { allowedMethods: ["GET", "POST"] }
+  { allowedMethods: ["GET", "POST", "PUT", "PATCH"] }
 );

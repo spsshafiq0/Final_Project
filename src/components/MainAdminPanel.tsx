@@ -7,10 +7,11 @@ import {
   Trash2, Truck, AlertTriangle, CheckCircle, BarChart2, Bell, Shield,
   Globe, LogOut, Plus, Edit3, Trash, Search, Download, RefreshCw,
   Users, MapPin, Flame, Wind, X, ChevronRight, Eye, EyeOff, Save, Package,
-  Navigation, ExternalLink, ClipboardList, Loader2, Coins, Wallet
+  Navigation, ExternalLink, ClipboardList, Loader2, Coins, Wallet,
+  Calendar, UserCheck, CheckCircle2, Clock
 } from "lucide-react";
 import { type Ward, type Bin, type Track } from "../data/cityData";
-import api, { WardItem, BinItem, TrackItem, UserProfile, WithdrawalItem, ReportItem, AlertItem, userStorage } from "../lib/api";
+import api, { WardItem, BinItem, TrackItem, UserProfile, WithdrawalItem, ReportItem, AlertItem, PickupScheduleItem, userStorage } from "../lib/api";
 
 interface MainAdminPanelProps {
   onLogout: () => void;
@@ -31,6 +32,7 @@ const SIDEBAR: SidebarItem[] = [
   { id: "rewards",     icon: Coins,     label: "Points & Cash Policy" },
   { id: "bins",        icon: Trash2,    label: "All Bins" },
   { id: "tracks",      icon: Truck,     label: "All Tracks" },
+  { id: "schedules",   icon: Calendar,  label: "Pickup Schedules" },
   { id: "subadmins",   icon: Users,     label: "Sub-Admins" },
   { id: "waste",       icon: ClipboardList, label: "Waste Reports" },
   { id: "alerts",      icon: Bell,      label: "Alerts" },
@@ -553,6 +555,118 @@ function WardDetailModal({
   );
 }
 
+// ── Assign Driver / Change Driver Modal ───────────────────────────────
+function AssignDriverModal({
+  track,
+  drivers,
+  onClose,
+  onAssign,
+}: {
+  track: any;
+  drivers: UserProfile[];
+  onClose: () => void;
+  onAssign: (trackId: string, driverId: string | null, truckType: "NORMAL" | "HAZARDOUS") => Promise<void>;
+}) {
+  const [selectedDriverId, setSelectedDriverId] = useState<string>(track.driverId || "");
+  const [truckType, setTruckType] = useState<"NORMAL" | "HAZARDOUS">(track.truckType === "HAZARDOUS" ? "HAZARDOUS" : "NORMAL");
+  const [submitting, setSubmitting] = useState(false);
+
+  return (
+    <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#1a3d22]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-xl bg-[#16a34a]/20 border border-[#4ade80]/30 flex items-center justify-center text-[#4ade80]">
+              <Truck size={20} />
+            </div>
+            <div>
+              <div className="font-display font-bold text-white text-base">Assign / Change Driver</div>
+              <div className="text-xs text-[#4ade80] font-mono">{track.truckId} · {track.route || "City Route"}</div>
+            </div>
+          </div>
+          <button onClick={onClose}><X size={16} className="text-[#4b7a5a] hover:text-white" /></button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-mono text-[#86efac] mb-1.5">TRUCK TYPE & CAPABILITY</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setTruckType("NORMAL")}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  truckType === "NORMAL"
+                    ? "bg-[#16a34a]/20 border-[#4ade80] text-[#4ade80]"
+                    : "bg-[#061309] border-[#1a3d22] text-[#4b7a5a] hover:border-[#1a3d22]/80"
+                }`}
+              >
+                <div className="font-bold text-xs">Normal Waste Truck</div>
+                <div className="text-[10px] opacity-80 mt-0.5">Organic, Recyclable, General</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTruckType("HAZARDOUS")}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  truckType === "HAZARDOUS"
+                    ? "bg-red-500/20 border-red-500 text-red-400"
+                    : "bg-[#061309] border-[#1a3d22] text-[#4b7a5a] hover:border-[#1a3d22]/80"
+                }`}
+              >
+                <div className="font-bold text-xs">Hazardous Truck</div>
+                <div className="text-[10px] opacity-80 mt-0.5">Toxins, Medical, Batteries</div>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-mono text-[#86efac] mb-1.5">SELECT REGISTERED DRIVER</label>
+            <select
+              value={selectedDriverId}
+              onChange={e => setSelectedDriverId(e.target.value)}
+              className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#4ade80]"
+            >
+              <option value="">-- No Driver Assigned (Idle Truck) --</option>
+              {drivers.map(d => (
+                <option key={d.id} value={d.id}>
+                  {d.fullName || d.username} ({d.phone || d.email || "Driver"})
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-[#4b7a5a] mt-1">
+              Select any registered driver to assign them to this truck. You can reassign or swap drivers anytime.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={onClose}
+            className="flex-1 border border-[#1a3d22] text-[#4b7a5a] hover:text-white rounded-xl py-2.5 text-xs font-semibold"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={async () => {
+              setSubmitting(true);
+              try {
+                await onAssign(track.id, selectedDriverId || null, truckType);
+                onClose();
+              } finally {
+                setSubmitting(false);
+              }
+            }}
+            disabled={submitting}
+            className="flex-1 bg-[#16a34a] hover:bg-[#15803d] text-white rounded-xl py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"
+          >
+            {submitting ? <RefreshCw size={13} className="animate-spin" /> : <UserCheck size={14} />}
+            <span>Confirm Assignment</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ─────────────────────────────────────────────────────
 export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }: MainAdminPanelProps) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -581,6 +695,28 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [subAdmins, setSubAdmins] = useState<SubAdminForm[]>([]);
 
+  // Driver Assignment state
+  const [drivers, setDrivers] = useState<UserProfile[]>([]);
+  const [assigningTrack, setAssigningTrack] = useState<any | null>(null);
+
+  // Pickup Schedules state
+  const [schedules, setSchedules] = useState<PickupScheduleItem[]>([]);
+  const [showAddSchedule, setShowAddSchedule] = useState(false);
+  const [scheduleFilter, setScheduleFilter] = useState<"ALL" | "PENDING" | "CONFIRMED">("ALL");
+  const [scheduleForm, setScheduleForm] = useState<{
+    date: string;
+    time: string;
+    wasteType: "Organic" | "Recyclable" | "General" | "Hazardous";
+    zone: string;
+    wardId: string;
+  }>({
+    date: "",
+    time: "08:00 – 11:00 AM",
+    wasteType: "General",
+    zone: "",
+    wardId: "",
+  });
+
   // Point-to-Money Rate & Rewards Policy State (Exclusive to City Corp Admin)
   const [pointRate, setPointRate] = useState<number>(0.20);
   const [minWithdrawPoints, setMinWithdrawPoints] = useState<number>(100);
@@ -595,7 +731,7 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
   useEffect(() => {
     async function fetchData() {
       try {
-        const [apiWards, apiBins, apiTracks, apiUsers, apiWithdrawals, apiReports, apiAlerts] = await Promise.all([
+        const [apiWards, apiBins, apiTracks, apiUsers, apiWithdrawals, apiReports, apiAlerts, apiDrivers, apiSchedules] = await Promise.all([
           api.wards.getAll(cityCorpId).catch(() => []),
           api.bins.getAll({ cityCorpId }).catch(() => []),
           api.tracks.getAll().catch(() => []),
@@ -603,7 +739,12 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
           api.withdrawals.getAll().catch(() => []),
           api.reports.getAll().catch(() => []),
           api.alerts.getAll({ resolved: false }).catch(() => []),
+          api.users.getAll({ role: "DRIVER" }).catch(() => []),
+          api.schedules.getAll({ cityCorpId }).catch(() => []),
         ]);
+
+        if (Array.isArray(apiDrivers)) setDrivers(apiDrivers);
+        if (Array.isArray(apiSchedules)) setSchedules(apiSchedules);
 
         if (apiReports && apiReports.length > 0) {
           setWasteReports(apiReports);
@@ -660,11 +801,13 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
         }
 
         if (apiTracks && apiTracks.length > 0) {
-          const mappedTracks: Track[] = apiTracks.map((t) => ({
+          const mappedTracks: Track[] = apiTracks.map((t: any) => ({
             id: t.id,
-            wardId: 1,
+            wardId: typeof t.wardId === "number" ? t.wardId : Number(t.wardId) || 1,
             truckId: t.truckId,
-            driver: t.driver?.fullName || "Driver",
+            truckType: t.truckType || "NORMAL",
+            driverId: t.driverId,
+            driver: t.driver?.fullName || (t.driverId ? "Driver Assigned" : "No Driver Assigned"),
             phone: t.driver?.phone || "017XX-XXXXXX",
             route: t.route,
             stops: t.stops,
@@ -705,6 +848,89 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
     }
     fetchData();
   }, [cityCorpId]);
+
+  const handleAssignDriver = async (trackId: string, driverId: string | null, truckType: "NORMAL" | "HAZARDOUS") => {
+    try {
+      await api.tracks.assignDriver(trackId, driverId, truckType);
+      const updated = await api.tracks.getAll();
+      if (Array.isArray(updated)) {
+        setLocalTracks(updated.map((t: any) => ({
+          id: t.id,
+          wardId: typeof t.wardId === "number" ? t.wardId : Number(t.wardId) || 1,
+          truckId: t.truckId,
+          truckType: t.truckType || "NORMAL",
+          driverId: t.driverId,
+          driver: t.driver?.fullName || (t.driverId ? "Driver Assigned" : "No Driver Assigned"),
+          phone: t.driver?.phone || "017XX-XXXXXX",
+          route: t.route,
+          stops: t.stops,
+          status: t.status,
+          progress: t.progress,
+          load: t.load,
+          fuel: t.fuel,
+          startTime: t.startTime || "07:00 AM",
+          gpsLat: t.gpsLat,
+          gpsLng: t.gpsLng,
+          mapsRouteUrl: t.mapsRouteUrl || "",
+        })));
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to update driver assignment");
+    }
+  };
+
+  const handleApproveSchedule = async (id: string) => {
+    try {
+      await api.schedules.update(id, { status: "CONFIRMED" });
+      setSchedules(prev => prev.map(s => s.id === id ? { ...s, status: "CONFIRMED" } : s));
+    } catch (err: any) {
+      alert(err.message || "Failed to approve schedule");
+    }
+  };
+
+  const handleRejectSchedule = async (id: string) => {
+    try {
+      await api.schedules.update(id, { status: "REJECTED" });
+      setSchedules(prev => prev.map(s => s.id === id ? { ...s, status: "REJECTED" } : s));
+    } catch (err: any) {
+      alert(err.message || "Failed to reject schedule");
+    }
+  };
+
+  const handleDeleteSchedule = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this schedule?")) return;
+    try {
+      await api.schedules.delete(id);
+      setSchedules(prev => prev.filter(s => s.id !== id));
+    } catch (err: any) {
+      alert(err.message || "Failed to delete schedule");
+    }
+  };
+
+  const handleCreateConfirmedSchedule = async () => {
+    if (!scheduleForm.date) {
+      alert("Please select a collection date");
+      return;
+    }
+    try {
+      const res = await api.schedules.create({
+        date: scheduleForm.date,
+        time: scheduleForm.time,
+        wasteType: scheduleForm.wasteType,
+        zone: scheduleForm.zone || "Central City Route",
+        wardId: scheduleForm.wardId ? String(scheduleForm.wardId) : undefined,
+        cityCorpId: cityCorpId || currentUser?.cityCorpId || undefined,
+        status: "CONFIRMED",
+      });
+      if (res) {
+        setSchedules(prev => [res, ...prev]);
+        setShowAddSchedule(false);
+        setScheduleForm({ date: "", time: "08:00 – 11:00 AM", wasteType: "General", zone: "", wardId: "" });
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to create schedule");
+    }
+  };
 
   const saveRewardPolicy = async () => {
     setSavingPolicy(true);
@@ -1529,12 +1755,28 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
                         <Truck size={20} style={{ color: t.status === "active" ? "#4ade80" : t.status === "idle" ? "#facc15" : "#f59e0b" }} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-1 flex-wrap">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="font-mono font-bold text-white">{t.truckId}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold border ${
+                            t.truckType === "HAZARDOUS"
+                              ? "bg-red-500/20 border-red-500/40 text-red-400"
+                              : "bg-[#16a34a]/20 border-[#4ade80]/30 text-[#4ade80]"
+                          }`}>
+                            {t.truckType === "HAZARDOUS" ? "HAZARDOUS TRUCK" : "NORMAL TRUCK"}
+                          </span>
                           <StatusBadge status={t.status} />
                           <span className="text-xs text-[#4b7a5a]">{localWards.find(w => w.id === t.wardId)?.name} — {localWards.find(w => w.id === t.wardId)?.area}</span>
                         </div>
-                        <div className="text-[#86efac] text-sm">{t.driver}</div>
+                        <div className="text-[#86efac] text-sm flex items-center gap-2 flex-wrap">
+                          <span>{t.driver}</span>
+                          <button
+                            onClick={() => setAssigningTrack(t)}
+                            className="text-[11px] bg-[#16a34a]/20 hover:bg-[#16a34a]/40 text-[#4ade80] border border-[#4ade80]/30 px-2.5 py-0.5 rounded-md flex items-center gap-1 transition-colors"
+                          >
+                            <UserCheck size={11} />
+                            <span>Assign / Change Driver</span>
+                          </button>
+                        </div>
                         <div className="text-[#4b7a5a] text-xs mt-0.5 truncate">{t.route}</div>
                       </div>
                       <div className="flex flex-wrap gap-4 text-xs shrink-0">
@@ -1560,6 +1802,165 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── PICKUP SCHEDULES & APPROVAL WORKFLOW ── */}
+          {activeTab === "schedules" && (
+            <div className="space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-display font-bold text-white text-lg flex items-center gap-2">
+                    <Calendar className="text-[#4ade80]" size={20} />
+                    <span>Waste Collection Pickup Schedules</span>
+                  </h2>
+                  <p className="text-xs text-[#4b7a5a] mt-0.5">
+                    Review and approve schedules submitted by Ward Admins, or dispatch confirmed city-wide collection runs.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex bg-[#061309] border border-[#1a3d22] rounded-xl p-0.5">
+                    {(["ALL", "PENDING", "CONFIRMED"] as const).map(f => (
+                      <button
+                        key={f}
+                        onClick={() => setScheduleFilter(f)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all ${
+                          scheduleFilter === f ? "bg-[#16a34a] text-white font-bold" : "text-[#4b7a5a] hover:text-[#86efac]"
+                        }`}
+                      >
+                        {f === "PENDING" ? `Pending (${schedules.filter(s => s.status === "PENDING_APPROVAL").length})` : f}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setShowAddSchedule(true)}
+                    className="bg-[#16a34a] hover:bg-[#15803d] text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow"
+                  >
+                    <Plus size={14} /> Create Confirmed Schedule
+                  </button>
+                </div>
+              </div>
+
+              {/* Stats Bar */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-4">
+                  <div className="text-[10px] font-mono text-[#4b7a5a] uppercase">Pending Approvals</div>
+                  <div className="text-2xl font-bold font-mono text-yellow-400 mt-1">
+                    {schedules.filter(s => s.status === "PENDING_APPROVAL").length}
+                  </div>
+                  <div className="text-[11px] text-[#4b7a5a] mt-0.5">Submitted by Ward Admins</div>
+                </div>
+                <div className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-4">
+                  <div className="text-[10px] font-mono text-[#4b7a5a] uppercase">Active Confirmed Runs</div>
+                  <div className="text-2xl font-bold font-mono text-[#4ade80] mt-1">
+                    {schedules.filter(s => s.status === "CONFIRMED").length}
+                  </div>
+                  <div className="text-[11px] text-[#4b7a5a] mt-0.5">Live on Citizen Portal</div>
+                </div>
+                <div className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-4">
+                  <div className="text-[10px] font-mono text-[#4b7a5a] uppercase">Hazardous Truck Runs</div>
+                  <div className="text-2xl font-bold font-mono text-red-400 mt-1">
+                    {schedules.filter(s => s.wasteType?.toLowerCase().includes("hazardous") || s.wasteType?.toLowerCase().includes("toxic")).length}
+                  </div>
+                  <div className="text-[11px] text-[#4b7a5a] mt-0.5">Specialized Hazardous Handling</div>
+                </div>
+              </div>
+
+              {/* Schedules List */}
+              <div className="space-y-3">
+                {schedules
+                  .filter(s => {
+                    if (scheduleFilter === "PENDING") return s.status === "PENDING_APPROVAL";
+                    if (scheduleFilter === "CONFIRMED") return s.status === "CONFIRMED";
+                    return true;
+                  })
+                  .map(sch => {
+                    const isHaz = sch.wasteType?.toLowerCase().includes("hazardous") || sch.wasteType?.toLowerCase().includes("toxic");
+                    const wardMatch = localWards.find(w => String(w.id) === String(sch.wardId));
+                    return (
+                      <div
+                        key={sch.id}
+                        className={`bg-[#0d2414] border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
+                          sch.status === "PENDING_APPROVAL"
+                            ? "border-yellow-500/40 bg-yellow-500/[0.03]"
+                            : "border-[#1a3d22] hover:border-[#4ade80]/30"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3.5">
+                          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border ${
+                            isHaz
+                              ? "bg-red-500/20 border-red-500/30 text-red-400"
+                              : "bg-[#16a34a]/20 border-[#4ade80]/30 text-[#4ade80]"
+                          }`}>
+                            <Calendar size={18} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-display font-bold text-white text-sm">{sch.date}</span>
+                              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold border ${
+                                isHaz
+                                  ? "bg-red-500/20 border-red-500/40 text-red-300"
+                                  : "bg-[#16a34a]/20 border-[#4ade80]/30 text-[#4ade80]"
+                              }`}>
+                                {sch.wasteType} ({isHaz ? "Hazardous Truck" : "Normal Truck"})
+                              </span>
+                              {wardMatch && (
+                                <span className="text-[11px] bg-[#061309] border border-[#1a3d22] text-[#86efac] px-2 py-0.5 rounded-md font-mono">
+                                  {wardMatch.name} ({wardMatch.area})
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-[#4b7a5a] mt-1">
+                              Window: <span className="text-[#86efac]">{sch.time}</span> · Route/Zone: <span className="text-white font-mono">{sch.zone}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {sch.status === "PENDING_APPROVAL" ? (
+                            <>
+                              <button
+                                onClick={() => handleApproveSchedule(sch.id)}
+                                className="bg-[#16a34a] hover:bg-[#15803d] text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow"
+                              >
+                                <CheckCircle2 size={13} />
+                                <span>Approve Schedule</span>
+                              </button>
+                              <button
+                                onClick={() => handleRejectSchedule(sch.id)}
+                                className="border border-red-500/40 hover:bg-red-500/20 text-red-400 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5"
+                              >
+                                <span>Reject</span>
+                              </button>
+                            </>
+                          ) : sch.status === "CONFIRMED" ? (
+                            <span className="bg-green-500/20 border border-green-500/40 text-[#4ade80] text-xs px-3 py-1 rounded-full font-mono font-semibold flex items-center gap-1.5">
+                              <CheckCircle size={12} /> Live / Confirmed
+                            </span>
+                          ) : (
+                            <span className="bg-red-500/20 border border-red-500/40 text-red-400 text-xs px-3 py-1 rounded-full font-mono font-semibold">
+                              Rejected
+                            </span>
+                          )}
+
+                          <button
+                            onClick={() => handleDeleteSchedule(sch.id)}
+                            title="Delete Schedule"
+                            className="p-1.5 text-[#4b7a5a] hover:text-red-400 transition-colors"
+                          >
+                            <Trash size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                {schedules.length === 0 && (
+                  <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-8 text-center text-[#4b7a5a]">
+                    No collection schedules recorded yet. Click &ldquo;Create Confirmed Schedule&rdquo; to dispatch.
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1855,6 +2256,113 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
       {showAddSubAdmin && <AddSubAdminModal onClose={() => setShowAddSubAdmin(false)} onSave={saveSubAdmin} availableWards={localWards} />}
       {editSubAdmin && <AddSubAdminModal initial={editSubAdmin} onClose={() => setEditSubAdmin(null)} onSave={saveSubAdmin} availableWards={localWards} />}
       {selectedWard && <WardDetailModal ward={selectedWard} localBins={localBins} localTracks={localTracks} subAdmins={subAdmins} onClose={() => setSelectedWard(null)} />}
+
+      {/* Assign / Change Driver Modal */}
+      {assigningTrack && (
+        <AssignDriverModal
+          track={assigningTrack}
+          drivers={drivers}
+          onClose={() => setAssigningTrack(null)}
+          onAssign={handleAssignDriver}
+        />
+      )}
+
+      {/* Create Confirmed Schedule Modal */}
+      {showAddSchedule && (
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={() => setShowAddSchedule(false)}>
+          <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#1a3d22]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-[#16a34a]/20 border border-[#4ade80]/30 flex items-center justify-center text-[#4ade80]">
+                  <Calendar size={20} />
+                </div>
+                <div>
+                  <div className="font-display font-bold text-white text-base">Create Confirmed Schedule</div>
+                  <div className="text-xs text-[#4ade80] font-mono">{cityTitle} Direct Dispatch</div>
+                </div>
+              </div>
+              <button onClick={() => setShowAddSchedule(false)}><X size={16} className="text-[#4b7a5a] hover:text-white" /></button>
+            </div>
+
+            <div className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-mono text-[#86efac] mb-1">COLLECTION DATE</label>
+                <input
+                  type="date"
+                  value={scheduleForm.date}
+                  onChange={e => setScheduleForm(f => ({ ...f, date: e.target.value }))}
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#4ade80]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[#86efac] mb-1">TIME WINDOW</label>
+                <input
+                  value={scheduleForm.time}
+                  onChange={e => setScheduleForm(f => ({ ...f, time: e.target.value }))}
+                  placeholder="e.g. 08:00 – 11:00 AM"
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#4ade80]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[#86efac] mb-1">WASTE CATEGORY & VEHICLE TYPE</label>
+                <select
+                  value={scheduleForm.wasteType}
+                  onChange={e => setScheduleForm(f => ({ ...f, wasteType: e.target.value as "Organic" | "Recyclable" | "General" | "Hazardous" }))}
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#4ade80]"
+                >
+                  <option value="General">General Municipal Waste (Normal Truck)</option>
+                  <option value="Organic">Organic & Kitchen Scraps (Normal Truck)</option>
+                  <option value="Recyclable">Plastics, Glass & Paper (Normal Truck)</option>
+                  <option value="Hazardous">Hazardous / Chemical / Batteries (Hazardous Truck)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[#86efac] mb-1">TARGET WARD (OPTIONAL)</label>
+                <select
+                  value={scheduleForm.wardId}
+                  onChange={e => setScheduleForm(f => ({ ...f, wardId: e.target.value }))}
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#4ade80]"
+                >
+                  <option value="">-- All Wards / General Route --</option>
+                  {localWards.map(w => (
+                    <option key={w.id} value={w.id}>
+                      {w.name} ({w.area})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[#86efac] mb-1">LOCAL ROUTE / ZONE</label>
+                <input
+                  value={scheduleForm.zone}
+                  onChange={e => setScheduleForm(f => ({ ...f, zone: e.target.value }))}
+                  placeholder="e.g. Central Zone, Main Avenue, Commercial Area"
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#4ade80]"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowAddSchedule(false)}
+                className="flex-1 border border-[#1a3d22] text-[#4b7a5a] hover:text-white rounded-xl py-2.5 text-xs font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateConfirmedSchedule}
+                className="flex-1 bg-[#16a34a] hover:bg-[#15803d] text-white rounded-xl py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 shadow"
+              >
+                <Plus size={14} /> Dispatch Confirmed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

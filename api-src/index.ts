@@ -36,6 +36,7 @@ import setupHandler from "../lib/handlers/setup/index";
 import auditHandler from "../lib/handlers/audit/index";
 import ranksIndex from "../lib/handlers/ranks/index";
 import rewardsIndex from "../lib/handlers/rewards/index";
+import schedulesIndex from "../lib/handlers/schedules/index";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -184,6 +185,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         req.body = { ...req.body, action: "redeem" };
       }
       return rewardsIndex(req, res);
+    }
+
+    // 17. Pickup Schedules
+    if (resource === "schedules") {
+      return schedulesIndex(req, res);
     }
 
     return res.status(200).json({ status: "healthy", endpoint: segments.join("/") });

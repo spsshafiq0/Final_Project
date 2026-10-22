@@ -41,6 +41,8 @@ export interface WardItem {
   population: number;
   councilor: string;
   cityCorpId: string;
+  reportEnabled?: boolean;
+  withdrawEnabled?: boolean;
   cityCorp?: { id: string; name: string; code: string };
   _count?: { bins: number; tracks: number; alerts?: number };
 }
@@ -67,6 +69,7 @@ export interface BinItem {
 export interface TrackItem {
   id: string;
   truckId: string;
+  truckType?: "NORMAL" | "HAZARDOUS";
   route: string;
   stops: number;
   status: "active" | "idle" | "maintenance";
@@ -80,7 +83,24 @@ export interface TrackItem {
   wardId: string;
   ward?: WardItem;
   driverId?: string | null;
-  driver?: { id: string; fullName: string; phone?: string | null } | null;
+  driver?: { id: string; fullName: string; phone?: string | null; username?: string; email?: string | null } | null;
+}
+
+export interface PickupScheduleItem {
+  id: string;
+  date: string;
+  time: string;
+  wasteType: "Organic" | "Recyclable" | "General" | "Hazardous";
+  zone: string;
+  status: "PENDING_APPROVAL" | "CONFIRMED" | "REJECTED";
+  available: boolean;
+  wardId?: string | null;
+  ward?: { id: string; name: string; area: string } | null;
+  cityCorpId?: string | null;
+  cityCorp?: { id: string; name: string; code: string } | null;
+  createdById?: string | null;
+  createdByRole?: string | null;
+  createdAt?: string;
 }
 
 export interface PickupItem {
@@ -418,8 +438,40 @@ export const api = {
         method: "PUT",
         body: JSON.stringify(data),
       }),
+    assignDriver: (trackId: string, driverId: string | null, truckType?: "NORMAL" | "HAZARDOUS") =>
+      request<TrackItem>(`/tracks/${trackId}`, {
+        method: "PUT",
+        body: JSON.stringify({ trackId, driverId, truckType }),
+      }),
     delete: (id: string) =>
       request<{ message: string }>(`/tracks/${id}`, {
+        method: "DELETE",
+      }),
+  },
+
+  // Pickup Schedules (City Admin & Ward Admin)
+  schedules: {
+    getAll: (filters?: { wardId?: string; status?: string; public?: boolean; cityCorpId?: string }) => {
+      const params = new URLSearchParams();
+      if (filters?.wardId) params.append("wardId", filters.wardId);
+      if (filters?.status) params.append("status", filters.status);
+      if (filters?.public) params.append("public", "true");
+      if (filters?.cityCorpId) params.append("cityCorpId", filters.cityCorpId);
+      const query = params.toString() ? `?${params.toString()}` : "";
+      return request<PickupScheduleItem[]>(`/schedules${query}`);
+    },
+    create: (data: Partial<PickupScheduleItem>) =>
+      request<PickupScheduleItem>("/schedules", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Partial<PickupScheduleItem>) =>
+      request<PickupScheduleItem>(`/schedules?id=${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body: JSON.stringify({ id, ...data }),
+      }),
+    delete: (id: string) =>
+      request<{ success: boolean; message: string }>(`/schedules?id=${encodeURIComponent(id)}`, {
         method: "DELETE",
       }),
   },
@@ -617,6 +669,18 @@ export const api = {
         method: "PUT",
         body: JSON.stringify(data),
       }),
+    toggleGlobalCoupons: (enabled: boolean) =>
+      request<{ couponsGloballyEnabled: boolean }>("/rewards", {
+        method: "PUT",
+        body: JSON.stringify({ toggleCouponsGlobal: enabled }),
+      }),
+    toggleGlobalWithdraw: (enabled: boolean) =>
+      request<{ withdrawGloballyEnabled: boolean }>("/rewards", {
+        method: "PUT",
+        body: JSON.stringify({ toggleWithdrawGlobal: enabled }),
+      }),
+    getGlobalPolicy: () =>
+      request<{ couponsGloballyEnabled: boolean; withdrawGloballyEnabled: boolean }>("/rewards?type=policy"),
   },
 
   // Live Dashboard Stats

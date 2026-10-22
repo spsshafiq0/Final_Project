@@ -134,7 +134,53 @@ export default apiHandler(
       return res.status(201).json(createdWard || memWard);
     }
 
+    // ── PUT: Update Ward (Toggles for reportEnabled, withdrawEnabled, etc.) ─
+    if (req.method === "PUT" || req.method === "PATCH") {
+      const { id, wardId, reportEnabled, withdrawEnabled, name, area, population, councilor } = req.body || {};
+      const targetId = String(wardId || id || req.query.id);
+
+      if (!targetId) {
+        return res.status(400).json({ error: "Ward ID is required" });
+      }
+
+      let updatedWard: any = null;
+
+      try {
+        const updateData: any = {};
+        if (reportEnabled !== undefined) updateData.reportEnabled = Boolean(reportEnabled);
+        if (withdrawEnabled !== undefined) updateData.withdrawEnabled = Boolean(withdrawEnabled);
+        if (name) updateData.name = name;
+        if (area) updateData.area = area;
+        if (population !== undefined) updateData.population = Number(population);
+        if (councilor !== undefined) updateData.councilor = councilor;
+
+        updatedWard = await prisma.ward.update({
+          where: { id: targetId },
+          data: updateData,
+          include: {
+            cityCorp: { select: { id: true, name: true, code: true } },
+          },
+        });
+      } catch (e: any) {
+        console.warn("[Ward Update Notice] Fallback to memory store:", e.message);
+      }
+
+      // Memory store fallback
+      const memWard = memoryDb.wards.find((w: StoredWard) => w.id === targetId);
+      if (memWard) {
+        if (reportEnabled !== undefined) memWard.reportEnabled = Boolean(reportEnabled);
+        if (withdrawEnabled !== undefined) memWard.withdrawEnabled = Boolean(withdrawEnabled);
+        if (name) memWard.name = name;
+        if (area) memWard.area = area;
+        if (population !== undefined) memWard.population = Number(population);
+        if (councilor !== undefined) memWard.councilor = councilor;
+      }
+
+      return res.status(200).json(updatedWard || memWard || { success: true });
+    }
+
     return res.status(405).json({ error: "Method not allowed" });
   },
-  { allowedMethods: ["GET", "POST"] }
+  { allowedMethods: ["GET", "POST", "PUT", "PATCH"] }
 );
+

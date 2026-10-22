@@ -79,13 +79,73 @@ export default apiHandler(
         return res.status(400).json({ error: "Location and description are required" });
       }
 
+      // Mandatory Photo validation
+      if (!imageUrl || String(imageUrl).trim() === "") {
+        return res.status(400).json({
+          error: "Photo upload is mandatory. Please capture or upload a clear photo of the waste issue.",
+        });
+      }
+
+      // Check if Ward Admin disabled reporting for this ward
+      if (wardId) {
+        try {
+          const targetWard = await prisma.ward.findUnique({ where: { id: wardId } });
+          if (targetWard && targetWard.reportEnabled === false) {
+            return res.status(403).json({
+              error: "Issue reporting is temporarily disabled for this Ward by the local administration.",
+            });
+          }
+        } catch {
+          const memWard = memoryDb.wards.find((w: any) => w.id === wardId);
+          if (memWard && memWard.reportEnabled === false) {
+            return res.status(403).json({
+              error: "Issue reporting is temporarily disabled for this Ward by the local administration.",
+            });
+          }
+        }
+      }
+
+      // Duplicate Check (Anti-Spam / Anti-Farming): Prevent multiple reports from same location
+      try {
+        const existingReport = await prisma.wasteReport.findFirst({
+          where: {
+            location: { equals: cleanLocation, mode: "insensitive" },
+            status: { in: ["pending", "investigating"] },
+          },
+        });
+        if (existingReport) {
+          return res.status(409).json({
+            error: `An active issue has already been reported at this location [${existingReport.reportCode}]. Our collection team is already on it. Thank you!`,
+          });
+        }
+      } catch {
+        const memDup = (memoryDb.wasteReports || []).find(
+          (r: StoredWasteReport) =>
+            r.location.toLowerCase().trim() === cleanLocation.toLowerCase().trim() &&
+            (r.status === "pending" || r.status === "investigating")
+        );
+        if (memDup) {
+          return res.status(409).json({
+            error: `An active issue has already been reported at this location [${memDup.reportCode}]. Our collection team is already on it. Thank you!`,
+          });
+        }
+      }
+
       const finalCitizenId = currentUser?.userId || citizenId;
       if (!finalCitizenId) {
         return res.status(400).json({ error: "Citizen ID is required to submit a report" });
       }
 
       const reportCode = `RPT-${Date.now().toString().slice(-6)}`;
-      const pointsEarned = 150;
+      
+      // Determine points & truck type
+      const isHazardous =
+        String(wasteType).toLowerCase().includes("hazard") ||
+        String(wasteType).toLowerCase().includes("chemical") ||
+        String(wasteType).toLowerCase().includes("bio");
+      
+      const targetTruckType = isHazardous ? "HAZARDOUS" : "NORMAL";
+      const pointsEarned = isHazardous ? 200 : 150;
 
       let createdReport: any = null;
 
@@ -98,7 +158,7 @@ export default apiHandler(
             imageUrl: imageUrl || null,
             wasteType,
             status: "pending",
-            priority,
+            priority: isHazardous ? "critical" : priority,
             pointsEarned,
             citizenId: finalCitizenId,
             wardId: wardId || null,
@@ -109,23 +169,34 @@ export default apiHandler(
           },
         });
 
-        // Credit 150 points to the citizen account
+        // Credit points to citizen
         await prisma.user.update({
           where: { id: finalCitizenId },
           data: { points: { increment: pointsEarned } },
         }).catch(() => null);
 
-        // If priority is critical, raise an IoT alert
-        if (priority === "critical" || priority === "urgent") {
-          await prisma.alert.create({
-            data: {
-              type: "overflow",
-              message: `Citizen Report [${reportCode}]: ${cleanDescription.slice(0, 80)} at ${cleanLocation}`,
-              priority: priority === "critical" ? "critical" : "high",
-              wardId: wardId || null,
-            },
-          }).catch(() => null);
-        }
+        // Dispatch alert to assigned driver matching truckType
+        const assignedTrack = await prisma.track.findFirst({
+          where: {
+            wardId: wardId || undefined,
+            truckType: targetTruckType,
+            driverId: { not: null },
+          },
+          include: { driver: true },
+        }).catch(() => null);
+
+        const driverNotice = assignedTrack?.driver?.fullName
+          ? `Dispatched to Driver ${assignedTrack.driver.fullName} (${assignedTrack.truckId} - ${targetTruckType} Waste)`
+          : `Dispatched to nearest ${targetTruckType} Waste truck`;
+
+        await prisma.alert.create({
+          data: {
+            type: isHazardous ? "hazardous_pickup" : "waste_pickup",
+            message: `[${targetTruckType} TRUCK NOTICE] ${wasteType} reported at ${cleanLocation} (${reportCode}). ${driverNotice}.`,
+            priority: isHazardous ? "critical" : "high",
+            wardId: wardId || null,
+          },
+        }).catch(() => null);
       } catch (e: any) {
         console.warn("[Reports POST Notice] Operating on resilient store:", e.message);
       }

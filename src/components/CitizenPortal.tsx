@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Award, Recycle, Camera, MapPin, Calendar, TrendingUp, Gift, Star, ChevronRight, Upload, CheckCircle, AlertTriangle, Clock, Leaf, Users, Trophy, ArrowLeft, UserPlus, LogIn, Wallet, ShieldCheck, RefreshCw, Banknote, CheckCircle2, Download, Building2, X, KeyRound, Copy } from "lucide-react";
+import { Award, Recycle, Camera, MapPin, Calendar, TrendingUp, Gift, Star, ChevronRight, Upload, CheckCircle, AlertTriangle, Clock, Leaf, Users, Trophy, ArrowLeft, UserPlus, LogIn, LogOut, Wallet, ShieldCheck, RefreshCw, Banknote, CheckCircle2, Download, Building2, X, KeyRound, Copy } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import NearbyBinsMap from "./NearbyBinsMap";
 import { addPickupRequest, getPickupRequests, completePickupRequest, type PickupRequest } from "../data/pickupStore";
-import api, { WithdrawalItem, UserProfile, RankTierItem, RewardItem, userStorage } from "../lib/api";
+import api, { WithdrawalItem, UserProfile, RankTierItem, RewardItem, userStorage, CityCorporationItem, WardItem, PickupScheduleItem } from "../lib/api";
 import { wards } from "../data/cityData";
 import ForgotPasswordModal from "./ForgotPasswordModal";
 
@@ -49,6 +49,12 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
   const [reportLocation, setReportLocation] = useState("");
   const [reportDescription, setReportDescription] = useState("");
   const [lastReportCode, setLastReportCode] = useState("");
+  const [reportPhoto, setReportPhoto] = useState<string>("");
+  const [reportPhotoError, setReportPhotoError] = useState<string>("");
+  const [reportError, setReportError] = useState<string>("");
+  const [isSubmittingReport, setIsSubmittingReport] = useState<boolean>(false);
+  const [reportLocationLoading, setReportLocationLoading] = useState<boolean>(false);
+
   const [bookedSlot, setBookedSlot] = useState<number | null>(null);
   const [redeemedReward, setRedeemedReward] = useState<string | null>(null);
   const [pickupForm, setPickupForm] = useState({ address: "", area: "Mohammadpur", waste: "", date: "", deposit: "250" });
@@ -56,6 +62,19 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
   const [pickupRequests, setPickupRequests] = useState<PickupRequest[]>(getPickupRequests());
   const [codes, setCodes] = useState<Record<number, string>>({});
   const [pickupMessage, setPickupMessage] = useState("");
+
+  // City Corporation & Ward Selection State (for Cash Out & Reports)
+  const [cityCorps, setCityCorps] = useState<CityCorporationItem[]>([]);
+  const [selectedCityCorpId, setSelectedCityCorpId] = useState<string>("");
+  const [allWards, setAllWards] = useState<WardItem[]>([]);
+  const [filteredWards, setFilteredWards] = useState<WardItem[]>([]);
+  const [selectedWardData, setSelectedWardData] = useState<WardItem | null>(null);
+  const [globalWithdrawEnabled, setGlobalWithdrawEnabled] = useState(true);
+  const [globalCouponsEnabled, setGlobalCouponsEnabled] = useState(true);
+
+  // Schedules from City/Ward Admin
+  const [liveSchedules, setLiveSchedules] = useState<PickupScheduleItem[]>([]);
+  const [loadingSchedules, setLoadingSchedules] = useState(false);
 
   // Cash & Reward Policy State (Managed by City Corporation Admin)
   const [pointRate, setPointRate] = useState(0.20); // ৳0.20 per point default
@@ -199,6 +218,164 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
     }
   };
 
+  const loadCityData = async () => {
+    try {
+      const [citiesList, wardsList, globalPolicy] = await Promise.all([
+        api.cities.getAll().catch(() => []),
+        api.wards.getAll().catch(() => []),
+        api.rewards.getGlobalPolicy().catch(() => ({ couponsGloballyEnabled: true, withdrawGloballyEnabled: true })),
+      ]);
+      if (Array.isArray(citiesList) && citiesList.length > 0) {
+        setCityCorps(citiesList);
+        setSelectedCityCorpId(citiesList[0].id);
+      }
+      if (Array.isArray(wardsList) && wardsList.length > 0) {
+        setAllWards(wardsList);
+        if (citiesList && citiesList.length > 0) {
+          const matched = wardsList.filter(w => w.cityCorpId === citiesList[0].id);
+          const activeFiltered = matched.length > 0 ? matched : wardsList;
+          setFilteredWards(activeFiltered);
+          setSelectedWardId(String(activeFiltered[0].id));
+          setSelectedWardData(activeFiltered[0]);
+        } else {
+          setFilteredWards(wardsList);
+          setSelectedWardId(String(wardsList[0].id));
+          setSelectedWardData(wardsList[0]);
+        }
+      }
+      if (globalPolicy) {
+        setGlobalWithdrawEnabled(globalPolicy.withdrawGloballyEnabled !== false);
+        setGlobalCouponsEnabled(globalPolicy.couponsGloballyEnabled !== false);
+      }
+    } catch (err) {
+      console.warn("Could not load city data", err);
+    }
+  };
+
+  const handleCityCorpChange = (cityId: string) => {
+    setSelectedCityCorpId(cityId);
+    const matched = allWards.filter(w => w.cityCorpId === cityId);
+    setFilteredWards(matched);
+    if (matched.length > 0) {
+      setSelectedWardId(String(matched[0].id));
+      setSelectedWardData(matched[0]);
+    } else {
+      setSelectedWardId("");
+      setSelectedWardData(null);
+    }
+  };
+
+  const handleWardChange = (wardId: string) => {
+    setSelectedWardId(wardId);
+    const found = allWards.find(w => String(w.id) === String(wardId)) || null;
+    setSelectedWardData(found);
+  };
+
+  const loadSchedules = async () => {
+    setLoadingSchedules(true);
+    try {
+      const res = await api.schedules.getAll({ public: true });
+      if (Array.isArray(res) && res.length > 0) {
+        setLiveSchedules(res);
+      }
+    } catch {
+      // keep fallback
+    } finally {
+      setLoadingSchedules(false);
+    }
+  };
+
+  const handleSelectReportType = (type: string) => {
+    setReportType(type);
+    setReportPhotoError("");
+    setReportError("");
+    setReportStep(2);
+
+    // Auto-fill live GPS location
+    if (navigator.geolocation && !reportLocation) {
+      setReportLocationLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+            const data = await res.json();
+            if (data?.display_name) {
+              const parts = data.display_name.split(",").slice(0, 3).map((s: string) => s.trim()).join(", ");
+              setReportLocation(parts);
+            } else {
+              setReportLocation(`GPS: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+            }
+          } catch {
+            setReportLocation(`GPS: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+          } finally {
+            setReportLocationLoading(false);
+          }
+        },
+        () => {
+          setReportLocationLoading(false);
+          if (!reportLocation) setReportLocation("Mohammadpur Area");
+        },
+        { enableHighAccuracy: true, timeout: 6000 }
+      );
+    }
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setReportPhotoError("Image size exceeds 10MB limit.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const b64 = reader.result as string;
+      setReportPhoto(b64);
+      setReportPhotoError("");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmitReport = async () => {
+    if (!reportPhoto) {
+      setReportPhotoError("Photo upload is mandatory! Please upload or capture a photo of the waste issue.");
+      return;
+    }
+    if (!reportLocation.trim()) {
+      setReportError("Please specify the location of the waste issue.");
+      return;
+    }
+    setIsSubmittingReport(true);
+    setReportError("");
+    try {
+      const code = `RPT-${Date.now().toString().slice(-6)}`;
+      setLastReportCode(code);
+      const res = await api.reports.create({
+        location: reportLocation,
+        description: reportDescription || `Citizen reported ${reportType}`,
+        imageUrl: reportPhoto,
+        wasteType: reportType || "Mixed",
+        priority: reportType === "Hazardous Waste" ? "high" : "normal",
+        wardId: selectedWardId || undefined,
+        citizenId: userStorage.get()?.id,
+      });
+
+      if (res?.report?.reportCode) {
+        setLastReportCode(res.report.reportCode);
+      }
+      const pts = res?.pointsAwarded ?? (reportType === "Hazardous Waste" ? 200 : 150);
+      setUserPoints(p => p + pts);
+      const cu = userStorage.get();
+      if (cu) userStorage.set({ ...cu, points: (cu.points || 0) + pts });
+      setReportStep(3);
+    } catch (err: any) {
+      setReportError(err?.message || "Failed to submit report. Please check if this location was already reported.");
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  };
+
   useEffect(() => {
     const cu = userStorage.get();
     if (cu) {
@@ -212,9 +389,19 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
     loadCitizens();
     loadRankTiers();
     loadRewards(cu?.id);
+    loadCityData();
+    loadSchedules();
   }, []);
 
   const handleRequestCashWithdrawal = async () => {
+    if (!globalWithdrawEnabled) {
+      setWithdrawalError("Cash withdrawals are temporarily paused system-wide by the Super Administrator.");
+      return;
+    }
+    if (selectedWardData?.withdrawEnabled === false) {
+      setWithdrawalError(`Cash withdrawals are currently disabled at ${selectedWardData.name || "this ward office"} by the Ward Admin.`);
+      return;
+    }
     if (!rewardActive) {
       setWithdrawalError("The cash reward program is currently inactive in your City Corporation.");
       return;
@@ -393,7 +580,21 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
                 <span className="font-mono font-bold text-[#4ade80]">{userPoints.toLocaleString()}</span>
                 <span className="text-[#86efac] text-xs">pts</span>
               </div>
-              <button onClick={() => setAuthenticated(false)} title="Sign out" className="w-9 h-9 bg-[#16a34a] rounded-full flex items-center justify-center font-bold text-sm">Y</button>
+              <div className="w-8 h-8 bg-[#16a34a] rounded-full flex items-center justify-center font-bold text-xs text-white uppercase" title={citizenName}>
+                {citizenName ? citizenName.slice(0, 1) : "C"}
+              </div>
+              <button
+                onClick={() => {
+                  api.auth.logout();
+                  setAuthenticated(false);
+                  onNavigate("landing");
+                }}
+                title="Sign out of Citizen Account"
+                className="flex items-center gap-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-200 hover:text-white border border-red-500/30 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-xs"
+              >
+                <LogOut size={14} />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
             </div>
           </div>
 
@@ -547,16 +748,26 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
         {/* Report Issue */}
         {activeTab === "Report Issue" && (
           <div className="max-w-xl mx-auto space-y-6">
-            <div className="bg-white border border-[#e2f5e9] rounded-2xl p-6">
+            <div className="bg-white border border-[#e2f5e9] rounded-2xl p-6 shadow-xs">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 bg-[#fb923c]/20 rounded-xl flex items-center justify-center">
                   <Camera size={18} className="text-[#fb923c]" />
                 </div>
                 <div>
                   <div className="font-display font-700 text-[#052e16]">Report an Issue</div>
-                  <div className="text-[#4b7a5a] text-xs">Earn up to 150 points per report</div>
+                  <div className="text-[#4b7a5a] text-xs">Earn 150–200 points per verified report</div>
                 </div>
               </div>
+
+              {selectedWardData && selectedWardData.reportEnabled === false && (
+                <div className="mb-5 bg-amber-50 border border-amber-300 rounded-xl p-4 text-amber-900 text-xs flex items-start gap-2.5">
+                  <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-bold">Issue Reporting Temporarily Paused</div>
+                    <div>Reporting new waste issues is currently disabled in {selectedWardData.name || "this ward"} by the local Ward Admin.</div>
+                  </div>
+                </div>
+              )}
 
               {/* Steps */}
               <div className="flex items-center gap-2 mb-6">
@@ -566,26 +777,38 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
                     {step < 3 && <div className={`flex-1 h-0.5 w-8 ${reportStep > step ? "bg-[#16a34a]" : "bg-[#dcfce7]"}`} />}
                   </div>
                 ))}
-                <div className="ml-2 text-xs text-[#4b7a5a]">{reportStep === 1 ? "Select Issue Type" : reportStep === 2 ? "Add Location & Photo" : "Confirm"}</div>
+                <div className="ml-2 text-xs text-[#4b7a5a] font-medium">{reportStep === 1 ? "Select Issue Type" : reportStep === 2 ? "Location & Mandatory Photo" : "Confirm"}</div>
               </div>
 
               {reportStep === 1 && (
                 <div className="space-y-3">
                   <div className="text-sm font-medium text-[#052e16] mb-3">What are you reporting?</div>
                   {[
-                    { type: "Illegal Dumping", pts: "+150 pts", icon: "⚠️" },
-                    { type: "Hazardous Waste", pts: "+200 pts", icon: "☢️" },
-                    { type: "Bin Damage / Vandalism", pts: "+75 pts", icon: "🔧" },
-                    { type: "Missed Collection", pts: "+30 pts", icon: "📅" },
+                    { type: "Illegal Dumping", pts: "+150 pts", icon: "⚠️", desc: "Overflowing piles on street corners or roadsides", isHazardous: false },
+                    { type: "Hazardous Waste", pts: "+200 pts", icon: "☢️", desc: "Chemical, medical, battery or industrial toxins (Routed to Hazardous Truck)", isHazardous: true },
+                    { type: "Bin Damage / Vandalism", pts: "+75 pts", icon: "🔧", desc: "Broken sensors, cracked container or damage", isHazardous: false },
+                    { type: "Missed Collection", pts: "+50 pts", icon: "📅", desc: "Smart bin full but regular truck hasn't emptied", isHazardous: false },
                   ].map(r => (
                     <button
                       key={r.type}
-                      onClick={() => { setReportType(r.type); setReportStep(2); }}
-                      className={`w-full flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${reportType === r.type ? "border-[#16a34a] bg-[#f0fdf4]" : "border-[#e2f5e9] hover:border-[#bbf7d0]"}`}
+                      disabled={selectedWardData?.reportEnabled === false}
+                      onClick={() => handleSelectReportType(r.type)}
+                      className={`w-full flex items-start gap-3 p-4 rounded-xl border transition-all text-left ${
+                        selectedWardData?.reportEnabled === false
+                          ? "opacity-50 cursor-not-allowed bg-gray-50 border-gray-200"
+                          : reportType === r.type
+                          ? "border-[#16a34a] bg-[#f0fdf4]"
+                          : "border-[#e2f5e9] hover:border-[#bbf7d0] hover:bg-[#f8fdf9]"
+                      }`}
                     >
-                      <span className="text-2xl">{r.icon}</span>
-                      <span className="flex-1 font-medium text-sm text-[#052e16]">{r.type}</span>
-                      <span className="text-[#16a34a] text-xs font-mono font-bold">{r.pts}</span>
+                      <span className="text-2xl mt-0.5">{r.icon}</span>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-sm text-[#052e16]">{r.type}</span>
+                          <span className="text-[#16a34a] text-xs font-mono font-bold bg-[#f0fdf4] border border-[#bbf7d0] px-2 py-0.5 rounded-full">{r.pts}</span>
+                        </div>
+                        <div className="text-xs text-[#4b7a5a] mt-0.5">{r.desc}</div>
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -593,75 +816,184 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
 
               {reportStep === 2 && (
                 <div className="space-y-4">
-                  <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl p-3 flex items-center gap-2">
-                    <CheckCircle size={16} className="text-[#16a34a]" />
-                    <span className="text-sm text-[#052e16] font-medium">{reportType}</span>
+                  <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle size={16} className="text-[#16a34a]" />
+                      <span className="text-sm text-[#052e16] font-semibold">{reportType}</span>
+                    </div>
+                    <span className="text-xs font-mono font-bold text-[#16a34a]">
+                      {reportType === "Hazardous Waste" ? "+200 pts (Hazardous Unit)" : "+150 pts"}
+                    </span>
                   </div>
+
                   <div>
-                    <label className="block text-sm font-medium text-[#052e16] mb-2">Location</label>
+                    <label className="block text-xs font-semibold text-[#052e16] mb-1.5 flex items-center justify-between">
+                      <span>Accurate Issue Location</span>
+                      {reportLocationLoading && <span className="text-xs text-[#16a34a] flex items-center gap-1 font-normal"><RefreshCw size={11} className="animate-spin" /> Detecting GPS...</span>}
+                    </label>
                     <div className="flex gap-2">
-                      <input value={reportLocation} onChange={e => setReportLocation(e.target.value)} className="flex-1 border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm focus:border-[#16a34a] outline-none" placeholder="House 14, Road 7, Mohammadpur" />
-                      <button type="button" onClick={() => setReportLocation("House 14, Road 7, Mohammadpur")} className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl px-4 text-[#16a34a] hover:bg-[#dcfce7] transition-colors">
-                        <MapPin size={16} />
+                      <input
+                        value={reportLocation}
+                        onChange={e => setReportLocation(e.target.value)}
+                        className="flex-1 border border-[#e2f5e9] rounded-xl px-4 py-2.5 text-sm text-[#052e16] focus:border-[#16a34a] outline-none"
+                        placeholder="Detecting GPS location or enter address..."
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (navigator.geolocation) {
+                            setReportLocationLoading(true);
+                            navigator.geolocation.getCurrentPosition(
+                              async pos => {
+                                try {
+                                  const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
+                                  const data = await res.json();
+                                  setReportLocation(data.display_name?.split(",").slice(0, 3).join(",") || `GPS: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`);
+                                } catch {
+                                  setReportLocation(`GPS: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`);
+                                } finally {
+                                  setReportLocationLoading(false);
+                                }
+                              },
+                              () => setReportLocationLoading(false)
+                            );
+                          }
+                        }}
+                        title="Detect My Location"
+                        className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl px-3.5 text-[#16a34a] hover:bg-[#dcfce7] transition-colors flex items-center gap-1 text-xs font-semibold"
+                      >
+                        <MapPin size={15} />
+                        <span className="hidden sm:inline">GPS</span>
                       </button>
                     </div>
                   </div>
+
+                  {/* Mandatory Photo Upload */}
                   <div>
-                    <label className="block text-sm font-medium text-[#052e16] mb-2">Upload Photo</label>
-                    <div className="border-2 border-dashed border-[#bbf7d0] rounded-xl p-8 text-center hover:border-[#16a34a] transition-colors cursor-pointer bg-[#f8fdf9]">
-                      <Upload size={24} className="text-[#4b7a5a] mx-auto mb-2" />
-                      <div className="text-sm text-[#4b7a5a]">Click to upload or drag & drop</div>
-                      <div className="text-xs text-[#4b7a5a] mt-1">JPG, PNG up to 10MB</div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-semibold text-[#052e16]">
+                        Upload Photo <span className="text-red-500 font-bold">* (Mandatory)</span>
+                      </label>
+                      <span className="text-[11px] text-[#4b7a5a]">Required to prevent point farming</span>
                     </div>
+
+                    {reportPhoto ? (
+                      <div className="relative rounded-xl overflow-hidden border-2 border-[#16a34a] bg-black/5">
+                        <img src={reportPhoto} alt="Uploaded Waste Evidence" className="w-full h-44 object-cover" />
+                        <div className="absolute top-2 right-2 flex items-center gap-2">
+                          <span className="bg-[#16a34a] text-white text-[11px] font-semibold px-2 py-0.5 rounded-md shadow flex items-center gap-1">
+                            <CheckCircle2 size={12} /> Photo Attached
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReportPhoto("");
+                              setReportPhotoError("");
+                            }}
+                            className="bg-black/70 hover:bg-black text-white p-1 rounded-md text-xs"
+                            title="Remove Photo"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="border-2 border-dashed border-[#bbf7d0] hover:border-[#16a34a] rounded-xl p-6 text-center transition-all cursor-pointer bg-[#f8fdf9] block">
+                        <Upload size={24} className="text-[#16a34a] mx-auto mb-2" />
+                        <div className="text-sm font-semibold text-[#052e16]">Click to upload or take a photo</div>
+                        <div className="text-xs text-[#4b7a5a] mt-0.5">JPG, PNG or camera capture (Max 10MB)</div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handlePhotoUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+
+                    {reportPhotoError && (
+                      <div className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5 flex items-center gap-1.5 font-medium">
+                        <AlertTriangle size={13} className="shrink-0" />
+                        {reportPhotoError}
+                      </div>
+                    )}
                   </div>
+
                   <div>
-                    <label className="block text-sm font-medium text-[#052e16] mb-2">Description</label>
-                    <textarea value={reportDescription} onChange={e => setReportDescription(e.target.value)} className="w-full border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm focus:border-[#16a34a] outline-none resize-none" rows={3} placeholder="Describe what you see..." />
+                    <label className="block text-xs font-semibold text-[#052e16] mb-1.5">Description (Optional)</label>
+                    <textarea
+                      value={reportDescription}
+                      onChange={e => setReportDescription(e.target.value)}
+                      className="w-full border border-[#e2f5e9] rounded-xl px-4 py-2.5 text-sm text-[#052e16] focus:border-[#16a34a] outline-none resize-none"
+                      rows={2}
+                      placeholder="Add any landmark or specific details for the collection truck..."
+                    />
                   </div>
-                  <div className="flex gap-3">
-                    <button onClick={() => setReportStep(1)} className="flex-1 border border-[#e2f5e9] rounded-xl py-3 text-sm text-[#4b7a5a] hover:border-[#bbf7d0] transition-colors">Back</button>
+
+                  {reportError && (
+                    <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+                      <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold block">Submission Error</span>
+                        {reportError}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 pt-2">
                     <button
-                      onClick={async () => {
-                        const code = `RPT-${Date.now().toString().slice(-6)}`;
-                        setLastReportCode(code);
-                        try {
-                          const res = await api.reports.create({
-                            location: reportLocation || "Ward Area",
-                            description: reportDescription || "Overflow issue reported",
-                            wasteType: reportType || "Mixed",
-                            priority: "normal",
-                            wardId: selectedWardId,
-                          });
-                          if (res?.report?.reportCode) {
-                            setLastReportCode(res.report.reportCode);
-                          }
-                        } catch (e) {
-                          // Resilient fallback
-                        }
-                        setUserPoints(p => p + 150);
-                        setReportStep(3);
-                      }}
-                      className="flex-1 bg-[#16a34a] text-white rounded-xl py-3 text-sm font-semibold hover:bg-[#15803d] transition-colors"
+                      onClick={() => setReportStep(1)}
+                      className="flex-1 border border-[#e2f5e9] rounded-xl py-2.5 text-sm text-[#4b7a5a] hover:border-[#bbf7d0] transition-colors"
                     >
-                      Continue
+                      Back
+                    </button>
+                    <button
+                      onClick={handleSubmitReport}
+                      disabled={isSubmittingReport || !reportPhoto}
+                      className="flex-1 bg-[#16a34a] hover:bg-[#15803d] text-white rounded-xl py-2.5 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs"
+                    >
+                      {isSubmittingReport ? (
+                        <>
+                          <RefreshCw size={14} className="animate-spin" /> Submitting...
+                        </>
+                      ) : (
+                        "Submit Verified Report"
+                      )}
                     </button>
                   </div>
                 </div>
               )}
 
               {reportStep === 3 && (
-                <div className="text-center space-y-4">
+                <div className="text-center space-y-4 py-3">
                   <div className="w-16 h-16 bg-[#4ade80]/20 rounded-full flex items-center justify-center mx-auto">
                     <CheckCircle size={32} className="text-[#16a34a]" />
                   </div>
-                  <div className="font-display font-700 text-xl text-[#052e16]">Report Submitted!</div>
-                  <div className="text-[#4b7a5a] text-sm">Your report has been received and logged in the municipal database. The waste management team will inspect the area.</div>
-                  <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl p-4 inline-block">
-                    <div className="text-[#16a34a] font-mono font-bold text-xl">+150 pts</div>
-                    <div className="text-[#4b7a5a] text-xs">Added to your verified balance</div>
+                  <div className="font-display font-700 text-xl text-[#052e16]">Report Verified & Submitted!</div>
+                  <div className="text-[#4b7a5a] text-sm max-w-sm mx-auto">
+                    {reportType === "Hazardous Waste"
+                      ? "Your report has been routed to the Dedicated Hazardous Waste Truck for safe handling."
+                      : "Your report has been dispatched to the nearest collection truck in your ward."}
+                  </div>
+                  <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl p-4 inline-block shadow-xs">
+                    <div className="text-[#16a34a] font-mono font-bold text-2xl">
+                      {reportType === "Hazardous Waste" ? "+200 pts" : "+150 pts"}
+                    </div>
+                    <div className="text-[#4b7a5a] text-xs">Credited immediately to your Eco Balance</div>
                   </div>
                   <div className="text-xs text-[#4b7a5a] font-mono">Report ID: {lastReportCode || `RPT-${Date.now().toString().slice(-6)}`}</div>
-                  <button onClick={() => { setReportLocation(""); setReportDescription(""); setReportStep(1); }} className="w-full bg-[#16a34a] text-white rounded-xl py-3 text-sm font-semibold hover:bg-[#15803d] transition-colors">Submit Another Report</button>
+                  <button
+                    onClick={() => {
+                      setReportLocation("");
+                      setReportDescription("");
+                      setReportPhoto("");
+                      setReportStep(1);
+                    }}
+                    className="w-full bg-[#16a34a] text-white rounded-xl py-3 text-sm font-semibold hover:bg-[#15803d] transition-colors"
+                  >
+                    Submit Another Report
+                  </button>
                 </div>
               )}
             </div>
@@ -674,40 +1006,66 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
             <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl p-4 flex items-start gap-3">
               <Clock size={16} className="text-[#16a34a] mt-0.5 shrink-0" />
               <div className="text-sm text-[#052e16]">
-                <span className="font-semibold">Your Zone: Mohammadpur</span> — Collection schedule auto-updates based on bin fill levels and ML demand sensing.
+                <span className="font-semibold">Zone: {selectedWardData?.name || "Mohammadpur"}</span> — Scheduled routes are coordinated by City Corporation and Ward administration. Normal waste goes to standard trucks; toxic materials route to certified Hazardous trucks.
               </div>
             </div>
-            <div className="space-y-4">
-              {pickupSlots.map((slot, i) => (
-                <div key={i} className={`bg-white border rounded-xl p-5 transition-all ${!slot.available ? "opacity-50" : bookedSlot === i ? "border-[#16a34a]" : "border-[#e2f5e9] hover:border-[#bbf7d0]"}`}>
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="w-12 h-12 bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl flex items-center justify-center">
-                      <Calendar size={20} className="text-[#16a34a]" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-display font-600 text-[#052e16]">{slot.date}</div>
-                      <div className="text-[#4b7a5a] text-sm">{slot.time}</div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`text-xs px-3 py-1 rounded-full font-medium ${slot.type === "Organic" ? "bg-green-100 text-green-700" :
-                        slot.type === "Recyclable" ? "bg-blue-100 text-blue-700" :
-                          slot.type === "Hazardous" ? "bg-red-100 text-red-700" :
-                            "bg-gray-100 text-gray-700"
-                        }`}>{slot.type}</span>
-                      {slot.available ? (
+
+            {/* Live Schedules from City Corp / Ward Admin */}
+            <div className="space-y-3">
+              <div className="font-display font-bold text-sm text-[#052e16] flex items-center justify-between">
+                <span>Official Municipal Pickup Schedules</span>
+                <span className="text-xs text-[#4b7a5a] font-normal">Updated live</span>
+              </div>
+
+              {(liveSchedules.length > 0 ? liveSchedules : pickupSlots).map((slot: any, i: number) => {
+                const isHazardous = slot.wasteType === "Hazardous" || slot.type === "Hazardous";
+                const displayType = slot.wasteType || slot.type || "General";
+                const displayDate = slot.date;
+                const displayTime = slot.time;
+                const displayZone = slot.zone || (selectedWardData?.name || "Ward Zone");
+
+                return (
+                  <div
+                    key={slot.id || i}
+                    className={`bg-white border rounded-xl p-4 sm:p-5 transition-all ${
+                      bookedSlot === i ? "border-[#16a34a] bg-[#f0fdf4]/40 shadow-xs" : "border-[#e2f5e9] hover:border-[#bbf7d0]"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center gap-4">
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${
+                        isHazardous ? "bg-red-50 border-red-200 text-red-600" : "bg-[#f0fdf4] border-[#bbf7d0] text-[#16a34a]"
+                      }`}>
+                        <Calendar size={20} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div className="font-display font-600 text-[#052e16]">{displayDate}</div>
+                          <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-semibold border ${
+                            isHazardous
+                              ? "bg-red-100 text-red-700 border-red-200"
+                              : displayType === "Organic"
+                              ? "bg-green-100 text-green-700 border-green-200"
+                              : "bg-blue-100 text-blue-700 border-blue-200"
+                          }`}>
+                            {displayType} ({isHazardous ? "Hazardous Truck" : "Normal Truck"})
+                          </span>
+                        </div>
+                        <div className="text-[#4b7a5a] text-xs mt-0.5">{displayTime} · {displayZone}</div>
+                      </div>
+                      <div>
                         <button
                           onClick={() => setBookedSlot(bookedSlot === i ? null : i)}
-                          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${bookedSlot === i ? "bg-[#16a34a] text-white" : "border border-[#16a34a] text-[#16a34a] hover:bg-[#f0fdf4]"}`}
+                          className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+                            bookedSlot === i ? "bg-[#16a34a] text-white" : "border border-[#16a34a] text-[#16a34a] hover:bg-[#f0fdf4]"
+                          }`}
                         >
-                          {bookedSlot === i ? "✓ Booked" : "Book"}
+                          {bookedSlot === i ? "✓ Slot Booked" : "Book Slot"}
                         </button>
-                      ) : (
-                        <span className="text-xs text-[#4b7a5a]">Unavailable</span>
-                      )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="bg-white border border-[#e2f5e9] rounded-xl p-4 sm:p-5">
               <div className="font-display font-600 text-[#052e16] mb-1">Request On-Demand Pickup</div>
@@ -1048,6 +1406,16 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
               </div>
               <p className="text-xs text-[#4b7a5a] mb-4">Redeem your earned points for guaranteed unique digital partner vouchers</p>
 
+              {!globalCouponsEnabled && (
+                <div className="mb-4 bg-amber-50 border border-amber-300 rounded-xl p-4 text-amber-900 text-xs flex items-start gap-2.5">
+                  <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-bold">Partner Coupons Temporarily Paused</div>
+                    <div>Gift cards and coupon redemptions have been paused system-wide by the Super Administrator.</div>
+                  </div>
+                </div>
+              )}
+
               {partnerRewards.length === 0 ? (
                 <div className="bg-white border border-[#e2f5e9] rounded-xl p-8 text-center text-[#4b7a5a]">
                   <Gift size={32} className="mx-auto mb-2 opacity-40 text-[#16a34a]" />
@@ -1260,6 +1628,27 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
                       </div>
                     </div>
 
+                    {/* City Corporation Selection */}
+                    <div>
+                      <label className="block text-xs font-semibold text-[#052e16] mb-1">
+                        Select City Corporation
+                      </label>
+                      <select
+                        value={selectedCityCorpId}
+                        onChange={e => handleCityCorpChange(e.target.value)}
+                        className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-xs text-[#052e16] outline-none focus:border-[#16a34a] bg-white font-medium"
+                      >
+                        {cityCorps.map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.name} ({c.code})
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-[11px] text-[#4b7a5a] mt-0.5">
+                        Ward offices are filtered dynamically for the selected City Corporation.
+                      </p>
+                    </div>
+
                     {/* Ward Office Selection */}
                     <div>
                       <label className="block text-xs font-semibold text-[#052e16] mb-1">
@@ -1267,19 +1656,34 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
                       </label>
                       <select
                         value={selectedWardId}
-                        onChange={e => setSelectedWardId(e.target.value)}
-                        className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-xs text-[#052e16] outline-none focus:border-[#16a34a]"
+                        onChange={e => handleWardChange(e.target.value)}
+                        className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-xs text-[#052e16] outline-none focus:border-[#16a34a] bg-white font-medium"
                       >
-                        {wards.map(w => (
+                        {(filteredWards.length > 0 ? filteredWards : allWards).map(w => (
                           <option key={w.id} value={String(w.id)}>
-                            {w.name} — {w.area} (Ward Admin Office)
+                            {w.name} — {w.area} {w.withdrawEnabled === false ? "(Cash Payouts Paused)" : "(Ward Office)"}
                           </option>
                         ))}
                       </select>
-                      <p className="text-[11px] text-[#4b7a5a] mt-1">
+                      <p className="text-[11px] text-[#4b7a5a] mt-0.5">
                         You will collect cash in-person from this ward admin office.
                       </p>
                     </div>
+
+                    {/* Warning if disabled globally or for selected ward */}
+                    {(!globalWithdrawEnabled || selectedWardData?.withdrawEnabled === false) && (
+                      <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 text-amber-900 text-xs flex items-start gap-2">
+                        <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold">Cash Payouts Temporarily Paused</div>
+                          <div>
+                            {!globalWithdrawEnabled
+                              ? "System-wide cash withdrawals are currently paused by the Super Administrator."
+                              : `Cash withdrawals are temporarily disabled at ${selectedWardData?.name || "this ward office"} by the Ward Admin.`}
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Citizen Details */}
                     <div className="grid grid-cols-2 gap-3">
@@ -1313,8 +1717,8 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
                     </button>
                     <button
                       onClick={handleRequestCashWithdrawal}
-                      disabled={isSubmittingWithdrawal}
-                      className="flex-1 py-2.5 rounded-xl bg-[#16a34a] hover:bg-[#15803d] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow transition-all disabled:opacity-50"
+                      disabled={isSubmittingWithdrawal || !globalWithdrawEnabled || selectedWardData?.withdrawEnabled === false}
+                      className="flex-1 py-2.5 rounded-xl bg-[#16a34a] hover:bg-[#15803d] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isSubmittingWithdrawal ? (
                         <RefreshCw size={14} className="animate-spin" />

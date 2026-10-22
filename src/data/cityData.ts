@@ -20,6 +20,8 @@ export interface Track {
   id: string;
   wardId: number;
   truckId: string;
+  truckType?: "NORMAL" | "HAZARDOUS";
+  driverId?: string | null;
   driver: string;
   phone: string;
   route: string;

@@ -4,11 +4,11 @@ import {
   Plus, Edit3, Trash, Search, Download, RefreshCw,
   MapPin, Flame, Wind, X, Save, ChevronDown, ChevronUp,
   BarChart2, Package, CheckCircle, Clock, Navigation, ExternalLink,
-  Banknote, CheckCircle2
+  Banknote, CheckCircle2, Calendar, ToggleLeft, ToggleRight, UserCheck, ShieldAlert
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { getBinsForWard, getTracksForWard, getWardById, type Bin, type Track, wards } from "../data/cityData";
-import api, { WithdrawalItem } from "../lib/api";
+import api, { WithdrawalItem, PickupScheduleItem, UserProfile, TrackItem } from "../lib/api";
 
 interface WardAdminPanelProps {
   wardId: string | number;
@@ -20,6 +20,7 @@ const TABS = [
   { id: "withdrawals", icon: Banknote,  label: "Cash Payouts" },
   { id: "bins",        icon: Trash2,    label: "My Bins" },
   { id: "tracks",      icon: Truck,     label: "My Tracks" },
+  { id: "schedules",   icon: Calendar,  label: "Pickup Schedules" },
   { id: "waste",       icon: Package,   label: "Waste Data" },
   { id: "alerts",      icon: Bell,      label: "Alerts" },
 ];
@@ -324,6 +325,118 @@ function UpdateWasteModal({
   );
 }
 
+// ── Assign Driver / Change Driver Modal ───────────────────────────────
+function AssignDriverModal({
+  track,
+  drivers,
+  onClose,
+  onAssign,
+}: {
+  track: any;
+  drivers: UserProfile[];
+  onClose: () => void;
+  onAssign: (trackId: string, driverId: string | null, truckType: "NORMAL" | "HAZARDOUS") => Promise<void>;
+}) {
+  const [selectedDriverId, setSelectedDriverId] = useState<string>(track.driverId || "");
+  const [truckType, setTruckType] = useState<"NORMAL" | "HAZARDOUS">(track.truckType === "HAZARDOUS" ? "HAZARDOUS" : "NORMAL");
+  const [submitting, setSubmitting] = useState(false);
+
+  return (
+    <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#1a3d22]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-xl bg-[#16a34a]/20 border border-[#4ade80]/30 flex items-center justify-center text-[#4ade80]">
+              <Truck size={20} />
+            </div>
+            <div>
+              <div className="font-display font-bold text-white text-base">Assign / Change Driver</div>
+              <div className="text-xs text-[#4ade80] font-mono">{track.truckId} · {track.route || "Ward Route"}</div>
+            </div>
+          </div>
+          <button onClick={onClose}><X size={16} className="text-[#4b7a5a] hover:text-white" /></button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-mono text-[#86efac] mb-1.5">TRUCK TYPE & CAPABILITY</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setTruckType("NORMAL")}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  truckType === "NORMAL"
+                    ? "bg-[#16a34a]/20 border-[#4ade80] text-[#4ade80]"
+                    : "bg-[#061309] border-[#1a3d22] text-[#4b7a5a] hover:border-[#1a3d22]/80"
+                }`}
+              >
+                <div className="font-bold text-xs">Normal Waste Truck</div>
+                <div className="text-[10px] opacity-80 mt-0.5">Organic, Recyclable, General</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTruckType("HAZARDOUS")}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  truckType === "HAZARDOUS"
+                    ? "bg-red-500/20 border-red-500 text-red-400"
+                    : "bg-[#061309] border-[#1a3d22] text-[#4b7a5a] hover:border-[#1a3d22]/80"
+                }`}
+              >
+                <div className="font-bold text-xs">Hazardous Truck</div>
+                <div className="text-[10px] opacity-80 mt-0.5">Toxins, Medical, Batteries</div>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-mono text-[#86efac] mb-1.5">SELECT REGISTERED DRIVER</label>
+            <select
+              value={selectedDriverId}
+              onChange={e => setSelectedDriverId(e.target.value)}
+              className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#4ade80]"
+            >
+              <option value="">-- No Driver Assigned (Idle Truck) --</option>
+              {drivers.map(d => (
+                <option key={d.id} value={d.id}>
+                  {d.fullName || d.username} ({d.phone || d.email || "Driver"})
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-[#4b7a5a] mt-1">
+              Select any registered driver to assign them to this truck. You can reassign or swap drivers anytime.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={onClose}
+            className="flex-1 border border-[#1a3d22] text-[#4b7a5a] hover:text-white rounded-xl py-2.5 text-xs font-semibold"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={async () => {
+              setSubmitting(true);
+              try {
+                await onAssign(track.id, selectedDriverId || null, truckType);
+                onClose();
+              } finally {
+                setSubmitting(false);
+              }
+            }}
+            disabled={submitting}
+            className="flex-1 bg-[#16a34a] hover:bg-[#15803d] text-white rounded-xl py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"
+          >
+            {submitting ? <RefreshCw size={13} className="animate-spin" /> : <UserCheck size={14} />}
+            <span>Confirm Assignment</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ─────────────────────────────────────────────────────
 export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps) {
   const [dynamicWard, setDynamicWard] = useState<any>(null);
@@ -347,6 +460,30 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
     { bin: "B-013", organic: 18, plastic: 9, paper: 7, metal: 4, total: 42, time: "Today 10:30", done: true },
     { bin: "B-012", organic: 22, plastic: 11, paper: 6, metal: 5, total: 52, time: "Yesterday 15:00", done: true },
   ]);
+
+  // Driver assignment & truck management
+  const [drivers, setDrivers] = useState<UserProfile[]>([]);
+  const [assigningTrack, setAssigningTrack] = useState<any | null>(null);
+
+  // Pickup schedules
+  const [wardSchedules, setWardSchedules] = useState<PickupScheduleItem[]>([]);
+  const [showAddSchedule, setShowAddSchedule] = useState(false);
+  const [scheduleForm, setScheduleForm] = useState<{
+    date: string;
+    time: string;
+    wasteType: "Organic" | "Recyclable" | "General" | "Hazardous";
+    zone: string;
+  }>({
+    date: "",
+    time: "08:00 – 11:00 AM",
+    wasteType: "General",
+    zone: "",
+  });
+
+  // Ward Toggles (Report & Withdraw)
+  const [wardReportEnabled, setWardReportEnabled] = useState(true);
+  const [wardWithdrawEnabled, setWardWithdrawEnabled] = useState(true);
+  const [updatingWardPolicy, setUpdatingWardPolicy] = useState(false);
 
   // Cash Withdrawals State
   const [withdrawals, setWithdrawals] = useState<WithdrawalItem[]>([]);
@@ -376,14 +513,99 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
     }
   };
 
+  const handleToggleReport = async () => {
+    const nextVal = !wardReportEnabled;
+    setWardReportEnabled(nextVal);
+    setUpdatingWardPolicy(true);
+    try {
+      await api.wards.update(String(wardId), { reportEnabled: nextVal });
+    } catch {
+      setWardReportEnabled(!nextVal);
+    } finally {
+      setUpdatingWardPolicy(false);
+    }
+  };
+
+  const handleToggleWithdraw = async () => {
+    const nextVal = !wardWithdrawEnabled;
+    setWardWithdrawEnabled(nextVal);
+    setUpdatingWardPolicy(true);
+    try {
+      await api.wards.update(String(wardId), { withdrawEnabled: nextVal });
+    } catch {
+      setWardWithdrawEnabled(!nextVal);
+    } finally {
+      setUpdatingWardPolicy(false);
+    }
+  };
+
+  const handleAssignDriver = async (trackId: string, driverId: string | null, truckType: "NORMAL" | "HAZARDOUS") => {
+    try {
+      await api.tracks.assignDriver(trackId, driverId, truckType);
+      const updated = await api.tracks.getAll();
+      if (Array.isArray(updated)) {
+        const filteredTracks = updated.filter((t: any) => String(t.wardId) === String(wardId));
+        setLocalTracks(filteredTracks.map((t: any) => ({
+          id: t.id,
+          wardId: typeof wardId === "number" ? wardId : 1,
+          truckId: t.truckId,
+          truckType: t.truckType || "NORMAL",
+          driverId: t.driverId,
+          driver: t.driver?.fullName || (t.driverId ? "Driver Assigned" : "No Driver Assigned"),
+          phone: t.driver?.phone || "017XX-XXXXXX",
+          route: t.route,
+          stops: t.stops,
+          status: t.status,
+          progress: t.progress,
+          load: t.load,
+          fuel: t.fuel,
+          startTime: t.startTime || "07:00 AM",
+          gpsLat: t.gpsLat,
+          gpsLng: t.gpsLng,
+          mapsRouteUrl: t.mapsRouteUrl || "",
+        })));
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to update driver assignment");
+    }
+  };
+
+  const handleCreateSchedule = async () => {
+    if (!scheduleForm.date) {
+      alert("Please select a collection date");
+      return;
+    }
+    try {
+      const res = await api.schedules.create({
+        date: scheduleForm.date,
+        time: scheduleForm.time,
+        wasteType: scheduleForm.wasteType,
+        zone: scheduleForm.zone || ward.area || ward.name,
+        wardId: String(wardId),
+      });
+      if (res) {
+        setWardSchedules(prev => [res, ...prev]);
+        setShowAddSchedule(false);
+        setScheduleForm({ date: "", time: "08:00 – 11:00 AM", wasteType: "General", zone: "" });
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to create schedule");
+    }
+  };
+
   useEffect(() => {
     async function loadWardData() {
       try {
-        const [binsRes, tracksRes, wardRes] = await Promise.all([
+        const [binsRes, tracksRes, wardRes, driversRes, schedulesRes] = await Promise.all([
           api.bins.getAll({ wardId: String(wardId) }).catch(() => []),
           api.tracks.getAll().catch(() => []),
           api.wards.getById(String(wardId)).catch(() => null),
+          api.users.getAll({ role: "DRIVER" }).catch(() => []),
+          api.schedules.getAll({ wardId: String(wardId) }).catch(() => []),
         ]);
+
+        if (Array.isArray(driversRes)) setDrivers(driversRes);
+        if (Array.isArray(schedulesRes)) setWardSchedules(schedulesRes);
 
         if (Array.isArray(binsRes) && binsRes.length > 0) {
           setLocalBins(
@@ -417,7 +639,9 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
                 id: t.id,
                 wardId: typeof wardId === "number" ? wardId : 1,
                 truckId: t.truckId,
-                driver: t.driver?.fullName || "Assigned Driver",
+                truckType: t.truckType || "NORMAL",
+                driverId: t.driverId,
+                driver: t.driver?.fullName || (t.driverId ? "Driver Assigned" : "No Driver Assigned"),
                 phone: t.driver?.phone || "017XX-XXXXXX",
                 route: t.route,
                 stops: t.stops,
@@ -436,6 +660,8 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
 
         if (wardRes) {
           setDynamicWard(wardRes);
+          setWardReportEnabled(wardRes.reportEnabled !== false);
+          setWardWithdrawEnabled(wardRes.withdrawEnabled !== false);
         }
       } catch (e) {
         console.warn("Ward data fetch notice, using fallback.");
@@ -619,6 +845,89 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
                     <div className="text-[#4b7a5a] text-xs mt-0.5">{kpi.sub}</div>
                   </div>
                 ))}
+              </div>
+
+              {/* Ward Operations Control Center */}
+              <div className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-5 shadow-xs">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="font-display font-bold text-white text-base">Ward Citizen Policies & Operations</h3>
+                    <p className="text-xs text-[#4b7a5a]">Enable or pause citizen-facing features specifically for {ward.name}</p>
+                  </div>
+                  {updatingWardPolicy && (
+                    <span className="text-xs text-[#4ade80] flex items-center gap-1 font-mono">
+                      <RefreshCw size={12} className="animate-spin" /> Updating...
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {/* Issue Reporting Toggle */}
+                  <div className="bg-[#061309] border border-[#1a3d22] rounded-xl p-4 flex items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-white">Citizen Issue Reporting</span>
+                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${wardReportEnabled ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-red-500/20 text-red-400 border border-red-500/30"}`}>
+                          {wardReportEnabled ? "ACTIVE (ON)" : "PAUSED (OFF)"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#4b7a5a] mt-1">
+                        {wardReportEnabled
+                          ? "Citizens in this ward can report illegal dumping and hazardous waste to earn points."
+                          : "Reporting is disabled; citizens will see that issue submission is paused for this ward."}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleToggleReport}
+                      disabled={updatingWardPolicy}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        wardReportEnabled ? "bg-[#16a34a]" : "bg-gray-700"
+                      }`}
+                      role="switch"
+                      aria-checked={wardReportEnabled}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                          wardReportEnabled ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Cash Payouts Toggle */}
+                  <div className="bg-[#061309] border border-[#1a3d22] rounded-xl p-4 flex items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-white">Ward Office Cash Payouts</span>
+                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${wardWithdrawEnabled ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-amber-500/20 text-amber-400 border border-amber-500/30"}`}>
+                          {wardWithdrawEnabled ? "ENABLED (ON)" : "DISABLED (OFF)"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#4b7a5a] mt-1">
+                        {wardWithdrawEnabled
+                          ? "Citizens can generate cash pickup vouchers to collect cash from this ward office."
+                          : "Cash vouchers cannot be redeemed for this ward office; notice shown to citizens."}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleToggleWithdraw}
+                      disabled={updatingWardPolicy}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        wardWithdrawEnabled ? "bg-[#16a34a]" : "bg-gray-700"
+                      }`}
+                      role="switch"
+                      aria-checked={wardWithdrawEnabled}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                          wardWithdrawEnabled ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Chart */}
@@ -1017,8 +1326,24 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="font-mono font-bold text-white">{t.truckId}</span>
                           <StatusBadge status={t.status} />
+                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                            t.truckType === "HAZARDOUS"
+                              ? "bg-red-500/20 text-red-400 border-red-500/40 font-bold"
+                              : "bg-green-500/20 text-green-400 border-green-500/30 font-bold"
+                          }`}>
+                            {t.truckType === "HAZARDOUS" ? "HAZARDOUS TRUCK" : "NORMAL TRUCK"}
+                          </span>
                         </div>
-                        <div className="text-[#86efac] text-sm font-medium">{t.driver}</div>
+                        <div className="text-[#86efac] text-sm font-medium flex items-center gap-2">
+                          <span>{t.driver}</span>
+                          <button
+                            onClick={() => setAssigningTrack(t)}
+                            className="text-[11px] bg-[#16a34a]/20 border border-[#4ade80]/30 hover:bg-[#16a34a]/40 text-[#4ade80] px-2 py-0.5 rounded-md flex items-center gap-1 font-mono transition-colors"
+                            title="Assign or change driver for this truck"
+                          >
+                            <UserCheck size={11} /> Change Driver
+                          </button>
+                        </div>
                         <div className="text-[#4b7a5a] text-xs">{t.phone}</div>
                         <div className="text-[#4b7a5a] text-xs mt-0.5 truncate">{t.route}</div>
                       </div>
@@ -1051,6 +1376,83 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── PICKUP SCHEDULES ── */}
+          {activeTab === "schedules" && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-display font-bold text-white text-base">Ward Pickup Schedules</h3>
+                  <p className="text-xs text-[#4b7a5a]">Submit schedules for City Corporation Admin approval before going live to citizens</p>
+                </div>
+                <button
+                  onClick={() => setShowAddSchedule(true)}
+                  className="bg-[#16a34a] hover:bg-[#15803d] text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5 shadow"
+                >
+                  <Plus size={14} /> Submit Pickup Schedule
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {wardSchedules.length === 0 ? (
+                  <div className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-10 text-center text-[#4b7a5a]">
+                    <Calendar size={36} className="mx-auto mb-2 opacity-40 text-[#4ade80]" />
+                    <div className="text-white font-semibold text-sm">No schedules submitted yet</div>
+                    <div className="text-xs mt-1">Submit a collection route for your ward. City Admin will review and confirm.</div>
+                  </div>
+                ) : (
+                  wardSchedules.map(sch => {
+                    const isHaz = sch.wasteType === "Hazardous";
+                    return (
+                      <div
+                        key={sch.id}
+                        className="bg-[#0d2414] border border-[#1a3d22] hover:border-[#4ade80]/30 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 transition-all"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-11 h-11 rounded-xl flex items-center justify-center border shrink-0 ${
+                            isHaz ? "bg-red-500/10 border-red-500/30 text-red-400" : "bg-green-500/10 border-green-500/30 text-[#4ade80]"
+                          }`}>
+                            <Calendar size={20} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-display font-bold text-white text-sm">{sch.date}</span>
+                              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                                isHaz ? "bg-red-500/20 text-red-400 border-red-500/30 font-bold" : "bg-green-500/20 text-green-400 border-green-500/30"
+                              }`}>
+                                {sch.wasteType} ({isHaz ? "Hazardous Truck" : "Normal Truck"})
+                              </span>
+                            </div>
+                            <div className="text-xs text-[#4b7a5a] mt-0.5">
+                              {sch.time} · Zone: <span className="text-[#86efac]">{sch.zone}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          {sch.status === "PENDING_APPROVAL" && (
+                            <span className="bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 text-xs px-3 py-1 rounded-full font-mono font-semibold flex items-center gap-1.5">
+                              <Clock size={12} /> Pending City Admin Approval
+                            </span>
+                          )}
+                          {sch.status === "CONFIRMED" && (
+                            <span className="bg-green-500/20 border border-green-500/40 text-[#4ade80] text-xs px-3 py-1 rounded-full font-mono font-semibold flex items-center gap-1.5">
+                              <CheckCircle size={12} /> Live / Confirmed
+                            </span>
+                          )}
+                          {sch.status === "REJECTED" && (
+                            <span className="bg-red-500/20 border border-red-500/40 text-red-400 text-xs px-3 py-1 rounded-full font-mono font-semibold">
+                              Rejected by City Admin
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           )}
@@ -1325,6 +1727,101 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
                 className="flex-1 py-2.5 rounded-xl bg-[#16a34a] hover:bg-[#15803d] text-white text-xs font-bold transition-colors"
               >
                 Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Assign / Change Driver Modal ── */}
+      {assigningTrack && (
+        <AssignDriverModal
+          track={assigningTrack}
+          drivers={drivers}
+          onClose={() => setAssigningTrack(null)}
+          onAssign={handleAssignDriver}
+        />
+      )}
+
+      {/* ── Submit Pickup Schedule Modal ── */}
+      {showAddSchedule && (
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={() => setShowAddSchedule(false)}>
+          <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#1a3d22]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-[#16a34a]/20 border border-[#4ade80]/30 flex items-center justify-center text-[#4ade80]">
+                  <Calendar size={20} />
+                </div>
+                <div>
+                  <div className="font-display font-bold text-white text-base">Submit Pickup Schedule</div>
+                  <div className="text-xs text-[#4ade80] font-mono">{ward.name} · {ward.area}</div>
+                </div>
+              </div>
+              <button onClick={() => setShowAddSchedule(false)}><X size={16} className="text-[#4b7a5a] hover:text-white" /></button>
+            </div>
+
+            <div className="bg-[#061309] border border-[#1a3d22] rounded-xl p-3 mb-4 text-xs text-[#4b7a5a]">
+              This schedule will be submitted with <span className="text-yellow-400 font-mono font-semibold">PENDING_APPROVAL</span> status. Once City Corporation Admin confirms it, it will display publicly on Citizen Portal.
+            </div>
+
+            <div className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-mono text-[#86efac] mb-1">COLLECTION DATE</label>
+                <input
+                  type="date"
+                  value={scheduleForm.date}
+                  onChange={e => setScheduleForm(f => ({ ...f, date: e.target.value }))}
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#4ade80]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[#86efac] mb-1">TIME WINDOW</label>
+                <input
+                  value={scheduleForm.time}
+                  onChange={e => setScheduleForm(f => ({ ...f, time: e.target.value }))}
+                  placeholder="e.g. 08:00 – 11:00 AM"
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#4ade80]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[#86efac] mb-1">WASTE CATEGORY & VEHICLE TYPE</label>
+                <select
+                  value={scheduleForm.wasteType}
+                  onChange={e => setScheduleForm(f => ({ ...f, wasteType: e.target.value as "Organic" | "Recyclable" | "General" | "Hazardous" }))}
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#4ade80]"
+                >
+                  <option value="General">General Municipal Waste (Normal Truck)</option>
+                  <option value="Organic">Organic & Kitchen Scraps (Normal Truck)</option>
+                  <option value="Recyclable">Plastics, Glass & Paper (Normal Truck)</option>
+                  <option value="Hazardous">Hazardous / Chemical / Batteries (Hazardous Truck)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[#86efac] mb-1">LOCAL ROUTE / ZONE</label>
+                <input
+                  value={scheduleForm.zone}
+                  onChange={e => setScheduleForm(f => ({ ...f, zone: e.target.value }))}
+                  placeholder={ward.area || "Zone name"}
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#4ade80]"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowAddSchedule(false)}
+                className="flex-1 border border-[#1a3d22] text-[#4b7a5a] hover:text-white rounded-xl py-2.5 text-xs font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateSchedule}
+                className="flex-1 bg-[#16a34a] hover:bg-[#15803d] text-white rounded-xl py-2.5 text-xs font-bold flex items-center justify-center gap-1.5"
+              >
+                <Plus size={14} /> Submit for Approval
               </button>
             </div>
           </div>

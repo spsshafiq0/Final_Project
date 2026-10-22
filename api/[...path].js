@@ -5924,6 +5924,8 @@ if (!g.__intelliwaste_store) {
   g.__intelliwaste_store = {
     isSetupComplete: false,
     setupLocked: false,
+    withdrawGloballyEnabled: true,
+    couponsGloballyEnabled: true,
     cities: [],
     wards: [],
     users: [],
@@ -5931,8 +5933,15 @@ if (!g.__intelliwaste_store) {
     tracks: [],
     alerts: [],
     pickups: [],
+    schedules: [],
     withdrawals: [],
     wasteReports: [],
+    reportTypes: [
+      { id: "rt-1", type: "Illegal Dumping", pts: 150, icon: "\u26A0\uFE0F" },
+      { id: "rt-2", type: "Hazardous Waste", pts: 200, icon: "\u2622\uFE0F" },
+      { id: "rt-3", type: "Bin Damage / Vandalism", pts: 75, icon: "\u{1F527}" },
+      { id: "rt-4", type: "Missed Collection", pts: 30, icon: "\u{1F4C5}" }
+    ],
     auditLogs: [],
     rankTiers: [
       { id: "tier-1", level: 1, name: "Eco Beginner", minPoints: 0, maxPoints: 200, badge: "\u{1F331}" },
@@ -7530,9 +7539,45 @@ var wards_default = apiHandler(
       });
       return res.status(201).json(createdWard || memWard);
     }
+    if (req.method === "PUT" || req.method === "PATCH") {
+      const { id, wardId, reportEnabled, withdrawEnabled, name, area, population, councilor } = req.body || {};
+      const targetId = String(wardId || id || req.query.id);
+      if (!targetId) {
+        return res.status(400).json({ error: "Ward ID is required" });
+      }
+      let updatedWard = null;
+      try {
+        const updateData = {};
+        if (reportEnabled !== void 0) updateData.reportEnabled = Boolean(reportEnabled);
+        if (withdrawEnabled !== void 0) updateData.withdrawEnabled = Boolean(withdrawEnabled);
+        if (name) updateData.name = name;
+        if (area) updateData.area = area;
+        if (population !== void 0) updateData.population = Number(population);
+        if (councilor !== void 0) updateData.councilor = councilor;
+        updatedWard = await prisma_default.ward.update({
+          where: { id: targetId },
+          data: updateData,
+          include: {
+            cityCorp: { select: { id: true, name: true, code: true } }
+          }
+        });
+      } catch (e) {
+        console.warn("[Ward Update Notice] Fallback to memory store:", e.message);
+      }
+      const memWard = memoryDb.wards.find((w) => w.id === targetId);
+      if (memWard) {
+        if (reportEnabled !== void 0) memWard.reportEnabled = Boolean(reportEnabled);
+        if (withdrawEnabled !== void 0) memWard.withdrawEnabled = Boolean(withdrawEnabled);
+        if (name) memWard.name = name;
+        if (area) memWard.area = area;
+        if (population !== void 0) memWard.population = Number(population);
+        if (councilor !== void 0) memWard.councilor = councilor;
+      }
+      return res.status(200).json(updatedWard || memWard || { success: true });
+    }
     return res.status(405).json({ error: "Method not allowed" });
   },
-  { allowedMethods: ["GET", "POST"] }
+  { allowedMethods: ["GET", "POST", "PUT", "PATCH"] }
 );
 
 // lib/handlers/wards/[id].ts
@@ -7979,12 +8024,13 @@ var tracks_default = apiHandler(
         createdTrack = await prisma_default.track.create({
           data: {
             truckId,
+            truckType: req.body?.truckType === "HAZARDOUS" ? "HAZARDOUS" : "NORMAL",
             route,
             stops: stops ? Number(stops) : 6,
             fuel: fuel ? Number(fuel) : 100,
             status: status || "active",
             wardId: assignedWardId,
-            driverId: assignedDriverId,
+            driverId: assignedDriverId || req.body?.driverId || null,
             mapsRouteUrl: mapsRouteUrl || "",
             gpsLat: gpsLat ? Number(gpsLat) : 23.78,
             gpsLng: gpsLng ? Number(gpsLng) : 90.4
@@ -8000,6 +8046,7 @@ var tracks_default = apiHandler(
       const memTrack = {
         id: createdTrack?.id || `TR-${Date.now()}`,
         truckId,
+        truckType: req.body?.truckType === "HAZARDOUS" ? "HAZARDOUS" : "NORMAL",
         driver: finalDriverName,
         phone: finalDriverPhone,
         route,
@@ -8013,15 +8060,60 @@ var tracks_default = apiHandler(
         gpsLng: gpsLng ? Number(gpsLng) : 90.4,
         mapsRouteUrl: mapsRouteUrl || "",
         wardId: assignedWardId,
-        driverId: assignedDriverId,
+        driverId: assignedDriverId || req.body?.driverId || null,
         createdAt: (/* @__PURE__ */ new Date()).toISOString()
       };
       memoryDb.tracks.push(memTrack);
       return res.status(201).json(createdTrack || memTrack);
     }
+    if (req.method === "PUT" || req.method === "PATCH") {
+      const { id, trackId, driverId, truckType, route, status, stops, fuel } = req.body || {};
+      const targetId = String(trackId || id || req.query.id);
+      if (!targetId) {
+        return res.status(400).json({ error: "Track ID is required to assign or update driver" });
+      }
+      let updatedTrack = null;
+      try {
+        const updateData = {};
+        if (driverId !== void 0) updateData.driverId = driverId || null;
+        if (truckType) updateData.truckType = truckType === "HAZARDOUS" ? "HAZARDOUS" : "NORMAL";
+        if (route) updateData.route = route;
+        if (status) updateData.status = status;
+        if (stops !== void 0) updateData.stops = Number(stops);
+        if (fuel !== void 0) updateData.fuel = Number(fuel);
+        updatedTrack = await prisma_default.track.update({
+          where: { id: targetId },
+          data: updateData,
+          include: {
+            ward: true,
+            driver: { select: { id: true, username: true, fullName: true, phone: true } }
+          }
+        });
+      } catch (e) {
+        console.warn("[Track Update Notice] Fallback to memory store:", e.message);
+      }
+      const memTrack = memoryDb.tracks.find((t) => t.id === targetId || t.truckId === targetId);
+      if (memTrack) {
+        if (driverId !== void 0) {
+          memTrack.driverId = driverId || null;
+          const assignedUser = memoryDb.users.find((u) => u.id === driverId);
+          if (assignedUser) {
+            memTrack.driver = assignedUser.fullName;
+            memTrack.phone = assignedUser.phone || "";
+          } else {
+            memTrack.driver = "Unassigned";
+            memTrack.phone = "";
+          }
+        }
+        if (truckType) memTrack.truckType = truckType === "HAZARDOUS" ? "HAZARDOUS" : "NORMAL";
+        if (route) memTrack.route = route;
+        if (status) memTrack.status = status;
+      }
+      return res.status(200).json(updatedTrack || memTrack || { success: true });
+    }
     return res.status(405).json({ error: "Method not allowed" });
   },
-  { allowedMethods: ["GET", "POST"] }
+  { allowedMethods: ["GET", "POST", "PUT", "PATCH"] }
 );
 
 // lib/handlers/tracks/[id].ts
@@ -9096,12 +9188,58 @@ var reports_default = apiHandler(
       if (!cleanLocation || !cleanDescription) {
         return res.status(400).json({ error: "Location and description are required" });
       }
+      if (!imageUrl || String(imageUrl).trim() === "") {
+        return res.status(400).json({
+          error: "Photo upload is mandatory. Please capture or upload a clear photo of the waste issue."
+        });
+      }
+      if (wardId) {
+        try {
+          const targetWard = await prisma_default.ward.findUnique({ where: { id: wardId } });
+          if (targetWard && targetWard.reportEnabled === false) {
+            return res.status(403).json({
+              error: "Issue reporting is temporarily disabled for this Ward by the local administration."
+            });
+          }
+        } catch {
+          const memWard = memoryDb.wards.find((w) => w.id === wardId);
+          if (memWard && memWard.reportEnabled === false) {
+            return res.status(403).json({
+              error: "Issue reporting is temporarily disabled for this Ward by the local administration."
+            });
+          }
+        }
+      }
+      try {
+        const existingReport = await prisma_default.wasteReport.findFirst({
+          where: {
+            location: { equals: cleanLocation, mode: "insensitive" },
+            status: { in: ["pending", "investigating"] }
+          }
+        });
+        if (existingReport) {
+          return res.status(409).json({
+            error: `An active issue has already been reported at this location [${existingReport.reportCode}]. Our collection team is already on it. Thank you!`
+          });
+        }
+      } catch {
+        const memDup = (memoryDb.wasteReports || []).find(
+          (r) => r.location.toLowerCase().trim() === cleanLocation.toLowerCase().trim() && (r.status === "pending" || r.status === "investigating")
+        );
+        if (memDup) {
+          return res.status(409).json({
+            error: `An active issue has already been reported at this location [${memDup.reportCode}]. Our collection team is already on it. Thank you!`
+          });
+        }
+      }
       const finalCitizenId = currentUser?.userId || citizenId;
       if (!finalCitizenId) {
         return res.status(400).json({ error: "Citizen ID is required to submit a report" });
       }
       const reportCode = `RPT-${Date.now().toString().slice(-6)}`;
-      const pointsEarned = 150;
+      const isHazardous = String(wasteType).toLowerCase().includes("hazard") || String(wasteType).toLowerCase().includes("chemical") || String(wasteType).toLowerCase().includes("bio");
+      const targetTruckType = isHazardous ? "HAZARDOUS" : "NORMAL";
+      const pointsEarned = isHazardous ? 200 : 150;
       let createdReport = null;
       try {
         createdReport = await prisma_default.wasteReport.create({
@@ -9112,7 +9250,7 @@ var reports_default = apiHandler(
             imageUrl: imageUrl || null,
             wasteType,
             status: "pending",
-            priority,
+            priority: isHazardous ? "critical" : priority,
             pointsEarned,
             citizenId: finalCitizenId,
             wardId: wardId || null
@@ -9126,16 +9264,23 @@ var reports_default = apiHandler(
           where: { id: finalCitizenId },
           data: { points: { increment: pointsEarned } }
         }).catch(() => null);
-        if (priority === "critical" || priority === "urgent") {
-          await prisma_default.alert.create({
-            data: {
-              type: "overflow",
-              message: `Citizen Report [${reportCode}]: ${cleanDescription.slice(0, 80)} at ${cleanLocation}`,
-              priority: priority === "critical" ? "critical" : "high",
-              wardId: wardId || null
-            }
-          }).catch(() => null);
-        }
+        const assignedTrack = await prisma_default.track.findFirst({
+          where: {
+            wardId: wardId || void 0,
+            truckType: targetTruckType,
+            driverId: { not: null }
+          },
+          include: { driver: true }
+        }).catch(() => null);
+        const driverNotice = assignedTrack?.driver?.fullName ? `Dispatched to Driver ${assignedTrack.driver.fullName} (${assignedTrack.truckId} - ${targetTruckType} Waste)` : `Dispatched to nearest ${targetTruckType} Waste truck`;
+        await prisma_default.alert.create({
+          data: {
+            type: isHazardous ? "hazardous_pickup" : "waste_pickup",
+            message: `[${targetTruckType} TRUCK NOTICE] ${wasteType} reported at ${cleanLocation} (${reportCode}). ${driverNotice}.`,
+            priority: isHazardous ? "critical" : "high",
+            wardId: wardId || null
+          }
+        }).catch(() => null);
       } catch (e) {
         console.warn("[Reports POST Notice] Operating on resilient store:", e.message);
       }
@@ -9613,6 +9758,15 @@ var rewards_default = apiHandler(
     if (req.method === "GET") {
       const isAdmin = currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "CITY_ADMIN";
       const citizenId = currentUser?.id || req.query?.citizenId;
+      if (req.query?.type === "policy" || req.query?.policy === "true") {
+        return res.status(200).json({
+          couponsGloballyEnabled: memoryDb.couponsGloballyEnabled !== false,
+          withdrawGloballyEnabled: memoryDb.withdrawGloballyEnabled !== false
+        });
+      }
+      if (!isAdmin && memoryDb.couponsGloballyEnabled === false) {
+        return res.status(200).json([]);
+      }
       if (isAdmin) {
         const enriched = memoryDb.rewards.map((r) => {
           const totalCodes = r.codes?.length || 0;
@@ -9789,6 +9943,30 @@ var rewards_default = apiHandler(
       if (currentUser && currentUser.role !== "SUPER_ADMIN" && currentUser.role !== "CITY_ADMIN") {
         return res.status(403).json({ error: "Only administrators can modify rewards" });
       }
+      if (req.body?.toggleCouponsGlobal !== void 0) {
+        memoryDb.couponsGloballyEnabled = Boolean(req.body.toggleCouponsGlobal);
+        try {
+          await prisma_default.systemSetting.upsert({
+            where: { key: "couponsGloballyEnabled" },
+            update: { value: String(memoryDb.couponsGloballyEnabled) },
+            create: { key: "couponsGloballyEnabled", value: String(memoryDb.couponsGloballyEnabled) }
+          });
+        } catch {
+        }
+        return res.status(200).json({ couponsGloballyEnabled: memoryDb.couponsGloballyEnabled });
+      }
+      if (req.body?.toggleWithdrawGlobal !== void 0) {
+        memoryDb.withdrawGloballyEnabled = Boolean(req.body.toggleWithdrawGlobal);
+        try {
+          await prisma_default.systemSetting.upsert({
+            where: { key: "withdrawGloballyEnabled" },
+            update: { value: String(memoryDb.withdrawGloballyEnabled) },
+            create: { key: "withdrawGloballyEnabled", value: String(memoryDb.withdrawGloballyEnabled) }
+          });
+        } catch {
+        }
+        return res.status(200).json({ withdrawGloballyEnabled: memoryDb.withdrawGloballyEnabled });
+      }
       const id = req.query?.id || req.body?.id;
       if (!id) {
         return res.status(400).json({ error: "Reward ID is required" });
@@ -9864,6 +10042,157 @@ var rewards_default = apiHandler(
     return res.status(405).json({ error: "Method not allowed" });
   },
   { allowedMethods: ["GET", "POST", "PUT", "DELETE"] }
+);
+
+// lib/handlers/schedules/index.ts
+var schedules_default = apiHandler(
+  async (req, res, currentUser) => {
+    if (req.method === "GET") {
+      const wardId = req.query.wardId;
+      const cityCorpId = req.query.cityCorpId;
+      const status = req.query.status;
+      const isPublic = req.query.public === "true" || currentUser?.role === "CITIZEN";
+      const whereClause = {};
+      if (wardId) whereClause.wardId = wardId;
+      if (cityCorpId) whereClause.cityCorpId = cityCorpId;
+      if (isPublic) {
+        whereClause.status = "CONFIRMED";
+      } else if (status) {
+        whereClause.status = status;
+      }
+      try {
+        const schedules = await prisma_default.pickupSchedule.findMany({
+          where: whereClause,
+          include: {
+            ward: { select: { id: true, name: true, area: true } },
+            cityCorp: { select: { id: true, name: true, code: true } }
+          },
+          orderBy: { date: "asc" }
+        });
+        if (schedules && schedules.length > 0) {
+          return res.status(200).json(schedules);
+        }
+      } catch (e) {
+        console.warn("[Schedules GET Notice] Fallback to memory store:", e.message);
+      }
+      let list = memoryDb.schedules || [];
+      if (isPublic) {
+        list = list.filter((s) => s.status === "CONFIRMED");
+      } else if (status) {
+        list = list.filter((s) => s.status === status);
+      }
+      if (wardId) {
+        list = list.filter((s) => s.wardId === wardId);
+      }
+      if (list.length === 0) {
+        list = [
+          { id: "sch-1", date: "Tue, Sep 12", time: "8:00 \u2013 11:00 AM", wasteType: "Organic", zone: "Mohammadpur", status: "CONFIRMED", available: true, createdAt: (/* @__PURE__ */ new Date()).toISOString() },
+          { id: "sch-2", date: "Thu, Sep 14", time: "9:00 \u2013 12:00 PM", wasteType: "Recyclable", zone: "Mohammadpur", status: "CONFIRMED", available: true, createdAt: (/* @__PURE__ */ new Date()).toISOString() },
+          { id: "sch-3", date: "Sat, Sep 16", time: "7:00 \u2013 10:00 AM", wasteType: "General", zone: "Mohammadpur", status: "CONFIRMED", available: true, createdAt: (/* @__PURE__ */ new Date()).toISOString() },
+          { id: "sch-4", date: "Mon, Sep 18", time: "10:00 \u2013 1:00 PM", wasteType: "Hazardous", zone: "Mohammadpur", status: "CONFIRMED", available: true, createdAt: (/* @__PURE__ */ new Date()).toISOString() }
+        ];
+        memoryDb.schedules = list;
+      }
+      return res.status(200).json(list);
+    }
+    if (req.method === "POST") {
+      const {
+        date,
+        time,
+        wasteType = "General",
+        zone = "City Zone",
+        wardId,
+        cityCorpId
+      } = req.body || {};
+      if (!date || !time) {
+        return res.status(400).json({ error: "Date and time slot are required" });
+      }
+      const isWardAdmin = currentUser?.role === "WARD_ADMIN";
+      const initialStatus = isWardAdmin ? "PENDING_APPROVAL" : "CONFIRMED";
+      const finalWardId = wardId || currentUser?.wardId || null;
+      const finalCityCorpId = cityCorpId || currentUser?.cityCorpId || null;
+      let createdSchedule = null;
+      try {
+        createdSchedule = await prisma_default.pickupSchedule.create({
+          data: {
+            date,
+            time,
+            wasteType,
+            zone,
+            status: initialStatus,
+            available: true,
+            wardId: finalWardId,
+            cityCorpId: finalCityCorpId,
+            createdById: currentUser?.userId || null,
+            createdByRole: currentUser?.role || (isWardAdmin ? "WARD_ADMIN" : "CITY_ADMIN")
+          },
+          include: {
+            ward: { select: { id: true, name: true, area: true } }
+          }
+        });
+      } catch (e) {
+        console.warn("[Schedules POST Notice] Fallback to memory store:", e.message);
+      }
+      const memSchedule = {
+        id: createdSchedule?.id || `sch-${Date.now()}`,
+        date,
+        time,
+        wasteType,
+        zone,
+        status: initialStatus,
+        available: true,
+        wardId: finalWardId,
+        cityCorpId: finalCityCorpId,
+        createdById: currentUser?.userId || null,
+        createdByRole: currentUser?.role || (isWardAdmin ? "WARD_ADMIN" : "CITY_ADMIN"),
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      if (!memoryDb.schedules) memoryDb.schedules = [];
+      memoryDb.schedules.unshift(memSchedule);
+      return res.status(201).json(createdSchedule || memSchedule);
+    }
+    if (req.method === "PUT" || req.method === "PATCH") {
+      const { id, scheduleId, status, available } = req.body || {};
+      const targetId = String(scheduleId || id || req.query.id);
+      if (!targetId) {
+        return res.status(400).json({ error: "Schedule ID is required" });
+      }
+      let updatedSchedule = null;
+      try {
+        const updateData = {};
+        if (status) updateData.status = status;
+        if (available !== void 0) updateData.available = Boolean(available);
+        updatedSchedule = await prisma_default.pickupSchedule.update({
+          where: { id: targetId },
+          data: updateData
+        });
+      } catch (e) {
+        console.warn("[Schedule Update Notice] Fallback to memory store:", e.message);
+      }
+      const memSchedule = (memoryDb.schedules || []).find((s) => s.id === targetId);
+      if (memSchedule) {
+        if (status) memSchedule.status = status;
+        if (available !== void 0) memSchedule.available = Boolean(available);
+      }
+      return res.status(200).json(updatedSchedule || memSchedule || { success: true });
+    }
+    if (req.method === "DELETE") {
+      const targetId = String(req.query.id || req.body?.id);
+      if (!targetId) {
+        return res.status(400).json({ error: "Schedule ID is required" });
+      }
+      try {
+        await prisma_default.pickupSchedule.delete({ where: { id: targetId } });
+      } catch {
+      }
+      if (memoryDb.schedules) {
+        memoryDb.schedules = memoryDb.schedules.filter((s) => s.id !== targetId);
+      }
+      return res.status(200).json({ success: true, message: "Schedule removed" });
+    }
+    return res.status(405).json({ error: "Method not allowed" });
+  },
+  { allowedMethods: ["GET", "POST", "PUT", "PATCH", "DELETE"] }
 );
 
 // api-src/[...path].ts
@@ -9971,6 +10300,9 @@ async function handler(req, res) {
         req.body = { ...req.body, action: "redeem" };
       }
       return rewards_default(req, res);
+    }
+    if (resource === "schedules") {
+      return schedules_default(req, res);
     }
     return res.status(404).json({ error: `API route /api/${segments.join("/")} not found` });
   } catch (err) {

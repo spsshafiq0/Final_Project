@@ -5911,6 +5911,8 @@ if (!g.__intelliwaste_store) {
   g.__intelliwaste_store = {
     isSetupComplete: false,
     setupLocked: false,
+    withdrawGloballyEnabled: true,
+    couponsGloballyEnabled: true,
     cities: [],
     wards: [],
     users: [],
@@ -5918,8 +5920,15 @@ if (!g.__intelliwaste_store) {
     tracks: [],
     alerts: [],
     pickups: [],
+    schedules: [],
     withdrawals: [],
     wasteReports: [],
+    reportTypes: [
+      { id: "rt-1", type: "Illegal Dumping", pts: 150, icon: "\u26A0\uFE0F" },
+      { id: "rt-2", type: "Hazardous Waste", pts: 200, icon: "\u2622\uFE0F" },
+      { id: "rt-3", type: "Bin Damage / Vandalism", pts: 75, icon: "\u{1F527}" },
+      { id: "rt-4", type: "Missed Collection", pts: 30, icon: "\u{1F4C5}" }
+    ],
     auditLogs: [],
     rankTiers: [
       { id: "tier-1", level: 1, name: "Eco Beginner", minPoints: 0, maxPoints: 200, badge: "\u{1F331}" },
