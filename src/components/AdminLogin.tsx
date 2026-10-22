@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
   Recycle,
   Shield,
@@ -12,6 +12,7 @@ import {
   Loader2,
   Truck,
   Users,
+  Building2,
 } from "lucide-react"
 import api, {
   WardItem,
@@ -42,6 +43,66 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
 
   const [dynamicWards, setDynamicWards] = useState<WardItem[]>([])
   const [dynamicCities, setDynamicCities] = useState<CityCorporationItem[]>([])
+  const [selectedCityCorpId, setSelectedCityCorpId] = useState<string>("")
+
+  // List of unique City Corporations available
+  const availableCities = useMemo(() => {
+    if (dynamicCities.length > 0) return dynamicCities
+    // Fallback: extract distinct cities from wards if wards have cityCorp info
+    const map = new Map<string, CityCorporationItem>()
+    for (const w of dynamicWards) {
+      const cid = String(w.cityCorpId || w.cityCorp?.id || "")
+      if (cid && !map.has(cid)) {
+        map.set(cid, {
+          id: cid,
+          name: w.cityCorp?.name || `City Corporation (${cid})`,
+          code: w.cityCorp?.code || "",
+          active: true,
+        })
+      }
+    }
+    return Array.from(map.values())
+  }, [dynamicCities, dynamicWards])
+
+  // Filter wards that strictly belong to the selected City Corporation
+  const displayWards = useMemo(() => {
+    if (!selectedCityCorpId) return dynamicWards
+    return dynamicWards.filter((w) => {
+      const cid = String(w.cityCorpId || w.cityCorp?.id || "")
+      return cid === String(selectedCityCorpId)
+    })
+  }, [dynamicWards, selectedCityCorpId])
+
+  // When availableCities load, default selectedCityCorpId if empty
+  useEffect(() => {
+    if (!selectedCityCorpId && availableCities.length > 0) {
+      setSelectedCityCorpId(String(availableCities[0].id))
+    }
+  }, [availableCities, selectedCityCorpId])
+
+  // Auto-sync selected ward when displayWards changes
+  useEffect(() => {
+    if (displayWards.length > 0) {
+      if (!displayWards.some((w) => String(w.id) === String(ward))) {
+        setWard(String(displayWards[0].id))
+      }
+    } else {
+      setWard("")
+    }
+  }, [displayWards, ward])
+
+  const handleCityChange = (cityId: string) => {
+    setSelectedCityCorpId(cityId)
+    const matching = dynamicWards.filter((w) => {
+      const cid = String(w.cityCorpId || w.cityCorp?.id || "")
+      return cid === String(cityId)
+    })
+    if (matching.length > 0) {
+      setWard(String(matching[0].id))
+    } else {
+      setWard("")
+    }
+  }
 
   // Load wards & cities from database/API and check setup lock status
   useEffect(() => {
@@ -67,10 +128,13 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
           api.cities.getAll().catch(() => []),
           api.wards.getAll().catch(() => []),
         ])
-        if (cities && cities.length > 0) setDynamicCities(cities)
+        if (cities && cities.length > 0) {
+          setDynamicCities(cities)
+          setSelectedCityCorpId((prev) => prev || String(cities[0].id))
+        }
         if (wards && wards.length > 0) {
           setDynamicWards(wards)
-          setWard(wards[0].id)
+          setWard(String(wards[0].id))
         }
       } catch (e) {
         console.warn(
@@ -115,8 +179,6 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
       setError(apiError?.message || "Invalid username or password")
     }
   }
-
-  const displayWards = dynamicWards;
 
   return (
     <div
@@ -276,29 +338,58 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
             )}
           </div>
 
-          {/* Ward selector for Ward Admin */}
+          {/* City Corporation and Ward selectors for Ward Admin */}
           {tab === "ward" && (
-            <div className="mb-4">
-              <label className="block text-[#4b7a5a] text-xs font-mono mb-1.5">
-                SELECT YOUR WARD
-              </label>
-              {displayWards.length > 0 ? (
-                <select
-                  value={ward}
-                  onChange={(e) => setWard(e.target.value)}
-                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-[#86efac] text-sm focus:border-[#4ade80] outline-none"
-                >
-                  {displayWards.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name} {w.area ? `— ${w.area}` : ""}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <div className="text-xs text-[#86efac]/70 p-2.5 bg-[#061309] border border-[#1a3d22] rounded-xl font-mono">
-                  No wards registered yet. City Admin can create wards.
-                </div>
-              )}
+            <div className="space-y-4 mb-4">
+              {/* Select City Corporation */}
+              <div>
+                <label className="block text-[#4b7a5a] text-xs font-mono mb-1.5 flex items-center gap-1.5">
+                  <Building2 size={13} className="text-[#60a5fa]" />
+                  SELECT CITY CORPORATION
+                </label>
+                {availableCities.length > 0 ? (
+                  <select
+                    value={selectedCityCorpId}
+                    onChange={(e) => handleCityChange(e.target.value)}
+                    className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-[#86efac] text-sm focus:border-[#4ade80] outline-none"
+                  >
+                    {availableCities.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} {c.code ? `(${c.code})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="text-xs text-[#86efac]/70 p-2.5 bg-[#061309] border border-[#1a3d22] rounded-xl font-mono">
+                    No City Corporations registered yet.
+                  </div>
+                )}
+              </div>
+
+              {/* Select Ward filtered by selected City Corporation */}
+              <div>
+                <label className="block text-[#4b7a5a] text-xs font-mono mb-1.5 flex items-center gap-1.5">
+                  <Recycle size={13} className="text-[#86efac]" />
+                  SELECT YOUR WARD
+                </label>
+                {displayWards.length > 0 ? (
+                  <select
+                    value={ward}
+                    onChange={(e) => setWard(e.target.value)}
+                    className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-[#86efac] text-sm focus:border-[#4ade80] outline-none"
+                  >
+                    {displayWards.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name} {w.area ? `— ${w.area}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="text-xs text-[#86efac]/70 p-2.5 bg-[#061309] border border-[#1a3d22] rounded-xl font-mono">
+                    No wards registered under this City Corporation.
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

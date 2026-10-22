@@ -5920,8 +5920,152 @@ if (!g.__intelliwaste_store) {
     pickups: [],
     withdrawals: [],
     wasteReports: [],
-    auditLogs: []
+    auditLogs: [],
+    rankTiers: [
+      { id: "tier-1", level: 1, name: "Eco Beginner", minPoints: 0, maxPoints: 200, badge: "\u{1F331}" },
+      { id: "tier-2", level: 2, name: "Green Scout", minPoints: 201, maxPoints: 600, badge: "\u{1F33F}" },
+      { id: "tier-3", level: 3, name: "Waste Warrior", minPoints: 601, maxPoints: 1500, badge: "\u2B50" },
+      { id: "tier-4", level: 4, name: "Eco Champion", minPoints: 1501, maxPoints: 3e3, badge: "\u{1F3C5}" },
+      { id: "tier-5", level: 5, name: "Earth Guardian", minPoints: 3001, maxPoints: null, badge: "\u{1F3C6}" }
+    ],
+    rewards: [
+      {
+        id: "rew-1",
+        name: "Shajgoj 20% Off",
+        partner: "Shajgoj",
+        points: 500,
+        icon: "\u{1F6CD}\uFE0F",
+        category: "Shopping",
+        description: "20% off on skincare and cosmetics orders",
+        active: true,
+        codes: [
+          { id: "c-1-1", code: "SHAJ-20-8491", isRedeemed: false },
+          { id: "c-1-2", code: "SHAJ-20-3329", isRedeemed: false },
+          { id: "c-1-3", code: "SHAJ-20-7714", isRedeemed: false }
+        ],
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      },
+      {
+        id: "rew-2",
+        name: "Pathao Ride Credit \u09F3100",
+        partner: "Pathao",
+        points: 800,
+        icon: "\u{1F6F5}",
+        category: "Rides",
+        description: "\u09F3100 credit for bike or car ride across the city",
+        active: true,
+        codes: [
+          { id: "c-2-1", code: "PATH-100-9921", isRedeemed: false },
+          { id: "c-2-2", code: "PATH-100-4482", isRedeemed: false }
+        ],
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      },
+      {
+        id: "rew-3",
+        name: "Shohoz Movie Ticket",
+        partner: "Shohoz",
+        points: 1200,
+        icon: "\u{1F3AC}",
+        category: "Entertainment",
+        description: "1 Free movie ticket voucher on Star Cineplex",
+        active: true,
+        codes: [
+          { id: "c-3-1", code: "SHOZ-MOV-1192", isRedeemed: false }
+        ],
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      },
+      {
+        id: "rew-4",
+        name: "Tree Planted in Your Name",
+        partner: "Green Bangladesh",
+        points: 200,
+        icon: "\u{1F333}",
+        category: "Eco Action",
+        description: "A native tree sapling planted in urban green belt with certificate",
+        active: true,
+        codes: [
+          { id: "c-4-1", code: "TREE-DNCC-0012", isRedeemed: false },
+          { id: "c-4-2", code: "TREE-DNCC-0013", isRedeemed: false },
+          { id: "c-4-3", code: "TREE-DNCC-0014", isRedeemed: false }
+        ],
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      }
+    ]
   };
+}
+if (!g.__intelliwaste_store.rankTiers || g.__intelliwaste_store.rankTiers.length === 0) {
+  g.__intelliwaste_store.rankTiers = [
+    { id: "tier-1", level: 1, name: "Eco Beginner", minPoints: 0, maxPoints: 200, badge: "\u{1F331}" },
+    { id: "tier-2", level: 2, name: "Green Scout", minPoints: 201, maxPoints: 600, badge: "\u{1F33F}" },
+    { id: "tier-3", level: 3, name: "Waste Warrior", minPoints: 601, maxPoints: 1500, badge: "\u2B50" },
+    { id: "tier-4", level: 4, name: "Eco Champion", minPoints: 1501, maxPoints: 3e3, badge: "\u{1F3C5}" },
+    { id: "tier-5", level: 5, name: "Earth Guardian", minPoints: 3001, maxPoints: null, badge: "\u{1F3C6}" }
+  ];
+}
+if (!g.__intelliwaste_store.rewards || g.__intelliwaste_store.rewards.length === 0) {
+  g.__intelliwaste_store.rewards = [
+    {
+      id: "rew-1",
+      name: "Shajgoj 20% Off",
+      partner: "Shajgoj",
+      points: 500,
+      icon: "\u{1F6CD}\uFE0F",
+      category: "Shopping",
+      description: "20% off on skincare and cosmetics orders",
+      active: true,
+      codes: [
+        { id: "c-1-1", code: "SHAJ-20-8491", isRedeemed: false },
+        { id: "c-1-2", code: "SHAJ-20-3329", isRedeemed: false },
+        { id: "c-1-3", code: "SHAJ-20-7714", isRedeemed: false }
+      ],
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    },
+    {
+      id: "rew-2",
+      name: "Pathao Ride Credit \u09F3100",
+      partner: "Pathao",
+      points: 800,
+      icon: "\u{1F6F5}",
+      category: "Rides",
+      description: "\u09F3100 credit for bike or car ride across the city",
+      active: true,
+      codes: [
+        { id: "c-2-1", code: "PATH-100-9921", isRedeemed: false },
+        { id: "c-2-2", code: "PATH-100-4482", isRedeemed: false }
+      ],
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    },
+    {
+      id: "rew-3",
+      name: "Shohoz Movie Ticket",
+      partner: "Shohoz",
+      points: 1200,
+      icon: "\u{1F3AC}",
+      category: "Entertainment",
+      description: "1 Free movie ticket voucher on Star Cineplex",
+      active: true,
+      codes: [
+        { id: "c-3-1", code: "SHOZ-MOV-1192", isRedeemed: false }
+      ],
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    },
+    {
+      id: "rew-4",
+      name: "Tree Planted in Your Name",
+      partner: "Green Bangladesh",
+      points: 200,
+      icon: "\u{1F333}",
+      category: "Eco Action",
+      description: "A native tree sapling planted in urban green belt with certificate",
+      active: true,
+      codes: [
+        { id: "c-4-1", code: "TREE-DNCC-0012", isRedeemed: false },
+        { id: "c-4-2", code: "TREE-DNCC-0013", isRedeemed: false },
+        { id: "c-4-3", code: "TREE-DNCC-0014", isRedeemed: false }
+      ],
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    }
+  ];
 }
 var memoryDb = g.__intelliwaste_store;
 
