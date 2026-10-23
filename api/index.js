@@ -5936,6 +5936,8 @@ if (!g.__intelliwaste_store) {
     schedules: [],
     withdrawals: [],
     wasteReports: [],
+    cityWasteItems: [],
+    walletTransactions: [],
     reportTypes: [
       { id: "rt-1", type: "Illegal Dumping", pts: 150, icon: "\u26A0\uFE0F" },
       { id: "rt-2", type: "Hazardous Waste", pts: 200, icon: "\u2622\uFE0F" },
@@ -8867,10 +8869,14 @@ var pickups_default = apiHandler(
       const status = req.query.status;
       const requesterType = req.query.requesterType;
       const driverId = req.query.driverId;
+      const wardId = req.query.wardId;
+      const cityCorpId = req.query.cityCorpId;
       const whereClause = {};
       if (status) whereClause.status = status;
       if (requesterType) whereClause.requesterType = requesterType;
       if (driverId) whereClause.driverId = driverId;
+      if (wardId) whereClause.wardId = wardId;
+      if (cityCorpId) whereClause.cityCorpId = cityCorpId;
       if (currentUser && ["CITIZEN", "BUSINESS"].includes(currentUser.role)) {
         whereClause.requesterId = currentUser.userId;
       }
@@ -8883,6 +8889,15 @@ var pickups_default = apiHandler(
             },
             driver: {
               select: { id: true, fullName: true, phone: true }
+            },
+            ward: {
+              select: { id: true, name: true, area: true }
+            },
+            cityCorp: {
+              select: { id: true, name: true, code: true }
+            },
+            wasteItem: {
+              select: { id: true, name: true, depositFee: true }
             }
           },
           orderBy: { createdAt: "desc" }
@@ -8896,6 +8911,7 @@ var pickups_default = apiHandler(
       let list = memoryDb.pickups || [];
       if (status) list = list.filter((p) => p.status === status);
       if (requesterType) list = list.filter((p) => p.requesterType === requesterType);
+      if (wardId) list = list.filter((p) => String(p.wardId) === String(wardId));
       return res.status(200).json(list);
     }
     if (req.method === "POST") {
@@ -8904,31 +8920,72 @@ var pickups_default = apiHandler(
         area,
         address,
         wasteType,
+        wasteItemId,
         date,
-        amount = 0,
+        amount = 250,
         requesterId,
         contactName,
         contactPhone,
-        wardId
+        wardId,
+        cityCorpId,
+        lat,
+        lng,
+        payFromWallet = true
       } = req.body || {};
-      if (!area || !address || !wasteType || !date) {
-        return res.status(400).json({ error: "Area, address, wasteType, and date are required" });
+      if (!address || !date) {
+        return res.status(400).json({ error: "Address and pickup date are required" });
       }
       const finalRequesterId = currentUser?.userId || requesterId || `usr-guest-${Date.now()}`;
       const finalWardId = wardId || currentUser?.wardId || null;
-      const secCode = Math.floor(1e3 + Math.random() * 9e3).toString();
+      const finalCityCorpId = cityCorpId || currentUser?.cityCorpId || null;
+      const secCode = Math.floor(1e5 + Math.random() * 9e5).toString();
+      const pickupLat = typeof lat === "number" ? lat : lat ? parseFloat(lat) : null;
+      const pickupLng = typeof lng === "number" ? lng : lng ? parseFloat(lng) : null;
+      const depositFee = Number(amount) || 250;
+      if (payFromWallet && currentUser?.userId) {
+        try {
+          const user = await prisma_default.user.findUnique({
+            where: { id: currentUser.userId },
+            select: { id: true, walletBalance: true }
+          });
+          if (user && user.walletBalance < depositFee) {
+            return res.status(400).json({
+              error: `Insufficient wallet balance (Current: \u09F3${user.walletBalance.toFixed(2)}). Please deposit \u09F3${(depositFee - user.walletBalance).toFixed(2)} to confirm pickup.`
+            });
+          }
+          await prisma_default.user.update({
+            where: { id: currentUser.userId },
+            data: { walletBalance: { decrement: depositFee } }
+          });
+          await prisma_default.walletTransaction.create({
+            data: {
+              userId: currentUser.userId,
+              type: "PICKUP_PAYMENT",
+              amount: depositFee,
+              description: `Deposit for on-demand pickup [${wasteType || "Waste Pickup"}] on ${date}`,
+              status: "COMPLETED"
+            }
+          }).catch(() => null);
+        } catch (e) {
+          console.warn("[Wallet Deduction Notice]", e.message);
+        }
+      }
       const newPickup = {
         id: `pick-${Date.now()}`,
         requesterType,
-        area: String(area).trim(),
+        area: String(area || "City Route").trim(),
         address: String(address).trim(),
-        wasteType: String(wasteType).trim(),
+        lat: pickupLat,
+        lng: pickupLng,
+        wasteType: String(wasteType || "Bulky Items").trim(),
+        wasteItemId: wasteItemId || null,
         date: String(date).trim(),
-        amount: Number(amount) || 0,
+        amount: depositFee,
         status: "open",
         securityCode: secCode,
         requesterId: finalRequesterId,
         wardId: finalWardId,
+        cityCorpId: finalCityCorpId,
         requester: {
           id: finalRequesterId,
           fullName: contactName || currentUser?.fullName || "Citizen User",
@@ -8938,31 +8995,116 @@ var pickups_default = apiHandler(
         createdAt: (/* @__PURE__ */ new Date()).toISOString()
       };
       try {
-        await prisma_default.pickupRequest.create({
+        const created = await prisma_default.pickupRequest.create({
           data: {
             requesterType,
             area: newPickup.area,
             address: newPickup.address,
+            lat: pickupLat,
+            lng: pickupLng,
             wasteType: newPickup.wasteType,
+            wasteItemId: wasteItemId || null,
             date: newPickup.date,
-            amount: newPickup.amount,
+            amount: depositFee,
             status: "open",
             securityCode: secCode,
             requesterId: finalRequesterId,
-            wardId: finalWardId
+            wardId: finalWardId,
+            cityCorpId: finalCityCorpId
+          },
+          include: {
+            requester: { select: { id: true, fullName: true, phone: true } },
+            ward: { select: { id: true, name: true, area: true } },
+            cityCorp: { select: { id: true, name: true, code: true } }
           }
-        }).catch(() => null);
-      } catch {
+        });
+        return res.status(201).json({
+          success: true,
+          message: "Pickup request created successfully! Assigned to nearest collection drivers on the scheduled date.",
+          pickup: created
+        });
+      } catch (e) {
+        console.warn("[Pickups DB Save Notice] Fallback to memory:", e.message);
       }
       memoryDb.pickups.unshift(newPickup);
       return res.status(201).json({
-        message: "Pickup request created successfully",
+        success: true,
+        message: "Pickup request created successfully! Assigned to nearest collection drivers on the scheduled date.",
         pickup: newPickup
       });
     }
+    if (req.method === "PUT") {
+      const id = req.query.id || req.body?.id;
+      const { action, securityCode, driverId } = req.body || {};
+      if (!id) {
+        return res.status(400).json({ error: "Pickup request ID is required" });
+      }
+      const finalDriverId = driverId || currentUser?.userId;
+      if (action === "accept" || !action && req.body?.status === "accepted") {
+        try {
+          const updated = await prisma_default.pickupRequest.update({
+            where: { id },
+            data: {
+              status: "accepted",
+              driverId: finalDriverId || null
+            },
+            include: {
+              requester: { select: { id: true, fullName: true, phone: true } },
+              driver: { select: { id: true, fullName: true, phone: true } }
+            }
+          });
+          return res.status(200).json({ success: true, message: "Job accepted! Navigate to customer location.", pickup: updated });
+        } catch (e) {
+          console.warn("[Pickups Accept DB Notice]", e.message);
+        }
+        const memP = (memoryDb.pickups || []).find((p) => p.id === id);
+        if (memP) {
+          memP.status = "accepted";
+          memP.driverId = finalDriverId || null;
+          return res.status(200).json({ success: true, message: "Job accepted! Navigate to customer location.", pickup: memP });
+        }
+      }
+      if (action === "complete" || !action && req.body?.status === "completed") {
+        try {
+          const existing = await prisma_default.pickupRequest.findUnique({ where: { id } });
+          if (!existing) {
+            return res.status(404).json({ error: "Pickup request not found" });
+          }
+          if (existing.securityCode && securityCode && String(existing.securityCode).trim() !== String(securityCode).trim()) {
+            return res.status(400).json({ error: "Invalid customer security code. Please verify with customer." });
+          }
+          const completed = await prisma_default.pickupRequest.update({
+            where: { id },
+            data: { status: "completed" }
+          });
+          if (finalDriverId) {
+            await prisma_default.user.update({
+              where: { id: finalDriverId },
+              data: { walletBalance: { increment: existing.amount } }
+            }).catch(() => null);
+          }
+          return res.status(200).json({
+            success: true,
+            message: `Job completed! \u09F3${existing.amount} credited to driver account.`,
+            pickup: completed
+          });
+        } catch (e) {
+          console.warn("[Pickups Complete DB Notice]", e.message);
+        }
+        const memP = (memoryDb.pickups || []).find((p) => p.id === id);
+        if (memP) {
+          if (memP.securityCode && securityCode && String(memP.securityCode).trim() !== String(securityCode).trim()) {
+            return res.status(400).json({ error: "Invalid customer security code." });
+          }
+          memP.status = "completed";
+          return res.status(200).json({ success: true, message: `Job completed! \u09F3${memP.amount} credited.`, pickup: memP });
+        }
+      }
+      return res.status(400).json({ error: "Unknown action" });
+    }
     return res.status(405).json({ error: "Method not allowed" });
   },
-  { allowedMethods: ["GET", "POST"] }
+  { allowedMethods: ["GET", "POST", "PUT"] }
 );
 
 // lib/handlers/pickups/[id].ts
@@ -9127,6 +9269,14 @@ var alerts_default = apiHandler(
 );
 
 // lib/handlers/reports/index.ts
+function haversineDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 var reports_default = apiHandler(
   async (req, res, currentUser) => {
     if (req.method === "GET") {
@@ -9146,11 +9296,11 @@ var reports_default = apiHandler(
         const reports = await prisma_default.wasteReport.findMany({
           where: whereClause,
           include: {
-            citizen: { select: { id: true, fullName: true, phone: true, email: true } },
+            citizen: { select: { id: true, fullName: true, phone: true, email: true, points: true } },
             ward: { select: { id: true, name: true, area: true } }
           },
           orderBy: { createdAt: "desc" },
-          take: 50
+          take: 60
         });
         if (reports && reports.length > 0) {
           return res.status(200).json(reports);
@@ -9167,7 +9317,7 @@ var reports_default = apiHandler(
         const ward = memoryDb.wards.find((w) => w.id === r.wardId);
         return {
           ...r,
-          citizen: citizen ? { id: citizen.id, fullName: citizen.fullName, phone: citizen.phone, email: citizen.email } : null,
+          citizen: citizen ? { id: citizen.id, fullName: citizen.fullName, phone: citizen.phone, email: citizen.email, points: citizen.points } : null,
           ward: ward ? { id: ward.id, name: ward.name, area: ward.area } : null
         };
       });
@@ -9181,7 +9331,9 @@ var reports_default = apiHandler(
         wasteType = "Mixed",
         priority = "normal",
         wardId,
-        citizenId
+        citizenId,
+        lat,
+        lng
       } = req.body || {};
       const cleanLocation = sanitizeString(location, 150);
       const cleanDescription = sanitizeString(description, 1e3);
@@ -9210,26 +9362,43 @@ var reports_default = apiHandler(
           }
         }
       }
-      try {
-        const existingReport = await prisma_default.wasteReport.findFirst({
-          where: {
-            location: { equals: cleanLocation, mode: "insensitive" },
-            status: { in: ["pending", "investigating"] }
+      const reportLat = typeof lat === "number" ? lat : parseFloat(lat);
+      const reportLng = typeof lng === "number" ? lng : parseFloat(lng);
+      if (!isNaN(reportLat) && !isNaN(reportLng) && reportLat !== 0 && reportLng !== 0) {
+        try {
+          const activeReports = await prisma_default.wasteReport.findMany({
+            where: {
+              status: { in: ["pending", "investigating"] },
+              lat: { not: null },
+              lng: { not: null }
+            },
+            select: { id: true, reportCode: true, lat: true, lng: true }
+          });
+          const duplicate = activeReports.find((r) => {
+            if (r.lat && r.lng) {
+              const dKm = haversineDistanceKm(reportLat, reportLng, r.lat, r.lng);
+              return dKm < 0.03;
+            }
+            return false;
+          });
+          if (duplicate) {
+            return res.status(409).json({
+              error: `An active issue has already been reported at this exact coordinate [${duplicate.reportCode}]. Our collection team is already dispatched. Thank you!`
+            });
           }
-        });
-        if (existingReport) {
-          return res.status(409).json({
-            error: `An active issue has already been reported at this location [${existingReport.reportCode}]. Our collection team is already on it. Thank you!`
+        } catch {
+          const memDup = (memoryDb.wasteReports || []).find((r) => {
+            if ((r.status === "pending" || r.status === "investigating") && r.lat && r.lng) {
+              const dKm = haversineDistanceKm(reportLat, reportLng, r.lat, r.lng);
+              return dKm < 0.03;
+            }
+            return false;
           });
-        }
-      } catch {
-        const memDup = (memoryDb.wasteReports || []).find(
-          (r) => r.location.toLowerCase().trim() === cleanLocation.toLowerCase().trim() && (r.status === "pending" || r.status === "investigating")
-        );
-        if (memDup) {
-          return res.status(409).json({
-            error: `An active issue has already been reported at this location [${memDup.reportCode}]. Our collection team is already on it. Thank you!`
-          });
+          if (memDup) {
+            return res.status(409).json({
+              error: `An active issue has already been reported at this exact coordinate [${memDup.reportCode}]. Our collection team is already dispatched. Thank you!`
+            });
+          }
         }
       }
       const finalCitizenId = currentUser?.userId || citizenId;
@@ -9253,7 +9422,9 @@ var reports_default = apiHandler(
             priority: isHazardous ? "critical" : priority,
             pointsEarned,
             citizenId: finalCitizenId,
-            wardId: wardId || null
+            wardId: wardId || null,
+            lat: !isNaN(reportLat) && reportLat !== 0 ? reportLat : null,
+            lng: !isNaN(reportLng) && reportLng !== 0 ? reportLng : null
           },
           include: {
             citizen: { select: { id: true, fullName: true, phone: true } },
@@ -9266,18 +9437,16 @@ var reports_default = apiHandler(
         }).catch(() => null);
         const assignedTrack = await prisma_default.track.findFirst({
           where: {
-            wardId: wardId || void 0,
-            truckType: targetTruckType,
-            driverId: { not: null }
-          },
-          include: { driver: true }
-        }).catch(() => null);
-        const driverNotice = assignedTrack?.driver?.fullName ? `Dispatched to Driver ${assignedTrack.driver.fullName} (${assignedTrack.truckId} - ${targetTruckType} Waste)` : `Dispatched to nearest ${targetTruckType} Waste truck`;
+            ...wardId ? { wardId } : {},
+            truckType: targetTruckType
+          }
+        });
+        const alertMessage = isHazardous ? `\u2623\uFE0F HAZARDOUS WASTE DETECTED: [${reportCode}] at ${cleanLocation}. Immediate dispatch assigned to ${assignedTrack?.truckId || "Hazardous Unit"}.` : `\u{1F69B} New Waste Issue [${reportCode}]: ${cleanLocation}. Assigned to ${assignedTrack?.truckId || "Area Truck"}.`;
         await prisma_default.alert.create({
           data: {
-            type: isHazardous ? "hazardous_pickup" : "waste_pickup",
-            message: `[${targetTruckType} TRUCK NOTICE] ${wasteType} reported at ${cleanLocation} (${reportCode}). ${driverNotice}.`,
-            priority: isHazardous ? "critical" : "high",
+            type: isHazardous ? "fire" : "overflow",
+            message: alertMessage,
+            priority: isHazardous ? "critical" : priority,
             wardId: wardId || null
           }
         }).catch(() => null);
@@ -9290,6 +9459,8 @@ var reports_default = apiHandler(
         location: cleanLocation,
         description: cleanDescription,
         imageUrl: imageUrl || null,
+        lat: !isNaN(reportLat) && reportLat !== 0 ? reportLat : null,
+        lng: !isNaN(reportLng) && reportLng !== 0 ? reportLng : null,
         wasteType,
         status: "pending",
         priority: priority || "normal",
@@ -9304,42 +9475,81 @@ var reports_default = apiHandler(
       if (memUser) {
         memUser.points = (memUser.points || 0) + pointsEarned;
       }
-      if (priority === "critical" || priority === "urgent") {
-        memoryDb.alerts.unshift({
-          id: `alt-${Date.now()}`,
-          type: "overflow",
-          message: `Citizen Report [${reportCode}]: ${description.slice(0, 80)} at ${location}`,
-          priority: priority === "critical" ? "critical" : "high",
-          resolved: false,
-          wardId: wardId || null,
-          createdAt: (/* @__PURE__ */ new Date()).toISOString()
-        });
-      }
       return res.status(201).json({
         success: true,
-        message: "Report submitted successfully! 150 reward points credited.",
+        message: `Report submitted successfully! ${pointsEarned} reward points credited.`,
         report: createdReport || memReport,
         pointsAwarded: pointsEarned
       });
     }
     if (req.method === "PUT") {
-      const { id, status } = req.body || {};
-      if (!id || !status) {
-        return res.status(400).json({ error: "Report ID and new status are required" });
+      const { id, status, isFakeReport, fakeReason, reportedFakeByDriverId } = req.body || {};
+      if (!id) {
+        return res.status(400).json({ error: "Report ID is required" });
       }
+      const shouldFlagFake = isFakeReport === true || status === "FAKE_REPORT";
       try {
+        const existing = await prisma_default.wasteReport.findUnique({
+          where: { id },
+          include: { citizen: true }
+        });
+        if (!existing) {
+          return res.status(404).json({ error: "Report not found" });
+        }
+        let pointsDeducted = 0;
+        let pointsRevoked = existing.pointsRevoked;
+        if (shouldFlagFake && !existing.pointsRevoked && existing.citizenId) {
+          pointsDeducted = existing.pointsEarned || 150;
+          const newPoints = Math.max(0, (existing.citizen?.points || 0) - pointsDeducted);
+          await prisma_default.user.update({
+            where: { id: existing.citizenId },
+            data: { points: newPoints }
+          }).catch(() => null);
+          pointsRevoked = true;
+        }
         const updated = await prisma_default.wasteReport.update({
           where: { id },
-          data: { status }
+          data: {
+            status: shouldFlagFake ? "FAKE_REPORT" : status || existing.status,
+            isFakeReport: shouldFlagFake ? true : existing.isFakeReport,
+            fakeReason: fakeReason || existing.fakeReason,
+            reportedFakeByDriverId: reportedFakeByDriverId || currentUser?.userId || existing.reportedFakeByDriverId,
+            pointsRevoked
+          },
+          include: {
+            citizen: { select: { id: true, fullName: true, phone: true, points: true } }
+          }
         });
-        return res.status(200).json({ success: true, report: updated });
+        return res.status(200).json({
+          success: true,
+          report: updated,
+          pointsDeducted: pointsDeducted > 0 ? pointsDeducted : void 0,
+          message: shouldFlagFake ? `Report flagged as fraudulent. ${pointsDeducted} reward points deducted from citizen account.` : "Report status updated successfully."
+        });
       } catch (e) {
         console.warn("[Reports PUT Notice] Falling back to memory store:", e.message);
       }
       const memIndex = (memoryDb.wasteReports || []).findIndex((r) => r.id === id);
       if (memIndex >= 0) {
-        memoryDb.wasteReports[memIndex].status = status;
-        return res.status(200).json({ success: true, report: memoryDb.wasteReports[memIndex] });
+        const memRep = memoryDb.wasteReports[memIndex];
+        let pointsDeducted = 0;
+        if (shouldFlagFake && !memRep.pointsRevoked && memRep.citizenId) {
+          pointsDeducted = memRep.pointsEarned || 150;
+          const memUser = memoryDb.users.find((u) => u.id === memRep.citizenId);
+          if (memUser) {
+            memUser.points = Math.max(0, (memUser.points || 0) - pointsDeducted);
+          }
+          memRep.pointsRevoked = true;
+        }
+        memRep.status = shouldFlagFake ? "FAKE_REPORT" : status || memRep.status;
+        memRep.isFakeReport = shouldFlagFake;
+        memRep.fakeReason = fakeReason || memRep.fakeReason;
+        return res.status(200).json({
+          success: true,
+          report: memRep,
+          pointsDeducted: pointsDeducted > 0 ? pointsDeducted : void 0,
+          message: shouldFlagFake ? `Report flagged as fraudulent. ${pointsDeducted} reward points deducted from citizen account.` : "Report status updated successfully."
+        });
       }
       return res.status(404).json({ error: "Report not found" });
     }
@@ -10195,6 +10405,235 @@ var schedules_default = apiHandler(
   { allowedMethods: ["GET", "POST", "PUT", "PATCH", "DELETE"] }
 );
 
+// lib/handlers/waste-types/index.ts
+var waste_types_default = apiHandler(
+  async (req, res, currentUser) => {
+    if (req.method === "GET") {
+      const cityCorpId = req.query.cityCorpId;
+      const whereClause = { active: true };
+      if (cityCorpId) {
+        whereClause.cityCorpId = cityCorpId;
+      }
+      try {
+        const items = await prisma_default.cityWasteItem.findMany({
+          where: whereClause,
+          include: {
+            cityCorp: { select: { id: true, name: true, code: true } }
+          },
+          orderBy: { name: "asc" }
+        });
+        if (items && items.length > 0) {
+          return res.status(200).json(items);
+        }
+      } catch (e) {
+        console.warn("[CityWasteItems GET Notice] Operating on resilient store:", e.message);
+      }
+      let list = memoryDb.cityWasteItems || [];
+      if (cityCorpId) {
+        list = list.filter((item) => !item.cityCorpId || item.cityCorpId === cityCorpId);
+      }
+      if (list.length === 0) {
+        list = [
+          { id: "wi-1", name: "Bulky Household Furniture", category: "Bulky", depositFee: 250, unit: "Trip", active: true, cityCorpId: cityCorpId || null, createdAt: (/* @__PURE__ */ new Date()).toISOString() },
+          { id: "wi-2", name: "Restaurant Food & Organic Waste", category: "Organic", depositFee: 300, unit: "Bin / Barrel", active: true, cityCorpId: cityCorpId || null, createdAt: (/* @__PURE__ */ new Date()).toISOString() },
+          { id: "wi-3", name: "Hotel & Commercial Mixed Waste", category: "Commercial", depositFee: 400, unit: "Trip", active: true, cityCorpId: cityCorpId || null, createdAt: (/* @__PURE__ */ new Date()).toISOString() },
+          { id: "wi-4", name: "Construction & Renovation Debris", category: "Construction", depositFee: 500, unit: "Truckload", active: true, cityCorpId: cityCorpId || null, createdAt: (/* @__PURE__ */ new Date()).toISOString() },
+          { id: "wi-5", name: "E-Waste & Electronic Scraps", category: "Hazardous", depositFee: 350, unit: "Lot", active: true, cityCorpId: cityCorpId || null, createdAt: (/* @__PURE__ */ new Date()).toISOString() }
+        ];
+        memoryDb.cityWasteItems = list;
+      }
+      return res.status(200).json(list);
+    }
+    if (req.method === "POST") {
+      const { name, category, depositFee = 250, unit = "Trip", cityCorpId } = req.body || {};
+      if (!name) {
+        return res.status(400).json({ error: "Waste item name is required" });
+      }
+      const targetCityCorpId = cityCorpId || currentUser?.cityCorpId || null;
+      try {
+        const created = await prisma_default.cityWasteItem.create({
+          data: {
+            name: String(name).trim(),
+            category: category ? String(category).trim() : "General",
+            depositFee: Number(depositFee) || 250,
+            unit: String(unit || "Trip").trim(),
+            active: true,
+            cityCorpId: targetCityCorpId
+          },
+          include: {
+            cityCorp: { select: { id: true, name: true, code: true } }
+          }
+        });
+        return res.status(201).json(created);
+      } catch (e) {
+        console.warn("[CityWasteItems POST Notice] Using resilient store:", e.message);
+      }
+      const newItem = {
+        id: `wi-${Date.now()}`,
+        name: String(name).trim(),
+        category: category ? String(category).trim() : "General",
+        depositFee: Number(depositFee) || 250,
+        unit: String(unit || "Trip").trim(),
+        active: true,
+        cityCorpId: targetCityCorpId,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      if (!memoryDb.cityWasteItems) memoryDb.cityWasteItems = [];
+      memoryDb.cityWasteItems.push(newItem);
+      return res.status(201).json(newItem);
+    }
+    if (req.method === "PUT") {
+      const id = req.query.id || req.body?.id;
+      const { name, category, depositFee, unit, active } = req.body || {};
+      if (!id) {
+        return res.status(400).json({ error: "Waste item ID is required" });
+      }
+      try {
+        const updated = await prisma_default.cityWasteItem.update({
+          where: { id },
+          data: {
+            ...name && { name: String(name).trim() },
+            ...category && { category: String(category).trim() },
+            ...depositFee !== void 0 && { depositFee: Number(depositFee) },
+            ...unit && { unit: String(unit).trim() },
+            ...active !== void 0 && { active: Boolean(active) }
+          }
+        });
+        return res.status(200).json(updated);
+      } catch (e) {
+        console.warn("[CityWasteItems PUT Notice] Using resilient store:", e.message);
+      }
+      const idx = (memoryDb.cityWasteItems || []).findIndex((item) => item.id === id);
+      if (idx >= 0) {
+        const cur = memoryDb.cityWasteItems[idx];
+        const updatedItem = {
+          ...cur,
+          ...name && { name: String(name).trim() },
+          ...category && { category: String(category).trim() },
+          ...depositFee !== void 0 && { depositFee: Number(depositFee) },
+          ...unit && { unit: String(unit).trim() },
+          ...active !== void 0 && { active: Boolean(active) }
+        };
+        memoryDb.cityWasteItems[idx] = updatedItem;
+        return res.status(200).json(updatedItem);
+      }
+      return res.status(404).json({ error: "Waste item not found" });
+    }
+    if (req.method === "DELETE") {
+      const id = req.query.id || req.body?.id;
+      if (!id) {
+        return res.status(400).json({ error: "Waste item ID is required" });
+      }
+      try {
+        await prisma_default.cityWasteItem.delete({ where: { id } });
+        return res.status(200).json({ success: true, message: "Waste item deleted" });
+      } catch (e) {
+        console.warn("[CityWasteItems DELETE Notice] Using resilient store:", e.message);
+      }
+      memoryDb.cityWasteItems = (memoryDb.cityWasteItems || []).filter((item) => item.id !== id);
+      return res.status(200).json({ success: true, message: "Waste item deleted" });
+    }
+    return res.status(405).json({ error: "Method not allowed" });
+  },
+  { allowedMethods: ["GET", "POST", "PUT", "DELETE"] }
+);
+
+// lib/handlers/wallet/index.ts
+var wallet_default = apiHandler(
+  async (req, res, currentUser) => {
+    const targetUserId = currentUser?.userId || req.query.userId || req.body?.userId;
+    if (!targetUserId) {
+      return res.status(401).json({ error: "Authentication required for wallet operations" });
+    }
+    if (req.method === "GET") {
+      try {
+        const user = await prisma_default.user.findUnique({
+          where: { id: targetUserId },
+          select: { id: true, fullName: true, username: true, walletBalance: true }
+        });
+        const transactions = await prisma_default.walletTransaction.findMany({
+          where: { userId: targetUserId },
+          orderBy: { createdAt: "desc" },
+          take: 30
+        });
+        return res.status(200).json({
+          walletBalance: user?.walletBalance ?? 0,
+          transactions: transactions || []
+        });
+      } catch (e) {
+        console.warn("[Wallet GET Notice] Falling back to memory store:", e.message);
+      }
+      const memUser = (memoryDb.users || []).find((u) => u.id === targetUserId);
+      const memTransactions = (memoryDb.walletTransactions || []).filter((t) => t.userId === targetUserId).reverse();
+      return res.status(200).json({
+        walletBalance: memUser?.walletBalance ?? 0,
+        transactions: memTransactions
+      });
+    }
+    if (req.method === "POST") {
+      const { amount, paymentMethod = "bKash", trxId, accountNumber, description } = req.body || {};
+      const depositAmount = Number(amount);
+      if (isNaN(depositAmount) || depositAmount <= 0) {
+        return res.status(400).json({ error: "Please enter a valid deposit amount greater than 0" });
+      }
+      const generatedTrxId = trxId || `TRX-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+      const note = description || `Deposit via ${paymentMethod} (${accountNumber ? `A/C: ${accountNumber}` : "Instant Gateway"})`;
+      try {
+        const updatedUser = await prisma_default.user.update({
+          where: { id: targetUserId },
+          data: { walletBalance: { increment: depositAmount } },
+          select: { id: true, fullName: true, username: true, walletBalance: true }
+        });
+        const transaction = await prisma_default.walletTransaction.create({
+          data: {
+            userId: targetUserId,
+            type: "DEPOSIT",
+            amount: depositAmount,
+            paymentMethod,
+            trxId: generatedTrxId,
+            status: "COMPLETED",
+            description: note
+          }
+        });
+        return res.status(200).json({
+          success: true,
+          message: `Successfully deposited \u09F3${depositAmount.toFixed(2)} to your wallet!`,
+          walletBalance: updatedUser.walletBalance,
+          transaction
+        });
+      } catch (e) {
+        console.warn("[Wallet POST Notice] Falling back to memory store:", e.message);
+      }
+      const memUser = (memoryDb.users || []).find((u) => u.id === targetUserId);
+      const newBalance = (memUser?.walletBalance || 0) + depositAmount;
+      if (memUser) {
+        memUser.walletBalance = newBalance;
+      }
+      const memTrx = {
+        id: `trx-${Date.now()}`,
+        userId: targetUserId,
+        type: "DEPOSIT",
+        amount: depositAmount,
+        paymentMethod,
+        trxId: generatedTrxId,
+        status: "COMPLETED",
+        description: note,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      if (!memoryDb.walletTransactions) memoryDb.walletTransactions = [];
+      memoryDb.walletTransactions.push(memTrx);
+      return res.status(200).json({
+        success: true,
+        message: `Successfully deposited \u09F3${depositAmount.toFixed(2)} to your wallet!`,
+        walletBalance: newBalance,
+        transaction: memTrx
+      });
+    }
+    return res.status(405).json({ error: "Method not allowed" });
+  },
+  { allowedMethods: ["GET", "POST"] }
+);
+
 // api-src/index.ts
 async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -10303,6 +10742,12 @@ async function handler(req, res) {
     }
     if (resource === "schedules") {
       return schedules_default(req, res);
+    }
+    if (resource === "waste-types") {
+      return waste_types_default(req, res);
+    }
+    if (resource === "wallet") {
+      return wallet_default(req, res);
     }
     return res.status(200).json({ status: "healthy", endpoint: segments.join("/") });
   } catch (err) {

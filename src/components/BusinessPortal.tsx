@@ -28,7 +28,7 @@ export default function BusinessPortal({ onNavigate }: BusinessPortalProps) {
   const [balance, setBalance] = useState(Number(localStorage.getItem("intelliwaste-business-balance") ?? "6000"));
   const [requests, setRequests] = useState<PickupRequest[]>(getPickupRequests());
   const [form, setForm] = useState({ area: "Mohammadpur", address: "", wasteType: "Restaurant Mixed Waste", date: "", amount: "450" });
-  const [codes, setCodes] = useState<Record<number, string>>({});
+  const [codes, setCodes] = useState<Record<string | number, string>>({});
   const [message, setMessage] = useState("");
 
   const login = async () => {

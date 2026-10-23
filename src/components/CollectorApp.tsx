@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
-import { Truck, MapPin, CheckCircle, AlertTriangle, Clock, Navigation, Package, Shield, ArrowLeft, ChevronRight, Battery, Fuel, Wind, Wallet, Banknote, Home, ListChecks, Trash2, KeyRound, LogIn, RefreshCw, LogOut, Flame, Sparkles, Radio } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Truck, MapPin, CheckCircle, AlertTriangle, Clock, Navigation, Package, Shield, ArrowLeft, ChevronRight, Battery, Fuel, Wind, Wallet, Banknote, Home, ListChecks, Trash2, KeyRound, LogIn, RefreshCw, LogOut, Flame, Sparkles, Radio, AlertOctagon, X } from "lucide-react";
 import NearbyBinsMap from "./NearbyBinsMap";
 import { acceptPickupRequest, completePickupRequest, getDriverBalance, getPickupRequests, setDriverBalance, type PickupRequest } from "../data/pickupStore";
-import api from "../lib/api";
+import api, { ReportItem } from "../lib/api";
 import ForgotPasswordModal from "./ForgotPasswordModal";
 import { optimizePriorityRoute, defaultSmartBinsWithTelemetry, BinTelemetry } from "../lib/routeOptimizer";
 
@@ -32,14 +32,22 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
   const [activeStop, setActiveStop] = useState<number | null>(null);
   const [showHazard, setShowHazard] = useState(false);
   const [hazardChecked, setHazardChecked] = useState<number[]>([]);
-  const [activeTab, setActiveTab] = useState<"Home" | "Bins" | "Pickups" | "Earnings">("Home");
+  const [activeTab, setActiveTab] = useState<"Home" | "Bins" | "Priority Map" | "Pickups" | "Earnings">("Home");
   const [balance, setBalance] = useState(getDriverBalance());
   const [pickupRequests, setPickupRequests] = useState<PickupRequest[]>(getPickupRequests());
-  const [driverCodes, setDriverCodes] = useState<Record<number, string>>({});
+  const [driverCodes, setDriverCodes] = useState<Record<string | number, string>>({});
   const [driverPickupMsg, setDriverPickupMsg] = useState("");
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawn, setWithdrawn] = useState(false);
+
+  // Active Waste Issue Reports (for Priority Base Map & Fake Report Penalty)
+  const [wasteReports, setWasteReports] = useState<ReportItem[]>([]);
+  const [loadingReports, setLoadingReports] = useState<boolean>(false);
+  const [flaggingReport, setFlaggingReport] = useState<ReportItem | null>(null);
+  const [flagFakeReason, setFlagFakeReason] = useState<string>("No waste found at location / False dumping claim");
+  const [isSubmittingFlag, setIsSubmittingFlag] = useState<boolean>(false);
+  const [flagSuccessMsg, setFlagSuccessMsg] = useState<string>("");
 
   // IoT Smart Bins Telemetry State & AI Priority Route Optimization
   const [binsList, setBinsList] = useState<BinTelemetry[]>(defaultSmartBinsWithTelemetry);
@@ -87,6 +95,53 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
     );
     setActiveStop(null);
   };
+
+  const loadReports = async () => {
+    setLoadingReports(true);
+    try {
+      const reps = await api.reports.getAll({ status: "pending" });
+      if (Array.isArray(reps)) {
+        setWasteReports(reps);
+      }
+    } catch {}
+    finally {
+      setLoadingReports(false);
+    }
+  };
+
+  const handleFlagFake = async () => {
+    if (!flaggingReport) return;
+    setIsSubmittingFlag(true);
+    try {
+      const res = await api.reports.flagFake(flaggingReport.id, flagFakeReason);
+      if (res?.success) {
+        setFlagSuccessMsg(`Report flagged as FAKE DUMPING! ${res.pointsRevoked ?? 150} points revoked from citizen account.`);
+        setWasteReports(prev => prev.filter(r => r.id !== flaggingReport.id));
+        setTimeout(() => {
+          setFlaggingReport(null);
+          setFlagSuccessMsg("");
+        }, 1600);
+      }
+    } catch (err: any) {
+      alert(err?.message || "Failed to flag report.");
+    } finally {
+      setIsSubmittingFlag(false);
+    }
+  };
+
+  const handleResolveReport = async (reportId: string) => {
+    try {
+      await api.reports.updateStatus(reportId, "resolved");
+      setWasteReports(prev => prev.filter(r => r.id !== reportId));
+      setDriverPickupMsg("Waste report marked as collected and resolved!");
+    } catch (err: any) {
+      alert(err?.message || "Failed to resolve report.");
+    }
+  };
+
+  useEffect(() => {
+    loadReports();
+  }, []);
 
   const progress = route.length > 0 ? (completedStops.length / route.length) * 100 : 0;
 
@@ -194,11 +249,28 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
           {[
             { label: "Home", icon: Home },
             { label: "Bins", icon: Trash2 },
+            { label: "Priority Map", icon: MapPin },
             { label: "Pickups", icon: ListChecks },
             { label: "Earnings", icon: Wallet },
           ].map(item => (
-            <button key={item.label} onClick={() => { setActiveTab(item.label as typeof activeTab); setBalance(getDriverBalance()); setPickupRequests(getPickupRequests()); }} className={`flex-1 min-w-24 py-3 flex items-center justify-center gap-2 text-xs font-semibold border-b-2 ${activeTab === item.label ? "border-[#4ade80] text-[#4ade80]" : "border-transparent text-[#4b7a5a]"}`}>
+            <button
+              key={item.label}
+              onClick={() => {
+                setActiveTab(item.label as typeof activeTab);
+                setBalance(getDriverBalance());
+                setPickupRequests(getPickupRequests());
+                if (item.label === "Priority Map") loadReports();
+              }}
+              className={`flex-1 min-w-24 py-3 flex items-center justify-center gap-2 text-xs font-semibold border-b-2 transition-all ${
+                activeTab === item.label ? "border-[#4ade80] text-[#4ade80]" : "border-transparent text-[#4b7a5a] hover:text-[#86efac]"
+              }`}
+            >
               <item.icon size={14} /> {item.label}
+              {item.label === "Priority Map" && wasteReports.length > 0 && (
+                <span className="bg-red-500 text-white font-mono text-[10px] px-1.5 py-0.2 rounded-full">
+                  {wasteReports.length}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -496,24 +568,200 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
         )}
       </div>
 
+      {/* Priority Base Map & Active Citizen Reports */}
+      {activeTab === "Priority Map" && (
+        <div className="max-w-5xl mx-auto px-4 py-5 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-white font-display font-700 text-lg flex items-center gap-2">
+                <MapPin className="text-[#4ade80]" size={20} />
+                <span>Priority Base Map & Citizen Reports</span>
+              </h2>
+              <p className="text-[#4b7a5a] text-xs">
+                Real-time citizen waste dumping reports with exact Google Coordinates. Verify on-site before collection.
+              </p>
+            </div>
+            <button
+              onClick={loadReports}
+              disabled={loadingReports}
+              className="border border-[#1a3d22] text-[#86efac] hover:text-white rounded-xl px-3 py-2 text-xs flex items-center gap-1.5 transition-colors shrink-0"
+            >
+              <RefreshCw size={13} className={loadingReports ? "animate-spin" : ""} />
+              <span>Refresh Reports ({wasteReports.length})</span>
+            </button>
+          </div>
+
+          {/* Map Preview Container */}
+          <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3 text-xs font-mono text-[#86efac]">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse"></span>
+                <span>Active Google Coordinate Hotspots ({wasteReports.length})</span>
+              </span>
+              <span className="text-[#4b7a5a]">Dhaka Metropolis Grid</span>
+            </div>
+            <div className="rounded-xl overflow-hidden border border-[#1a3d22] bg-[#061309] h-64 sm:h-80 relative flex items-center justify-center">
+              {/* Dynamic Coordinate Pins Map Visualization */}
+              <div className="absolute inset-0 bg-[radial-gradient(#1a3d22_1px,transparent_1px)] [background-size:16px_16px] opacity-40"></div>
+              
+              <div className="absolute top-4 left-4 z-10 bg-[#0d2414]/90 border border-[#1a3d22] rounded-lg px-3 py-1.5 text-[11px] font-mono text-[#86efac]">
+                📍 Live Truck GPS: 23.7542° N, 90.3654° E (Route Active)
+              </div>
+
+              {wasteReports.length === 0 ? (
+                <div className="text-center text-[#4b7a5a] text-sm z-10">
+                  <CheckCircle size={32} className="text-[#4ade80] mx-auto mb-2 opacity-60" />
+                  No pending citizen waste reports in your sector. All clear!
+                </div>
+              ) : (
+                <div className="w-full h-full relative p-4">
+                  {wasteReports.slice(0, 8).map((rep, idx) => {
+                    const topPct = 20 + ((idx * 27) % 60);
+                    const leftPct = 15 + ((idx * 33) % 70);
+                    const isHazard = rep.priority === "urgent" || rep.wasteType?.toLowerCase().includes("hazard");
+                    return (
+                      <div
+                        key={rep.id}
+                        style={{ top: `${topPct}%`, left: `${leftPct}%` }}
+                        className="absolute -translate-x-1/2 -translate-y-1/2 group cursor-pointer z-10"
+                        title={`${rep.reportCode} - ${rep.location}`}
+                      >
+                        <div className={`p-2 rounded-full border shadow-lg flex items-center justify-center animate-bounce ${
+                          isHazard
+                            ? "bg-red-500/30 border-red-500 text-red-400 ring-2 ring-red-500/50"
+                            : "bg-amber-500/30 border-amber-500 text-amber-400"
+                        }`}>
+                          <AlertTriangle size={16} />
+                        </div>
+                        <div className="hidden group-hover:block absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-[#061309] border border-[#1a3d22] rounded-lg p-2 text-xs font-mono whitespace-nowrap shadow-xl z-20">
+                          <div className="font-bold text-white">{rep.reportCode} ({rep.wasteType})</div>
+                          <div className="text-[#4b7a5a] text-[10px]">
+                            Coords: {rep.lat ? `${rep.lat.toFixed(4)}, ${rep.lng?.toFixed(4)}` : "23.7542, 90.3654"}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Reports List */}
+          <div className="space-y-3">
+            <div className="text-xs font-mono text-[#86efac] uppercase tracking-wide">
+              Priority Collection Queue ({wasteReports.length} pending)
+            </div>
+
+            {wasteReports.map((rep, idx) => {
+              const repLat = rep.lat ?? 23.7542;
+              const repLng = rep.lng ?? 90.3654;
+              const isHazard = rep.priority === "urgent" || rep.wasteType?.toLowerCase().includes("hazard");
+
+              return (
+                <div
+                  key={rep.id}
+                  className={`bg-[#0d2414] border rounded-xl p-4 sm:p-5 transition-all ${
+                    isHazard ? "border-red-500/50 bg-red-950/10" : "border-[#1a3d22]"
+                  }`}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                    {rep.imageUrl && (
+                      <div className="w-20 h-20 rounded-lg overflow-hidden bg-[#061309] border border-[#1a3d22] shrink-0">
+                        <img src={rep.imageUrl} alt="Report waste" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="font-mono font-bold text-white text-sm">{rep.reportCode}</span>
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
+                          isHazard ? "bg-red-500/20 text-red-400 border border-red-500/40" : "bg-emerald-500/20 text-emerald-400"
+                        }`}>
+                          {rep.wasteType}
+                        </span>
+                        <span className="text-xs text-[#4b7a5a]">· Priority: {rep.priority?.toUpperCase()}</span>
+                      </div>
+
+                      <div className="text-white text-sm mt-1">{rep.description}</div>
+                      <div className="text-[#86efac] text-xs mt-1.5 flex items-center gap-1.5 font-mono">
+                        <MapPin size={12} className="text-[#4ade80]" />
+                        <span>{rep.location}</span>
+                        <span className="text-[#4b7a5a]">({repLat.toFixed(5)}, {repLng.toFixed(5)})</span>
+                      </div>
+                      {rep.citizen && (
+                        <div className="text-[#4b7a5a] text-[11px] mt-1">
+                          Reported by: {rep.citizen.fullName || rep.citizen.phone || "Citizen"} · Reward: +{rep.pointsEarned || 150} pts
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 mt-3 sm:mt-0">
+                      <a
+                        href={`https://maps.google.com/?q=${repLat},${repLng}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="bg-[#1a3d22] hover:bg-[#255230] text-[#4ade80] border border-[#4ade80]/30 rounded-lg px-3 py-2 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                      >
+                        <Navigation size={13} />
+                        <span>Google Map</span>
+                      </a>
+
+                      <button
+                        onClick={() => handleResolveReport(rep.id)}
+                        className="bg-[#16a34a] hover:bg-[#15803d] text-white rounded-lg px-3.5 py-2 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                      >
+                        <CheckCircle size={13} />
+                        <span>Collect Waste</span>
+                      </button>
+
+                      <button
+                        onClick={() => setFlaggingReport(rep)}
+                        className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 rounded-lg px-3 py-2 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                        title="Flag as Fake Dumping Report"
+                      >
+                        <AlertOctagon size={13} />
+                        <span>Flag Fake</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {activeTab === "Pickups" && (
         <div className="max-w-3xl mx-auto px-4 py-5">
           <div className="mb-4 flex items-start justify-between gap-3">
-            <div><div className="text-white font-display font-700 text-lg">Area pickup requests</div><div className="text-[#4b7a5a] text-sm">Paid requests matched to your Mohammadpur route.</div></div>
+            <div>
+              <div className="text-white font-display font-700 text-lg">On-Demand Pickup Requests</div>
+              <div className="text-[#4b7a5a] text-sm">Coordinate-matched pickup requests on your route.</div>
+            </div>
             <button onClick={() => setPickupRequests(getPickupRequests())} className="text-[#4ade80] border border-[#1a3d22] rounded-lg p-2"><RefreshCw size={15} /></button>
           </div>
           <div className="space-y-3">
-            {pickupRequests.filter((request) => request.area === "Mohammadpur" && request.status !== "completed").map((job, index) => {
+            {pickupRequests.filter((request) => request.status !== "completed").map((job, index) => {
               const accepted = job.status === "accepted";
+              const jobLat = job.lat ?? 23.7542;
+              const jobLng = job.lng ?? 90.3654;
+
               return <div key={job.id} className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-4 sm:p-5">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2"><span className="text-white font-semibold">{job.requesterName}</span><span className="text-[#4ade80] font-mono font-bold">৳{job.amount}</span></div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-semibold">{job.requesterName}</span>
+                      <span className="text-[#4ade80] font-mono font-bold">৳{job.amount}</span>
+                      <span className="text-[10px] font-mono text-[#86efac] bg-[#061309] border border-[#1a3d22] px-2 py-0.5 rounded-full">{job.date}</span>
+                    </div>
                     <div className="text-[#86efac] text-sm mt-1">{job.wasteType}</div>
-                    <div className="text-[#4b7a5a] text-xs mt-1 flex items-center gap-1"><MapPin size={11} /> {job.address} · {(1.2 + index * .8).toFixed(1)} km</div>
+                    <div className="text-[#4b7a5a] text-xs mt-1 flex items-center gap-1">
+                      <MapPin size={11} className="text-[#4ade80]" />
+                      <span>{job.address} · Coords: {jobLat.toFixed(4)}, {jobLng.toFixed(4)}</span>
+                    </div>
                     {accepted && (
                       <div className="mt-3 bg-[#061309] border border-[#1a3d22] rounded-xl p-3">
-                        <div className="text-[#60a5fa] text-xs mb-2">Accepted. Enter the customer's 6-digit code to complete:</div>
+                        <div className="text-[#60a5fa] text-xs mb-2">Accepted. Enter customer 6-digit verification code to complete & credit deposit:</div>
                         <div className="flex gap-2">
                           <input
                             value={driverCodes[job.id] ?? ""}
@@ -523,7 +771,7 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
                             className="flex-1 bg-[#0d2414] border border-[#1a3d22] rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-[#4ade80]"
                           />
                           <button
-                            onClick={() => handleDriverComplete(job.id, job.amount)}
+                            onClick={() => handleDriverComplete(Number(job.id), job.amount)}
                             className="bg-[#16a34a] hover:bg-[#15803d] text-white rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap"
                           >
                             Claim ৳{job.amount}
@@ -532,9 +780,18 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
                       </div>
                     )}
                   </div>
-                  <div className="flex gap-2">
-                    <a href={`https://maps.google.com/?q=${job.address}`} target="_blank" rel="noreferrer" className="border border-[#1a3d22] text-[#60a5fa] rounded-lg px-3 py-2 text-xs">Map</a>
-                    <button disabled={accepted} onClick={() => setPickupRequests(acceptPickupRequest(job.id))} className="bg-[#16a34a] disabled:bg-[#1a3d22] disabled:text-[#4b7a5a] text-white rounded-lg px-4 py-2 text-xs font-semibold">{accepted ? "Awaiting code" : "Accept job"}</button>
+                  <div className="flex gap-2 shrink-0">
+                    <a href={`https://maps.google.com/?q=${jobLat},${jobLng}`} target="_blank" rel="noreferrer" className="border border-[#1a3d22] text-[#60a5fa] rounded-lg px-3 py-2 text-xs">Map</a>
+                    <button
+                      disabled={accepted}
+                      onClick={() => {
+                        api.pickups.accept(String(job.id)).catch(() => {});
+                        setPickupRequests(acceptPickupRequest(Number(job.id)));
+                      }}
+                      className="bg-[#16a34a] disabled:bg-[#1a3d22] disabled:text-[#4b7a5a] text-white rounded-lg px-4 py-2 text-xs font-semibold"
+                    >
+                      {accepted ? "Awaiting code" : "Accept job"}
+                    </button>
                   </div>
                 </div>
               </div>;
@@ -545,7 +802,9 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
                 <button onClick={() => setDriverPickupMsg("")} className="font-bold ml-2 text-white">✕</button>
               </div>
             )}
-            {pickupRequests.filter((request) => request.area === "Mohammadpur" && request.status !== "completed").length === 0 && <div className="text-[#4b7a5a] text-sm text-center py-12">No active pickup requests in your area.</div>}
+            {pickupRequests.filter((request) => request.status !== "completed").length === 0 && (
+              <div className="text-[#4b7a5a] text-sm text-center py-12">No active on-demand pickup requests on your scheduled route.</div>
+            )}
           </div>
         </div>
       )}
@@ -617,6 +876,74 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
               <select className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-3 text-[#86efac] outline-none mt-3"><option>bKash · 01711-201025</option><option>Bank account on contract</option></select>
               <button disabled={!withdrawAmount || Number(withdrawAmount) > balance || Number(withdrawAmount) < 100} onClick={() => { const updated = balance - Number(withdrawAmount); setBalance(updated); setDriverBalance(updated); setWithdrawn(true); }} className="w-full bg-[#16a34a] disabled:opacity-40 text-white rounded-xl py-3 mt-4 font-semibold">Submit to Main Admin</button>
             </>}
+          </div>
+        </div>
+      )}
+      {/* Flag Fake Report Modal */}
+      {flaggingReport && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4" onClick={() => setFlaggingReport(null)}>
+          <div className="bg-[#0d2414] border border-red-500/50 rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between pb-3 border-b border-[#1a3d22] mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center">
+                  <AlertOctagon size={18} />
+                </div>
+                <div>
+                  <h3 className="font-display font-700 text-white text-base">Flag Fake Dumping Report</h3>
+                  <p className="text-[11px] font-mono text-red-400">{flaggingReport.reportCode}</p>
+                </div>
+              </div>
+              <button onClick={() => setFlaggingReport(null)} className="text-[#4b7a5a] hover:text-white p-1">
+                <X size={16} />
+              </button>
+            </div>
+
+            {flagSuccessMsg ? (
+              <div className="py-4 text-center">
+                <CheckCircle size={36} className="text-[#4ade80] mx-auto mb-2" />
+                <div className="text-white font-bold text-sm">{flagSuccessMsg}</div>
+              </div>
+            ) : (
+              <div className="space-y-3.5">
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-xs text-red-300">
+                  ⚠️ <strong>Fraud Notice:</strong> Flagging this coordinate will mark the report as a false dump and automatically <strong>revoke {flaggingReport.pointsEarned || 150} eco points</strong> from the reporter's account.
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono text-[#86efac] mb-1.5">REASON FOR FLAGGING</label>
+                  <select
+                    value={flagFakeReason}
+                    onChange={e => setFlagFakeReason(e.target.value)}
+                    className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-red-400"
+                  >
+                    <option>No garbage/waste found at this coordinate</option>
+                    <option>False / staged dumping photo</option>
+                    <option>Private property / incorrect complaint</option>
+                    <option>Duplicate or spam submission</option>
+                  </select>
+                </div>
+
+                <div className="text-xs text-[#4b7a5a]">
+                  Location: <strong className="text-white">{flaggingReport.location}</strong> ({flaggingReport.lat?.toFixed(5) || "23.7542"}, {flaggingReport.lng?.toFixed(5) || "90.3654"})
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => setFlaggingReport(null)}
+                    className="flex-1 border border-[#1a3d22] text-[#4b7a5a] hover:text-white py-2.5 rounded-xl text-xs font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    disabled={isSubmittingFlag}
+                    onClick={handleFlagFake}
+                    className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md"
+                  >
+                    {isSubmittingFlag ? "Revoking..." : "Confirm & Revoke Points"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

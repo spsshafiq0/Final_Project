@@ -2,7 +2,7 @@ export type RequesterType = "citizen" | "business";
 export type PickupStatus = "open" | "accepted" | "completed";
 
 export interface PickupRequest {
-  id: number;
+  id: number | string;
   requesterType: RequesterType;
   requesterName: string;
   area: string;
@@ -11,6 +11,13 @@ export interface PickupRequest {
   date: string;
   amount: number;
   status: PickupStatus;
+  lat?: number | null;
+  lng?: number | null;
+  cityCorpId?: string | null;
+  cityCorpName?: string | null;
+  wardId?: string | null;
+  wardName?: string | null;
+  wasteItemId?: string | null;
   driverName?: string;
   securityCode?: string;
   createdAt: string;
@@ -49,10 +56,10 @@ export function addPickupRequest(request: Omit<PickupRequest, "id" | "status" | 
   return created;
 }
 
-export function acceptPickupRequest(id: number, assignedDriverName: string = "Assigned Driver"): PickupRequest[] {
+export function acceptPickupRequest(id: number | string, assignedDriverName: string = "Assigned Driver"): PickupRequest[] {
   const code = String(Math.floor(100000 + Math.random() * 900000));
   const requests = getPickupRequests().map((request) =>
-    request.id === id
+    String(request.id) === String(id)
       ? { ...request, status: "accepted" as const, driverName: assignedDriverName, securityCode: code }
       : request,
   );
@@ -60,11 +67,11 @@ export function acceptPickupRequest(id: number, assignedDriverName: string = "As
   return requests;
 }
 
-export function completePickupRequest(id: number, code: string): { success: boolean; requests: PickupRequest[] } {
+export function completePickupRequest(id: number | string, code: string): { success: boolean; requests: PickupRequest[] } {
   let success = false;
   let credit = 0;
   const requests = getPickupRequests().map((request) => {
-    if (request.id === id && request.status === "accepted" && request.securityCode === code.trim()) {
+    if (String(request.id) === String(id) && request.status === "accepted" && request.securityCode === code.trim()) {
       success = true;
       credit = request.amount;
       return { ...request, status: "completed" as const };

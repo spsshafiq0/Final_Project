@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Award, Recycle, Camera, MapPin, Calendar, TrendingUp, Gift, Star, ChevronRight, Upload, CheckCircle, AlertTriangle, Clock, Leaf, Users, Trophy, ArrowLeft, UserPlus, LogIn, LogOut, Wallet, ShieldCheck, RefreshCw, Banknote, CheckCircle2, Download, Building2, X, KeyRound, Copy } from "lucide-react";
+import { Award, Recycle, Camera, MapPin, Calendar, TrendingUp, Gift, Star, ChevronRight, Upload, CheckCircle, AlertTriangle, Clock, Leaf, Users, Trophy, ArrowLeft, UserPlus, LogIn, LogOut, Wallet, ShieldCheck, RefreshCw, Banknote, CheckCircle2, Download, Building2, X, KeyRound, Copy, CreditCard, Landmark, Smartphone, Navigation } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import NearbyBinsMap from "./NearbyBinsMap";
 import { addPickupRequest, getPickupRequests, completePickupRequest, type PickupRequest } from "../data/pickupStore";
-import api, { WithdrawalItem, UserProfile, RankTierItem, RewardItem, userStorage, CityCorporationItem, WardItem, PickupScheduleItem } from "../lib/api";
+import api, { WithdrawalItem, UserProfile, RankTierItem, RewardItem, userStorage, CityCorporationItem, WardItem, PickupScheduleItem, CityWasteItem, WalletTransaction } from "../lib/api";
 import { wards } from "../data/cityData";
 import ForgotPasswordModal from "./ForgotPasswordModal";
 
@@ -54,13 +54,40 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
   const [reportError, setReportError] = useState<string>("");
   const [isSubmittingReport, setIsSubmittingReport] = useState<boolean>(false);
   const [reportLocationLoading, setReportLocationLoading] = useState<boolean>(false);
+  const [reportCoords, setReportCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  // User & Business Wallet Balance & Deposits
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [walletTransactions, setWalletTransactions] = useState<WalletTransaction[]>([]);
+  const [depositModalOpen, setDepositModalOpen] = useState<boolean>(false);
+  const [depositAmount, setDepositAmount] = useState<string>("250");
+  const [depositMethod, setDepositMethod] = useState<"BKASH" | "NAGAD" | "ROCKET" | "CARD" | "BANK">("BKASH");
+  const [depositTrxId, setDepositTrxId] = useState<string>("");
+  const [depositSenderNumber, setDepositSenderNumber] = useState<string>("");
+  const [depositCardDetails, setDepositCardDetails] = useState({ number: "", holder: "", expiry: "", cvc: "" });
+  const [depositBankDetails, setDepositBankDetails] = useState({ bankName: "City Bank", accNumber: "", branch: "" });
+  const [isDepositing, setIsDepositing] = useState<boolean>(false);
+  const [depositSuccessMsg, setDepositSuccessMsg] = useState<string>("");
+  const [depositErrorMsg, setDepositErrorMsg] = useState<string>("");
+
+  // City Waste Items (Configured by City Corporation Admin)
+  const [customWasteItems, setCustomWasteItems] = useState<CityWasteItem[]>([]);
+  const [loadingWasteItems, setLoadingWasteItems] = useState<boolean>(false);
+
+  // Exact Google Coordinates for On-Demand Pickup
+  const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [pickupGpsLoading, setPickupGpsLoading] = useState<boolean>(false);
+  const [pickupCityCorpId, setPickupCityCorpId] = useState<string>("");
+  const [pickupWardId, setPickupWardId] = useState<string>("");
+  const [pickupFilteredWards, setPickupFilteredWards] = useState<WardItem[]>([]);
+  const [selectedWasteItemId, setSelectedWasteItemId] = useState<string>("");
 
   const [bookedSlot, setBookedSlot] = useState<number | null>(null);
   const [redeemedReward, setRedeemedReward] = useState<string | null>(null);
   const [pickupForm, setPickupForm] = useState({ address: "", area: "Mohammadpur", waste: "", date: "", deposit: "250" });
   const [pickupRequested, setPickupRequested] = useState(false);
   const [pickupRequests, setPickupRequests] = useState<PickupRequest[]>(getPickupRequests());
-  const [codes, setCodes] = useState<Record<number, string>>({});
+  const [codes, setCodes] = useState<Record<string | number, string>>({});
   const [pickupMessage, setPickupMessage] = useState("");
 
   // City Corporation & Ward Selection State (for Cash Out & Reports)
@@ -218,6 +245,34 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
     }
   };
 
+  const loadWallet = async () => {
+    try {
+      const res = await api.wallet.get();
+      if (res && typeof res.walletBalance === "number") {
+        setWalletBalance(res.walletBalance);
+        setWalletTransactions(res.transactions || []);
+      }
+    } catch {}
+  };
+
+  const loadWasteItems = async (cityCorpId?: string) => {
+    setLoadingWasteItems(true);
+    try {
+      const items = await api.wasteTypes.getAll({ cityCorpId, active: true });
+      if (Array.isArray(items) && items.length > 0) {
+        setCustomWasteItems(items);
+        const currentSelected = items.find(i => i.id === selectedWasteItemId);
+        if (!currentSelected) {
+          setSelectedWasteItemId(items[0].id);
+          setPickupForm(f => ({ ...f, waste: items[0].name, deposit: String(items[0].depositFee || 250) }));
+        }
+      }
+    } catch {}
+    finally {
+      setLoadingWasteItems(false);
+    }
+  };
+
   const loadCityData = async () => {
     try {
       const [citiesList, wardsList, globalPolicy] = await Promise.all([
@@ -228,6 +283,8 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
       if (Array.isArray(citiesList) && citiesList.length > 0) {
         setCityCorps(citiesList);
         setSelectedCityCorpId(citiesList[0].id);
+        setPickupCityCorpId(citiesList[0].id);
+        loadWasteItems(citiesList[0].id);
       }
       if (Array.isArray(wardsList) && wardsList.length > 0) {
         setAllWards(wardsList);
@@ -237,10 +294,18 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
           setFilteredWards(activeFiltered);
           setSelectedWardId(String(activeFiltered[0].id));
           setSelectedWardData(activeFiltered[0]);
+
+          setPickupFilteredWards(activeFiltered);
+          setPickupWardId(String(activeFiltered[0].id));
+          setPickupForm(f => ({ ...f, area: activeFiltered[0].name }));
         } else {
           setFilteredWards(wardsList);
           setSelectedWardId(String(wardsList[0].id));
           setSelectedWardData(wardsList[0]);
+
+          setPickupFilteredWards(wardsList);
+          setPickupWardId(String(wardsList[0].id));
+          setPickupForm(f => ({ ...f, area: wardsList[0].name }));
         }
       }
       if (globalPolicy) {
@@ -262,6 +327,109 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
     } else {
       setSelectedWardId("");
       setSelectedWardData(null);
+    }
+  };
+
+  const handlePickupCityChange = (cityId: string) => {
+    setPickupCityCorpId(cityId);
+    const matched = allWards.filter(w => w.cityCorpId === cityId);
+    setPickupFilteredWards(matched);
+    if (matched.length > 0) {
+      setPickupWardId(String(matched[0].id));
+      setPickupForm(f => ({ ...f, area: matched[0].name }));
+    } else {
+      setPickupWardId("");
+    }
+    loadWasteItems(cityId);
+  };
+
+  const handlePickupWardChange = (wardId: string) => {
+    setPickupWardId(wardId);
+    const ward = allWards.find(w => String(w.id) === String(wardId));
+    if (ward) {
+      setPickupForm(f => ({ ...f, area: ward.name }));
+    }
+  };
+
+  const handleWasteItemSelect = (wasteId: string) => {
+    setSelectedWasteItemId(wasteId);
+    const item = customWasteItems.find(w => w.id === wasteId);
+    if (item) {
+      setPickupForm(f => ({ ...f, waste: item.name, deposit: String(item.depositFee || 250) }));
+    }
+  };
+
+  const handleDetectPickupGps = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    setPickupGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setPickupCoords({ lat: latitude, lng: longitude });
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          const data = await res.json();
+          if (data?.display_name) {
+            const shortAddr = data.display_name.split(",").slice(0, 4).join(", ");
+            setPickupForm(f => ({ ...f, address: shortAddr }));
+          } else {
+            setPickupForm(f => ({ ...f, address: `Google Coords: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}` }));
+          }
+        } catch {
+          setPickupForm(f => ({ ...f, address: `Google Coords: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}` }));
+        } finally {
+          setPickupGpsLoading(false);
+        }
+      },
+      (err) => {
+        setPickupGpsLoading(false);
+        alert(`GPS detection note: ${err.message}. Accurate pickup coordinates set to Dhaka central.`);
+        setPickupCoords({ lat: 23.7542, lng: 90.3654 });
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
+  const handleDepositSubmit = async () => {
+    const amt = Number(depositAmount);
+    if (!amt || amt < 50) {
+      setDepositErrorMsg("Minimum deposit amount is ৳50.");
+      return;
+    }
+    if ((depositMethod === "BKASH" || depositMethod === "NAGAD" || depositMethod === "ROCKET") && !depositTrxId.trim()) {
+      setDepositErrorMsg("Please enter your Transaction ID (TrxID) from your mobile banking app.");
+      return;
+    }
+    setIsDepositing(true);
+    setDepositErrorMsg("");
+    setDepositSuccessMsg("");
+    try {
+      const res = await api.wallet.deposit({
+        amount: amt,
+        paymentMethod: depositMethod,
+        trxId: depositTrxId || `TX-${Date.now().toString().slice(-8)}`,
+        senderNumber: depositSenderNumber || citizenPhone,
+        note: `Deposit via ${depositMethod}`,
+      });
+      if (res?.success) {
+        setWalletBalance(res.walletBalance);
+        if (res.transaction) {
+          setWalletTransactions(prev => [res.transaction, ...prev]);
+        }
+        setDepositSuccessMsg(`৳${amt} deposited successfully to your account!`);
+        setTimeout(() => {
+          setDepositModalOpen(false);
+          setDepositSuccessMsg("");
+          setDepositTrxId("");
+        }, 1500);
+      }
+    } catch (err: any) {
+      setDepositErrorMsg(err?.message || "Failed to process deposit. Please try again.");
+    } finally {
+      setIsDepositing(false);
     }
   };
 
@@ -291,12 +459,13 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
     setReportError("");
     setReportStep(2);
 
-    // Auto-fill live GPS location
+    // Auto-fill live GPS Google coordinates
     if (navigator.geolocation && !reportLocation) {
       setReportLocationLoading(true);
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
+          setReportCoords({ lat: latitude, lng: longitude });
           try {
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
             const data = await res.json();
@@ -314,6 +483,7 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
         },
         () => {
           setReportLocationLoading(false);
+          setReportCoords({ lat: 23.7542, lng: 90.3654 });
           if (!reportLocation) setReportLocation("Mohammadpur Area");
         },
         { enableHighAccuracy: true, timeout: 6000 }
@@ -353,6 +523,8 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
       setLastReportCode(code);
       const res = await api.reports.create({
         location: reportLocation,
+        lat: reportCoords?.lat,
+        lng: reportCoords?.lng,
         description: reportDescription || `Citizen reported ${reportType}`,
         imageUrl: reportPhoto,
         wasteType: reportType || "Mixed",
@@ -383,6 +555,7 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
       setUserPoints(cu.points || 0);
       setCitizenName(cu.fullName || cu.username || "Citizen");
       if (cu.phone) setCitizenPhone(cu.phone);
+      if (typeof cu.walletBalance === "number") setWalletBalance(cu.walletBalance);
     }
     fetchRewardPolicy();
     fetchMyWithdrawals();
@@ -391,6 +564,7 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
     loadRewards(cu?.id);
     loadCityData();
     loadSchedules();
+    loadWallet();
   }, []);
 
   const handleRequestCashWithdrawal = async () => {
@@ -575,6 +749,15 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setDepositModalOpen(true)}
+                className="bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 rounded-xl px-2.5 sm:px-3 py-1.5 flex items-center gap-1.5 text-emerald-300 hover:text-white transition-all cursor-pointer shadow-xs"
+                title="Wallet Balance & Deposit Money"
+              >
+                <Wallet size={15} className="text-emerald-400" />
+                <span className="font-mono font-bold text-white text-xs sm:text-sm">৳{walletBalance.toFixed(0)}</span>
+                <span className="bg-emerald-600 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded text-white font-medium ml-0.5">+ Deposit</span>
+              </button>
               <div className="bg-[#4ade80]/20 border border-[#4ade80]/40 rounded-xl px-2.5 sm:px-4 py-2 flex items-center gap-1.5">
                 <Award size={16} className="text-[#4ade80]" />
                 <span className="font-mono font-bold text-[#4ade80]">{userPoints.toLocaleString()}</span>
@@ -1077,40 +1260,183 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
                 <button onClick={() => setPickupRequested(false)} className="text-[#16a34a] text-sm font-semibold mt-4">Create another request</button>
               </div> : <>
                 <div className="grid sm:grid-cols-2 gap-3 mb-3">
-                  <select value={pickupForm.area} onChange={e => setPickupForm(f => ({ ...f, area: e.target.value }))} className="border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm text-[#052e16] focus:border-[#16a34a] outline-none">
-                    {["Mohammadpur", "Dhanmondi", "Gulshan", "Banani", "Uttara", "Mirpur-10"].map(area => <option key={area}>{area}</option>)}
-                  </select>
-                  <select value={pickupForm.waste} onChange={e => setPickupForm(f => ({ ...f, waste: e.target.value }))} className="border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm text-[#052e16] focus:border-[#16a34a] outline-none">
-                    <option value="">Select Waste Type</option>
-                    <option>Bulky Items</option>
-                    <option>Restaurant Mixed Waste</option>
-                    <option>Hotel Mixed Waste</option>
-                    <option>Construction Debris</option>
-                    <option>General Extra Waste</option>
-                  </select>
-                </div>
-                <input value={pickupForm.address} onChange={e => setPickupForm(f => ({ ...f, address: e.target.value }))} placeholder="Complete pickup address" className="w-full border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm focus:border-[#16a34a] outline-none mb-3" />
-                <div className="grid sm:grid-cols-2 gap-3 mb-4">
-                  <input type="date" value={pickupForm.date} onChange={e => setPickupForm(f => ({ ...f, date: e.target.value }))} className="border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm text-[#052e16] focus:border-[#16a34a] outline-none" />
-                  <div className="relative">
-                    <Wallet size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#16a34a]" />
-                    <input type="number" min="100" value={pickupForm.deposit} onChange={e => setPickupForm(f => ({ ...f, deposit: e.target.value }))} className="w-full border border-[#e2f5e9] rounded-xl pl-9 pr-4 py-3 text-sm text-[#052e16] focus:border-[#16a34a] outline-none" aria-label="Deposit amount" />
+                  {/* Dynamic City Corporation Select */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[#052e16] mb-1">City Corporation</label>
+                    <select
+                      value={pickupCityCorpId}
+                      onChange={e => handlePickupCityChange(e.target.value)}
+                      className="w-full border border-[#e2f5e9] rounded-xl px-4 py-2.5 text-sm text-[#052e16] focus:border-[#16a34a] outline-none bg-white"
+                    >
+                      {cityCorps.map(c => (
+                        <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Dynamic Ward Select under chosen City Corporation */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[#052e16] mb-1">Ward Zone</label>
+                    <select
+                      value={pickupWardId}
+                      onChange={e => handlePickupWardChange(e.target.value)}
+                      className="w-full border border-[#e2f5e9] rounded-xl px-4 py-2.5 text-sm text-[#052e16] focus:border-[#16a34a] outline-none bg-white"
+                    >
+                      {pickupFilteredWards.length === 0 ? (
+                        <option value="">No wards in this City Corporation</option>
+                      ) : (
+                        pickupFilteredWards.map(w => (
+                          <option key={w.id} value={w.id}>{w.name} — {w.area}</option>
+                        ))
+                      )}
+                    </select>
                   </div>
                 </div>
-                <button disabled={!pickupForm.address || !pickupForm.waste || !pickupForm.date || Number(pickupForm.deposit) < 100} onClick={() => {
-                  addPickupRequest({
-                    requesterType: "citizen",
-                    requesterName: authForm.username || authForm.contact || "Citizen Account",
-                    area: pickupForm.area,
-                    address: pickupForm.address,
-                    wasteType: pickupForm.waste,
-                    date: pickupForm.date,
-                    amount: Number(pickupForm.deposit),
-                  });
-                  setPickupRequests(getPickupRequests());
-                  setPickupRequested(true);
-                }} className="w-full bg-[#052e16] disabled:opacity-40 text-white rounded-xl py-3 text-sm font-semibold hover:bg-[#0a3d1e] transition-colors">Deposit ৳{pickupForm.deposit || "0"} & Request Pickup</button>
-                <div className="text-center text-[#4b7a5a] text-xs mt-2">Deposit is released after pickup confirmation.</div>
+
+                {/* Dynamic Waste Category created by City Admin */}
+                <div className="mb-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-[#052e16]">Waste Category & Rate (Configured by City Admin)</label>
+                    {loadingWasteItems && <span className="text-[10px] text-[#16a34a] animate-pulse">Syncing items...</span>}
+                  </div>
+                  <select
+                    value={selectedWasteItemId}
+                    onChange={e => handleWasteItemSelect(e.target.value)}
+                    className="w-full border border-[#e2f5e9] rounded-xl px-4 py-2.5 text-sm text-[#052e16] focus:border-[#16a34a] outline-none bg-white"
+                  >
+                    {customWasteItems.length === 0 ? (
+                      <option value="">No items configured by City Admin</option>
+                    ) : (
+                      customWasteItems.map(item => (
+                        <option key={item.id} value={item.id}>
+                          {item.name} · {item.category} (Min Deposit: ৳{item.depositFee} per {item.unit})
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
+                {/* Accurate Google Coordinates & Address */}
+                <div className="mb-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-[#052e16]">Accurate Google Coordinates & Address</label>
+                    <button
+                      type="button"
+                      onClick={handleDetectPickupGps}
+                      disabled={pickupGpsLoading}
+                      className="text-xs text-[#16a34a] hover:text-[#052e16] font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Navigation size={12} className={pickupGpsLoading ? "animate-spin" : ""} />
+                      {pickupGpsLoading ? "Detecting GPS..." : "📍 Detect Accurate GPS"}
+                    </button>
+                  </div>
+                  <input
+                    value={pickupForm.address}
+                    onChange={e => setPickupForm(f => ({ ...f, address: e.target.value }))}
+                    placeholder="Complete pickup street address or landmark"
+                    className="w-full border border-[#e2f5e9] rounded-xl px-4 py-2.5 text-sm focus:border-[#16a34a] outline-none"
+                  />
+                  {pickupCoords && (
+                    <div className="mt-1.5 flex items-center gap-1.5 text-xs text-[#16a34a] font-mono bg-[#f0fdf4] border border-[#bbf7d0] px-3 py-1 rounded-lg">
+                      <MapPin size={12} />
+                      <span>Google Coords: <strong>{pickupCoords.lat.toFixed(6)}, {pickupCoords.lng.toFixed(6)}</strong> (Nearest truck will route on pickup date)</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Scheduled Date & Deposit Fee */}
+                <div className="grid sm:grid-cols-2 gap-3 mb-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#052e16] mb-1">Scheduled Pickup Date</label>
+                    <input
+                      type="date"
+                      value={pickupForm.date}
+                      min={new Date().toISOString().split("T")[0]}
+                      onChange={e => setPickupForm(f => ({ ...f, date: e.target.value }))}
+                      className="w-full border border-[#e2f5e9] rounded-xl px-4 py-2.5 text-sm text-[#052e16] focus:border-[#16a34a] outline-none bg-white"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-[#052e16]">Deposit Fee (BDT)</label>
+                      <span className="text-[11px] text-[#4b7a5a]">Wallet: <strong>৳{walletBalance.toFixed(0)}</strong></span>
+                    </div>
+                    <div className="relative">
+                      <Wallet size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#16a34a]" />
+                      <input
+                        type="number"
+                        min="50"
+                        value={pickupForm.deposit}
+                        onChange={e => setPickupForm(f => ({ ...f, deposit: e.target.value }))}
+                        className="w-full border border-[#e2f5e9] rounded-xl pl-9 pr-4 py-2.5 text-sm text-[#052e16] focus:border-[#16a34a] outline-none bg-white font-mono"
+                        aria-label="Deposit amount"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Wallet Balance Check / Low Balance Warning */}
+                {walletBalance < Number(pickupForm.deposit || 0) && (
+                  <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between text-xs text-amber-800">
+                    <div className="flex items-center gap-1.5">
+                      <AlertTriangle size={15} className="text-amber-600 shrink-0" />
+                      <span>Wallet balance (৳{walletBalance}) is lower than deposit fee (৳{pickupForm.deposit}).</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDepositModalOpen(true)}
+                      className="bg-amber-600 hover:bg-amber-700 text-white font-semibold px-2.5 py-1 rounded-lg shrink-0 cursor-pointer"
+                    >
+                      + Add Money
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  disabled={!pickupForm.address || !pickupForm.waste || !pickupForm.date || Number(pickupForm.deposit) < 50 || walletBalance < Number(pickupForm.deposit)}
+                  onClick={async () => {
+                    const depositAmt = Number(pickupForm.deposit);
+                    try {
+                      await api.pickups.create({
+                        requesterType: "citizen",
+                        area: pickupForm.area,
+                        address: pickupForm.address,
+                        wasteType: pickupForm.waste,
+                        date: pickupForm.date,
+                        amount: depositAmt,
+                        lat: pickupCoords?.lat ?? 23.7542,
+                        lng: pickupCoords?.lng ?? 90.3654,
+                        cityCorpId: pickupCityCorpId,
+                        wardId: pickupWardId,
+                        wasteItemId: selectedWasteItemId,
+                      });
+                      addPickupRequest({
+                        requesterType: "citizen",
+                        requesterName: authForm.username || authForm.contact || "Citizen Account",
+                        area: pickupForm.area,
+                        address: pickupForm.address,
+                        wasteType: pickupForm.waste,
+                        date: pickupForm.date,
+                        amount: depositAmt,
+                        lat: pickupCoords?.lat ?? 23.7542,
+                        lng: pickupCoords?.lng ?? 90.3654,
+                        cityCorpId: pickupCityCorpId,
+                        wardId: pickupWardId,
+                        wasteItemId: selectedWasteItemId,
+                      });
+                      setPickupRequests(getPickupRequests());
+                      setWalletBalance(b => Math.max(0, b - depositAmt));
+                      setPickupRequested(true);
+                      loadWallet();
+                    } catch (err: any) {
+                      alert(err?.message || "Failed to submit on-demand pickup request.");
+                    }
+                  }}
+                  className="w-full bg-[#052e16] disabled:opacity-40 text-white rounded-xl py-3 text-sm font-semibold hover:bg-[#0a3d1e] transition-colors cursor-pointer"
+                >
+                  Deposit ৳{pickupForm.deposit || "0"} & Request Pickup
+                </button>
+                <div className="text-center text-[#4b7a5a] text-xs mt-2">Deposit is held securely and transferred to the collecting truck driver upon QR/security verification.</div>
               </>}
             </div>
 
@@ -1882,6 +2208,273 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
           );
         })()}
       </div>
+      {/* Deposit Money / Wallet Modal */}
+      {depositModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4" onClick={() => setDepositModalOpen(false)}>
+          <div className="bg-white border border-[#e2f5e9] rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between pb-4 border-b border-[#e2f5e9] mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                  <Wallet size={20} />
+                </div>
+                <div>
+                  <h3 className="font-display font-700 text-lg text-[#052e16]">Add Money to Wallet</h3>
+                  <p className="text-xs text-[#4b7a5a]">Balance: <strong className="text-emerald-700 font-mono">৳{walletBalance.toFixed(2)}</strong></p>
+                </div>
+              </div>
+              <button onClick={() => setDepositModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                <X size={18} />
+              </button>
+            </div>
+
+            {depositSuccessMsg && (
+              <div className="mb-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-3 text-xs flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                <span>{depositSuccessMsg}</span>
+              </div>
+            )}
+
+            {depositErrorMsg && (
+              <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 text-xs flex items-center gap-2">
+                <AlertTriangle size={16} className="text-red-500 shrink-0" />
+                <span>{depositErrorMsg}</span>
+              </div>
+            )}
+
+            {/* Quick Amount Buttons */}
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-[#052e16] mb-2">Select Amount (BDT)</label>
+              <div className="grid grid-cols-4 gap-2 mb-2">
+                {["100", "250", "500", "1000"].map(amt => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => setDepositAmount(amt)}
+                    className={`py-2 text-xs font-mono font-bold rounded-xl border transition-all ${
+                      depositAmount === amt
+                        ? "bg-[#052e16] text-white border-[#052e16]"
+                        : "bg-white text-[#052e16] border-[#e2f5e9] hover:border-[#16a34a]"
+                    }`}
+                  >
+                    ৳{amt}
+                  </button>
+                ))}
+              </div>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-[#4b7a5a]">৳</span>
+                <input
+                  type="number"
+                  min="50"
+                  value={depositAmount}
+                  onChange={e => setDepositAmount(e.target.value)}
+                  placeholder="Custom amount"
+                  className="w-full border border-[#e2f5e9] rounded-xl pl-8 pr-4 py-2.5 text-sm font-mono text-[#052e16] focus:border-[#16a34a] outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Payment Method Tabs */}
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-[#052e16] mb-2">Payment Method</label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDepositMethod("BKASH")}
+                  className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+                    depositMethod === "BKASH" || depositMethod === "NAGAD" || depositMethod === "ROCKET"
+                      ? "border-[#16a34a] bg-emerald-50/60 text-[#052e16]"
+                      : "border-[#e2f5e9] text-[#4b7a5a] hover:border-[#16a34a]"
+                  }`}
+                >
+                  <Smartphone size={18} className="text-pink-600" />
+                  <span className="text-[11px] font-semibold">Mobile Banking</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDepositMethod("CARD")}
+                  className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+                    depositMethod === "CARD"
+                      ? "border-[#16a34a] bg-emerald-50/60 text-[#052e16]"
+                      : "border-[#e2f5e9] text-[#4b7a5a] hover:border-[#16a34a]"
+                  }`}
+                >
+                  <CreditCard size={18} className="text-blue-600" />
+                  <span className="text-[11px] font-semibold">Debit / Credit Card</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDepositMethod("BANK")}
+                  className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+                    depositMethod === "BANK"
+                      ? "border-[#16a34a] bg-emerald-50/60 text-[#052e16]"
+                      : "border-[#e2f5e9] text-[#4b7a5a] hover:border-[#16a34a]"
+                  }`}
+                >
+                  <Landmark size={18} className="text-amber-600" />
+                  <span className="text-[11px] font-semibold">Bank Transfer</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Sub-form based on method */}
+            {(depositMethod === "BKASH" || depositMethod === "NAGAD" || depositMethod === "ROCKET") && (
+              <div className="space-y-3 bg-[#f8fdf9] border border-[#e2f5e9] rounded-xl p-3.5 mb-4">
+                <div className="flex gap-2">
+                  {(["BKASH", "NAGAD", "ROCKET"] as const).map(m => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setDepositMethod(m)}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        depositMethod === m
+                          ? "bg-white shadow-xs border border-[#16a34a] text-[#16a34a]"
+                          : "text-[#4b7a5a] hover:text-[#052e16]"
+                      }`}
+                    >
+                      {m === "BKASH" ? "bKash" : m === "NAGAD" ? "Nagad" : "Rocket"}
+                    </button>
+                  ))}
+                </div>
+                <div className="text-xs text-[#4b7a5a]">
+                  Send <strong>৳{depositAmount || "0"}</strong> to IntelliWaste Merchant Number: <strong className="text-[#052e16] font-mono">01700-112233</strong>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#052e16] mb-1">Your Mobile Number</label>
+                  <input
+                    value={depositSenderNumber}
+                    onChange={e => setDepositSenderNumber(e.target.value)}
+                    placeholder="017xxxxxxxx"
+                    className="w-full bg-white border border-[#e2f5e9] rounded-lg px-3 py-2 text-xs text-[#052e16] outline-none focus:border-[#16a34a]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#052e16] mb-1">Transaction ID (TrxID) *</label>
+                  <input
+                    value={depositTrxId}
+                    onChange={e => setDepositTrxId(e.target.value)}
+                    placeholder="e.g. 9J3K82LA7Q"
+                    className="w-full bg-white border border-[#e2f5e9] rounded-lg px-3 py-2 text-xs font-mono uppercase text-[#052e16] outline-none focus:border-[#16a34a]"
+                  />
+                </div>
+              </div>
+            )}
+
+            {depositMethod === "CARD" && (
+              <div className="space-y-3 bg-[#f8fdf9] border border-[#e2f5e9] rounded-xl p-3.5 mb-4">
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#052e16] mb-1">Card Number</label>
+                  <input
+                    value={depositCardDetails.number}
+                    onChange={e => setDepositCardDetails(c => ({ ...c, number: e.target.value }))}
+                    placeholder="4111 2222 3333 4444"
+                    maxLength={19}
+                    className="w-full bg-white border border-[#e2f5e9] rounded-lg px-3 py-2 text-xs font-mono text-[#052e16] outline-none focus:border-[#16a34a]"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-[#052e16] mb-1">Cardholder Name</label>
+                    <input
+                      value={depositCardDetails.holder}
+                      onChange={e => setDepositCardDetails(c => ({ ...c, holder: e.target.value }))}
+                      placeholder="NAME ON CARD"
+                      className="w-full bg-white border border-[#e2f5e9] rounded-lg px-3 py-2 text-xs text-[#052e16] outline-none focus:border-[#16a34a]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-[#052e16] mb-1">Expiry / CVC</label>
+                    <div className="flex gap-2">
+                      <input
+                        value={depositCardDetails.expiry}
+                        onChange={e => setDepositCardDetails(c => ({ ...c, expiry: e.target.value }))}
+                        placeholder="MM/YY"
+                        maxLength={5}
+                        className="w-1/2 bg-white border border-[#e2f5e9] rounded-lg px-2 py-2 text-xs font-mono text-[#052e16] outline-none focus:border-[#16a34a]"
+                      />
+                      <input
+                        value={depositCardDetails.cvc}
+                        onChange={e => setDepositCardDetails(c => ({ ...c, cvc: e.target.value }))}
+                        placeholder="CVC"
+                        maxLength={4}
+                        className="w-1/2 bg-white border border-[#e2f5e9] rounded-lg px-2 py-2 text-xs font-mono text-[#052e16] outline-none focus:border-[#16a34a]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {depositMethod === "BANK" && (
+              <div className="space-y-3 bg-[#f8fdf9] border border-[#e2f5e9] rounded-xl p-3.5 mb-4">
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#052e16] mb-1">Select Bank</label>
+                  <select
+                    value={depositBankDetails.bankName}
+                    onChange={e => setDepositBankDetails(b => ({ ...b, bankName: e.target.value }))}
+                    className="w-full bg-white border border-[#e2f5e9] rounded-lg px-3 py-2 text-xs text-[#052e16] outline-none focus:border-[#16a34a]"
+                  >
+                    <option>City Bank Limited</option>
+                    <option>BRAC Bank PLC</option>
+                    <option>Islami Bank Bangladesh</option>
+                    <option>Dutch-Bangla Bank (DBBL)</option>
+                    <option>Eastern Bank Limited (EBL)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#052e16] mb-1">Account Number / Reference</label>
+                  <input
+                    value={depositBankDetails.accNumber}
+                    onChange={e => setDepositBankDetails(b => ({ ...b, accNumber: e.target.value }))}
+                    placeholder="Enter deposit slip or A/C reference"
+                    className="w-full bg-white border border-[#e2f5e9] rounded-lg px-3 py-2 text-xs font-mono text-[#052e16] outline-none focus:border-[#16a34a]"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setDepositModalOpen(false)}
+                className="flex-1 border border-[#e2f5e9] hover:bg-slate-50 text-[#4b7a5a] py-2.5 rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDepositing || Number(depositAmount) < 50}
+                onClick={handleDepositSubmit}
+                className="flex-2 bg-[#052e16] hover:bg-[#0a3d1e] disabled:opacity-40 text-white py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-xs"
+              >
+                {isDepositing ? "Processing..." : `Deposit ৳${depositAmount || "0"} Now`}
+              </button>
+            </div>
+
+            {/* Recent Transaction History */}
+            {walletTransactions.length > 0 && (
+              <div className="mt-5 pt-4 border-t border-[#e2f5e9]">
+                <h4 className="text-xs font-semibold text-[#052e16] mb-2">Recent Wallet Transactions</h4>
+                <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                  {walletTransactions.slice(0, 5).map(tx => (
+                    <div key={tx.id} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 text-xs">
+                      <div>
+                        <span className="font-semibold text-[#052e16]">{tx.type}</span>
+                        <span className="text-[#4b7a5a] text-[11px] ml-1.5">({tx.paymentMethod || "Direct"})</span>
+                      </div>
+                      <div className="font-mono font-bold text-emerald-700">
+                        +৳{tx.amount.toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

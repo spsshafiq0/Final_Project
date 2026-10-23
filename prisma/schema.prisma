@@ -65,9 +65,11 @@ model CityCorporation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  wards     Ward[]
-  admins    User[]           @relation("CityCorpAdmins")
-  schedules PickupSchedule[]
+  wards      Ward[]
+  admins     User[]           @relation("CityCorpAdmins")
+  schedules  PickupSchedule[]
+  wasteItems CityWasteItem[]
+  pickups    PickupRequest[]
 
   @@map("city_corporations")
 }
@@ -178,6 +180,9 @@ model User {
   // Points balance for gamification & cash withdrawals
   points   Int     @default(0)
 
+  // Wallet balance for deposits and on-demand pickups
+  walletBalance Float @default(0)
+
   // Password Reset Verification OTP
   resetOtp        String?
   resetOtpExpires DateTime?
@@ -209,6 +214,9 @@ model User {
   withdrawalsMade      WithdrawalRequest[] @relation("CitizenWithdrawals")
   withdrawalsProcessed WithdrawalRequest[] @relation("WardAdminProcessed")
 
+  // Wallet deposits and transactions
+  walletTransactions WalletTransaction[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -225,6 +233,8 @@ model PickupRequest {
   requesterType String       // "citizen" | "business"
   area          String
   address       String
+  lat           Float?       // Google Coordinates Lat
+  lng           Float?       // Google Coordinates Lng
   wasteType     String
   date          String
   amount        Int          @default(0)
@@ -237,8 +247,13 @@ model PickupRequest {
   driverId String?
   driver   User?  @relation("PickupDriver", fields: [driverId], references: [id], onDelete: SetNull)
 
-  wardId   String?
-  ward     Ward?  @relation(fields: [wardId], references: [id], onDelete: SetNull)
+  wardId     String?
+  ward       Ward?            @relation(fields: [wardId], references: [id], onDelete: SetNull)
+  cityCorpId String?
+  cityCorp   CityCorporation? @relation(fields: [cityCorpId], references: [id], onDelete: SetNull)
+
+  wasteItemId String?
+  wasteItem   CityWasteItem?  @relation(fields: [wasteItemId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -246,6 +261,7 @@ model PickupRequest {
   @@index([requesterId])
   @@index([driverId])
   @@index([wardId])
+  @@index([cityCorpId])
   @@index([status])
   @@map("pickup_requests")
 }
@@ -318,6 +334,13 @@ model WasteReport {
   citizenId String
   citizen   User   @relation("CitizenWasteReports", fields: [citizenId], references: [id], onDelete: Cascade)
 
+  lat          Float?   // Google Coordinates Lat
+  lng          Float?   // Google Coordinates Lng
+  isFakeReport Boolean  @default(false)
+  fakeReason   String?  // Reason provided if flagged as fraudulent/fake dumping
+  reportedFakeByDriverId String? // Driver who inspected and reported it fake
+  pointsRevoked Boolean @default(false) // True once the points are deducted from offending user
+
   wardId String?
   ward   Ward?  @relation(fields: [wardId], references: [id], onDelete: SetNull)
 
@@ -381,4 +404,43 @@ model SystemSetting {
 
   @@map("system_settings")
 }
+
+// ─── City Waste Items & Categories (Managed by City Corporation Admin) ────
+model CityWasteItem {
+  id         String   @id @default(cuid())
+  name       String   // e.g. "Bulky Furniture", "Restaurant Food Waste", "Commercial Scrap"
+  category   String?  // e.g. "Organic", "Commercial", "Recyclable", "Hazardous"
+  depositFee Float    @default(250) // Deposit fee in BDT
+  unit       String   @default("Trip") // e.g. "Trip", "Kg", "Drum"
+  active     Boolean  @default(true)
+
+  cityCorpId String?
+  cityCorp   CityCorporation? @relation(fields: [cityCorpId], references: [id], onDelete: Cascade)
+
+  pickups    PickupRequest[]
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([cityCorpId])
+  @@map("city_waste_items")
+}
+
+// ─── User & Business Wallet Transactions (Deposits, Payments, Refunds) ───
+model WalletTransaction {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          String   // "DEPOSIT" | "PICKUP_PAYMENT" | "REFUND"
+  amount        Float
+  paymentMethod String?  // "bKash" | "Nagad" | "Rocket" | "Card" | "Bank"
+  trxId         String?  // Transaction reference / Gateway Trx ID
+  status        String   @default("COMPLETED")
+  description   String?
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+  @@map("wallet_transactions")
+}
+
 

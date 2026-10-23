@@ -4,6 +4,21 @@ import { apiHandler, AuthenticatedRequest } from "../../middleware";
 import { memoryDb, StoredWasteReport } from "../../store";
 import { sanitizeString } from "../../security";
 
+// Haversine distance calculator in Kilometers
+function haversineDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 export default apiHandler(
   async (req: AuthenticatedRequest, res: VercelResponse, currentUser: any) => {
     // ── GET: List Waste Issue Reports ───────────────────────────────────
@@ -27,11 +42,11 @@ export default apiHandler(
         const reports = await prisma.wasteReport.findMany({
           where: whereClause,
           include: {
-            citizen: { select: { id: true, fullName: true, phone: true, email: true } },
+            citizen: { select: { id: true, fullName: true, phone: true, email: true, points: true } },
             ward: { select: { id: true, name: true, area: true } },
           },
           orderBy: { createdAt: "desc" },
-          take: 50,
+          take: 60,
         });
 
         if (reports && reports.length > 0) {
@@ -52,7 +67,7 @@ export default apiHandler(
         const ward = memoryDb.wards.find((w: any) => w.id === r.wardId);
         return {
           ...r,
-          citizen: citizen ? { id: citizen.id, fullName: citizen.fullName, phone: citizen.phone, email: citizen.email } : null,
+          citizen: citizen ? { id: citizen.id, fullName: citizen.fullName, phone: citizen.phone, email: citizen.email, points: citizen.points } : null,
           ward: ward ? { id: ward.id, name: ward.name, area: ward.area } : null,
         };
       });
@@ -70,6 +85,8 @@ export default apiHandler(
         priority = "normal",
         wardId,
         citizenId,
+        lat,
+        lng,
       } = req.body || {};
 
       const cleanLocation = sanitizeString(location, 150);
@@ -105,29 +122,48 @@ export default apiHandler(
         }
       }
 
-      // Duplicate Check (Anti-Spam / Anti-Farming): Prevent multiple reports from same location
-      try {
-        const existingReport = await prisma.wasteReport.findFirst({
-          where: {
-            location: { equals: cleanLocation, mode: "insensitive" },
-            status: { in: ["pending", "investigating"] },
-          },
-        });
-        if (existingReport) {
-          return res.status(409).json({
-            error: `An active issue has already been reported at this location [${existingReport.reportCode}]. Our collection team is already on it. Thank you!`,
+      // ── Precise Coordinate-Based Anti-Duplicate Check ────────────────
+      // Allows multiple reports across the same neighborhood/area, but blocks duplicates at the exact same coordinates (within ~30 meters)
+      const reportLat = typeof lat === "number" ? lat : parseFloat(lat);
+      const reportLng = typeof lng === "number" ? lng : parseFloat(lng);
+
+      if (!isNaN(reportLat) && !isNaN(reportLng) && reportLat !== 0 && reportLng !== 0) {
+        try {
+          const activeReports = await prisma.wasteReport.findMany({
+            where: {
+              status: { in: ["pending", "investigating"] },
+              lat: { not: null },
+              lng: { not: null },
+            },
+            select: { id: true, reportCode: true, lat: true, lng: true },
           });
-        }
-      } catch {
-        const memDup = (memoryDb.wasteReports || []).find(
-          (r: StoredWasteReport) =>
-            r.location.toLowerCase().trim() === cleanLocation.toLowerCase().trim() &&
-            (r.status === "pending" || r.status === "investigating")
-        );
-        if (memDup) {
-          return res.status(409).json({
-            error: `An active issue has already been reported at this location [${memDup.reportCode}]. Our collection team is already on it. Thank you!`,
+
+          const duplicate = activeReports.find((r: { id: string; reportCode: string; lat: number | null; lng: number | null }) => {
+            if (r.lat && r.lng) {
+              const dKm = haversineDistanceKm(reportLat, reportLng, r.lat, r.lng);
+              return dKm < 0.03; // Within ~30 meters
+            }
+            return false;
           });
+
+          if (duplicate) {
+            return res.status(409).json({
+              error: `An active issue has already been reported at this exact coordinate [${duplicate.reportCode}]. Our collection team is already dispatched. Thank you!`,
+            });
+          }
+        } catch {
+          const memDup = (memoryDb.wasteReports || []).find((r: StoredWasteReport) => {
+            if ((r.status === "pending" || r.status === "investigating") && r.lat && r.lng) {
+              const dKm = haversineDistanceKm(reportLat, reportLng, r.lat, r.lng);
+              return dKm < 0.03;
+            }
+            return false;
+          });
+          if (memDup) {
+            return res.status(409).json({
+              error: `An active issue has already been reported at this exact coordinate [${memDup.reportCode}]. Our collection team is already dispatched. Thank you!`,
+            });
+          }
         }
       }
 
@@ -162,6 +198,8 @@ export default apiHandler(
             pointsEarned,
             citizenId: finalCitizenId,
             wardId: wardId || null,
+            lat: !isNaN(reportLat) && reportLat !== 0 ? reportLat : null,
+            lng: !isNaN(reportLng) && reportLng !== 0 ? reportLng : null,
           },
           include: {
             citizen: { select: { id: true, fullName: true, phone: true } },
@@ -178,25 +216,24 @@ export default apiHandler(
         // Dispatch alert to assigned driver matching truckType
         const assignedTrack = await prisma.track.findFirst({
           where: {
-            wardId: wardId || undefined,
+            ...(wardId ? { wardId } : {}),
             truckType: targetTruckType,
-            driverId: { not: null },
           },
-          include: { driver: true },
-        }).catch(() => null);
+        });
 
-        const driverNotice = assignedTrack?.driver?.fullName
-          ? `Dispatched to Driver ${assignedTrack.driver.fullName} (${assignedTrack.truckId} - ${targetTruckType} Waste)`
-          : `Dispatched to nearest ${targetTruckType} Waste truck`;
+        const alertMessage = isHazardous
+          ? `☣️ HAZARDOUS WASTE DETECTED: [${reportCode}] at ${cleanLocation}. Immediate dispatch assigned to ${assignedTrack?.truckId || "Hazardous Unit"}.`
+          : `🚛 New Waste Issue [${reportCode}]: ${cleanLocation}. Assigned to ${assignedTrack?.truckId || "Area Truck"}.`;
 
         await prisma.alert.create({
           data: {
-            type: isHazardous ? "hazardous_pickup" : "waste_pickup",
-            message: `[${targetTruckType} TRUCK NOTICE] ${wasteType} reported at ${cleanLocation} (${reportCode}). ${driverNotice}.`,
-            priority: isHazardous ? "critical" : "high",
+            type: isHazardous ? "fire" : "overflow",
+            message: alertMessage,
+            priority: isHazardous ? "critical" : priority,
             wardId: wardId || null,
           },
         }).catch(() => null);
+
       } catch (e: any) {
         console.warn("[Reports POST Notice] Operating on resilient store:", e.message);
       }
@@ -208,6 +245,8 @@ export default apiHandler(
         location: cleanLocation,
         description: cleanDescription,
         imageUrl: imageUrl || null,
+        lat: !isNaN(reportLat) && reportLat !== 0 ? reportLat : null,
+        lng: !isNaN(reportLng) && reportLng !== 0 ? reportLng : null,
         wasteType,
         status: "pending",
         priority: (priority as any) || "normal",
@@ -226,48 +265,102 @@ export default apiHandler(
         memUser.points = (memUser.points || 0) + pointsEarned;
       }
 
-      // If critical, create alert in memory
-      if (priority === "critical" || priority === "urgent") {
-        memoryDb.alerts.unshift({
-          id: `alt-${Date.now()}`,
-          type: "overflow",
-          message: `Citizen Report [${reportCode}]: ${description.slice(0, 80)} at ${location}`,
-          priority: priority === "critical" ? "critical" : "high",
-          resolved: false,
-          wardId: wardId || null,
-          createdAt: new Date().toISOString(),
-        });
-      }
-
       return res.status(201).json({
         success: true,
-        message: "Report submitted successfully! 150 reward points credited.",
+        message: `Report submitted successfully! ${pointsEarned} reward points credited.`,
         report: createdReport || memReport,
         pointsAwarded: pointsEarned,
       });
     }
 
-    // ── PUT: Update Report Status ───────────────────────────────────────
+    // ── PUT: Update Report Status / Flag Fake Dumping ────────────────────
     if (req.method === "PUT") {
-      const { id, status } = req.body || {};
-      if (!id || !status) {
-        return res.status(400).json({ error: "Report ID and new status are required" });
+      const { id, status, isFakeReport, fakeReason, reportedFakeByDriverId } = req.body || {};
+      if (!id) {
+        return res.status(400).json({ error: "Report ID is required" });
       }
 
+      const shouldFlagFake = isFakeReport === true || status === "FAKE_REPORT";
+
       try {
+        const existing = await prisma.wasteReport.findUnique({
+          where: { id },
+          include: { citizen: true },
+        });
+
+        if (!existing) {
+          return res.status(404).json({ error: "Report not found" });
+        }
+
+        let pointsDeducted = 0;
+        let pointsRevoked = existing.pointsRevoked;
+
+        // If flagged as fake and points have not yet been revoked:
+        if (shouldFlagFake && !existing.pointsRevoked && existing.citizenId) {
+          pointsDeducted = existing.pointsEarned || 150;
+          const newPoints = Math.max(0, (existing.citizen?.points || 0) - pointsDeducted);
+
+          await prisma.user.update({
+            where: { id: existing.citizenId },
+            data: { points: newPoints },
+          }).catch(() => null);
+
+          pointsRevoked = true;
+        }
+
         const updated = await prisma.wasteReport.update({
           where: { id },
-          data: { status },
+          data: {
+            status: shouldFlagFake ? "FAKE_REPORT" : (status || existing.status),
+            isFakeReport: shouldFlagFake ? true : existing.isFakeReport,
+            fakeReason: fakeReason || existing.fakeReason,
+            reportedFakeByDriverId: reportedFakeByDriverId || currentUser?.userId || existing.reportedFakeByDriverId,
+            pointsRevoked,
+          },
+          include: {
+            citizen: { select: { id: true, fullName: true, phone: true, points: true } },
+          },
         });
-        return res.status(200).json({ success: true, report: updated });
+
+        return res.status(200).json({
+          success: true,
+          report: updated,
+          pointsDeducted: pointsDeducted > 0 ? pointsDeducted : undefined,
+          message: shouldFlagFake
+            ? `Report flagged as fraudulent. ${pointsDeducted} reward points deducted from citizen account.`
+            : "Report status updated successfully.",
+        });
       } catch (e: any) {
         console.warn("[Reports PUT Notice] Falling back to memory store:", e.message);
       }
 
+      // Memory store fallback
       const memIndex = (memoryDb.wasteReports || []).findIndex((r: any) => r.id === id);
       if (memIndex >= 0) {
-        memoryDb.wasteReports[memIndex].status = status;
-        return res.status(200).json({ success: true, report: memoryDb.wasteReports[memIndex] });
+        const memRep = memoryDb.wasteReports[memIndex];
+        let pointsDeducted = 0;
+
+        if (shouldFlagFake && !memRep.pointsRevoked && memRep.citizenId) {
+          pointsDeducted = memRep.pointsEarned || 150;
+          const memUser = memoryDb.users.find((u: any) => u.id === memRep.citizenId);
+          if (memUser) {
+            memUser.points = Math.max(0, (memUser.points || 0) - pointsDeducted);
+          }
+          memRep.pointsRevoked = true;
+        }
+
+        memRep.status = shouldFlagFake ? "FAKE_REPORT" : (status || memRep.status);
+        memRep.isFakeReport = shouldFlagFake;
+        memRep.fakeReason = fakeReason || memRep.fakeReason;
+
+        return res.status(200).json({
+          success: true,
+          report: memRep,
+          pointsDeducted: pointsDeducted > 0 ? pointsDeducted : undefined,
+          message: shouldFlagFake
+            ? `Report flagged as fraudulent. ${pointsDeducted} reward points deducted from citizen account.`
+            : "Report status updated successfully.",
+        });
       }
 
       return res.status(404).json({ error: "Report not found" });

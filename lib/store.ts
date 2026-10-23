@@ -46,6 +46,7 @@ export interface StoredUser {
   role: "SUPER_ADMIN" | "CITY_ADMIN" | "WARD_ADMIN" | "DRIVER" | "CITIZEN" | "BUSINESS";
   active: boolean;
   points: number;
+  walletBalance?: number;
   cityCorpId?: string | null;
   wardId?: string | null;
   businessType?: string | null;
@@ -134,12 +135,41 @@ export interface StoredWasteReport {
   location: string;
   description: string;
   imageUrl?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  isFakeReport?: boolean;
+  fakeReason?: string | null;
+  reportedFakeByDriverId?: string | null;
+  pointsRevoked?: boolean;
   wasteType: string;
-  status: "pending" | "investigating" | "resolved";
+  status: "pending" | "investigating" | "resolved" | "FAKE_REPORT";
   priority: "normal" | "urgent" | "critical";
   pointsEarned: number;
   citizenId: string;
   wardId?: string | null;
+  createdAt: string;
+}
+
+export interface StoredCityWasteItem {
+  id: string;
+  name: string;
+  category: string;
+  depositFee: number;
+  unit: string;
+  active: boolean;
+  cityCorpId?: string | null;
+  createdAt: string;
+}
+
+export interface StoredWalletTransaction {
+  id: string;
+  userId: string;
+  type: "DEPOSIT" | "PICKUP_PAYMENT" | "REFUND";
+  amount: number;
+  paymentMethod?: string | null;
+  trxId?: string | null;
+  status: string;
+  description?: string | null;
   createdAt: string;
 }
 
@@ -193,6 +223,8 @@ if (!g.__intelliwaste_store) {
     schedules: [] as StoredPickupSchedule[],
     withdrawals: [] as any[],
     wasteReports: [] as StoredWasteReport[],
+    cityWasteItems: [] as StoredCityWasteItem[],
+    walletTransactions: [] as StoredWalletTransaction[],
     reportTypes: [
       { id: "rt-1", type: "Illegal Dumping", pts: 150, icon: "⚠️" },
       { id: "rt-2", type: "Hazardous Waste", pts: 200, icon: "☢️" },

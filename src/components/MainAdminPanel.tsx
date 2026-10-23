@@ -11,7 +11,7 @@ import {
   Calendar, UserCheck, CheckCircle2, Clock
 } from "lucide-react";
 import { type Ward, type Bin, type Track } from "../data/cityData";
-import api, { WardItem, BinItem, TrackItem, UserProfile, WithdrawalItem, ReportItem, AlertItem, PickupScheduleItem, userStorage } from "../lib/api";
+import api, { WardItem, BinItem, TrackItem, UserProfile, WithdrawalItem, ReportItem, AlertItem, PickupScheduleItem, CityWasteItem, userStorage } from "../lib/api";
 
 interface MainAdminPanelProps {
   onLogout: () => void;
@@ -30,6 +30,7 @@ const SIDEBAR: SidebarItem[] = [
   { id: "overview",    icon: BarChart2, label: "City Overview" },
   { id: "wards",       icon: Globe,     label: "Ward Management" },
   { id: "rewards",     icon: Coins,     label: "Points & Cash Policy" },
+  { id: "waste-types", icon: Package,   label: "Waste Items & Pricing" },
   { id: "bins",        icon: Trash2,    label: "All Bins" },
   { id: "tracks",      icon: Truck,     label: "All Tracks" },
   { id: "schedules",   icon: Calendar,  label: "Pickup Schedules" },
@@ -727,11 +728,69 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
   const [wasteReports, setWasteReports] = useState<ReportItem[]>([]);
   const [localAlerts, setLocalAlerts] = useState<AlertItem[]>([]);
 
+  // Dynamic Waste Categories & Pricing (Configured by City Corporation Admin)
+  const [wasteItems, setWasteItems] = useState<CityWasteItem[]>([]);
+  const [loadingWasteItems, setLoadingWasteItems] = useState<boolean>(false);
+  const [showAddWasteItem, setShowAddWasteItem] = useState<boolean>(false);
+  const [wasteItemForm, setWasteItemForm] = useState({
+    name: "",
+    category: "Commercial / Bulky",
+    depositFee: 250,
+    unit: "per pickup trip",
+    active: true,
+  });
+  const [savingWasteItem, setSavingWasteItem] = useState<boolean>(false);
+
+  const loadWasteItems = async () => {
+    setLoadingWasteItems(true);
+    try {
+      const items = await api.wasteTypes.getAll({ cityCorpId });
+      if (Array.isArray(items)) setWasteItems(items);
+    } catch {}
+    finally {
+      setLoadingWasteItems(false);
+    }
+  };
+
+  const handleCreateWasteItem = async () => {
+    if (!wasteItemForm.name.trim()) return;
+    setSavingWasteItem(true);
+    try {
+      const created = await api.wasteTypes.create({
+        name: wasteItemForm.name,
+        category: wasteItemForm.category,
+        depositFee: Number(wasteItemForm.depositFee),
+        unit: wasteItemForm.unit,
+        active: wasteItemForm.active,
+        cityCorpId: cityCorpId || currentUser?.cityCorpId || undefined,
+      });
+      if (created?.id) {
+        setWasteItems(prev => [created, ...prev]);
+        setShowAddWasteItem(false);
+        setWasteItemForm({ name: "", category: "Commercial / Bulky", depositFee: 250, unit: "per pickup trip", active: true });
+      }
+    } catch (err: any) {
+      alert(err?.message || "Failed to create waste item");
+    } finally {
+      setSavingWasteItem(false);
+    }
+  };
+
+  const handleDeleteWasteItem = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this custom waste item?")) return;
+    try {
+      await api.wasteTypes.delete(id);
+      setWasteItems(prev => prev.filter(w => w.id !== id));
+    } catch (err: any) {
+      alert(err?.message || "Failed to delete waste item");
+    }
+  };
+
   // Load from API on mount
   useEffect(() => {
     async function fetchData() {
       try {
-        const [apiWards, apiBins, apiTracks, apiUsers, apiWithdrawals, apiReports, apiAlerts, apiDrivers, apiSchedules] = await Promise.all([
+        const [apiWards, apiBins, apiTracks, apiUsers, apiWithdrawals, apiReports, apiAlerts, apiDrivers, apiSchedules, apiWasteItems] = await Promise.all([
           api.wards.getAll(cityCorpId).catch(() => []),
           api.bins.getAll({ cityCorpId }).catch(() => []),
           api.tracks.getAll().catch(() => []),
@@ -741,10 +800,12 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
           api.alerts.getAll({ resolved: false }).catch(() => []),
           api.users.getAll({ role: "DRIVER" }).catch(() => []),
           api.schedules.getAll({ cityCorpId }).catch(() => []),
+          api.wasteTypes.getAll({ cityCorpId }).catch(() => []),
         ]);
 
         if (Array.isArray(apiDrivers)) setDrivers(apiDrivers);
         if (Array.isArray(apiSchedules)) setSchedules(apiSchedules);
+        if (Array.isArray(apiWasteItems)) setWasteItems(apiWasteItems);
 
         if (apiReports && apiReports.length > 0) {
           setWasteReports(apiReports);
@@ -1669,6 +1730,172 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
                   </table>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ── CUSTOM WASTE ITEMS & ON-DEMAND PRICING (CITY ADMIN) ── */}
+          {activeTab === "waste-types" && (
+            <div className="space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-display font-bold text-white text-lg flex items-center gap-2">
+                    <Package className="text-[#4ade80]" size={20} />
+                    <span>Waste Items & On-Demand Pickup Pricing</span>
+                  </h2>
+                  <p className="text-xs text-[#4b7a5a] mt-0.5">
+                    Configure dynamic waste types and deposit rates. Citizens and commercial businesses will choose from these when requesting pickups.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={loadWasteItems}
+                    disabled={loadingWasteItems}
+                    className="border border-[#1a3d22] text-[#86efac] hover:text-white rounded-xl p-2.5 transition-colors"
+                    title="Refresh Waste Items"
+                  >
+                    <RefreshCw size={14} className={loadingWasteItems ? "animate-spin" : ""} />
+                  </button>
+                  <button
+                    onClick={() => setShowAddWasteItem(true)}
+                    className="bg-[#16a34a] hover:bg-[#15803d] text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow"
+                  >
+                    <Plus size={14} /> Create Waste Item
+                  </button>
+                </div>
+              </div>
+
+              {/* Waste Items Table */}
+              <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl overflow-hidden">
+                <div className="p-4 border-b border-[#1a3d22] flex items-center justify-between">
+                  <span className="text-xs font-mono text-[#86efac]">{wasteItems.length} custom waste items configured</span>
+                </div>
+                {wasteItems.length === 0 ? (
+                  <div className="p-8 text-center text-sm text-[#4b7a5a]">
+                    No custom waste items defined. Click "Create Waste Item" to add categories.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-[#1a3d22]">
+                          {["Item Name", "Category", "Deposit Fee (BDT)", "Billing Unit", "Status", "Actions"].map(h => (
+                            <th key={h} className="px-4 py-3 text-left text-xs font-mono text-[#4b7a5a] whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#1a3d22]">
+                        {wasteItems.map(item => (
+                          <tr key={item.id} className="hover:bg-[#13301b] transition-colors">
+                            <td className="px-4 py-3 font-semibold text-white whitespace-nowrap">{item.name}</td>
+                            <td className="px-4 py-3 text-xs text-[#86efac] whitespace-nowrap">{item.category}</td>
+                            <td className="px-4 py-3 font-mono font-bold text-[#4ade80] whitespace-nowrap">৳{item.depositFee}</td>
+                            <td className="px-4 py-3 text-xs text-[#4b7a5a] whitespace-nowrap">{item.unit}</td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${item.active ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"}`}>
+                                {item.active ? "ACTIVE" : "INACTIVE"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <button
+                                onClick={() => handleDeleteWasteItem(item.id)}
+                                className="text-red-400 hover:text-red-300 p-1 rounded-md transition-colors"
+                                title="Delete Item"
+                              >
+                                <Trash size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Create Waste Item Modal */}
+              {showAddWasteItem && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4" onClick={() => setShowAddWasteItem(false)}>
+                  <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-between pb-3 border-b border-[#1a3d22] mb-4">
+                      <div className="font-display font-700 text-white text-base">New Waste Item & Pricing</div>
+                      <button onClick={() => setShowAddWasteItem(false)}><X size={16} className="text-[#4b7a5a]" /></button>
+                    </div>
+
+                    <div className="space-y-3.5">
+                      <div>
+                        <label className="block text-xs font-mono text-[#86efac] mb-1">WASTE ITEM NAME *</label>
+                        <input
+                          value={wasteItemForm.name}
+                          onChange={e => setWasteItemForm(f => ({ ...f, name: e.target.value }))}
+                          placeholder="e.g. Restaurant Kitchen Organic Waste"
+                          className={inp}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-mono text-[#86efac] mb-1">CATEGORY</label>
+                        <input
+                          value={wasteItemForm.category}
+                          onChange={e => setWasteItemForm(f => ({ ...f, category: e.target.value }))}
+                          placeholder="e.g. Commercial Organic / Bulky"
+                          className={inp}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-mono text-[#86efac] mb-1">DEPOSIT FEE (৳)</label>
+                          <input
+                            type="number"
+                            min="50"
+                            value={wasteItemForm.depositFee}
+                            onChange={e => setWasteItemForm(f => ({ ...f, depositFee: Number(e.target.value) }))}
+                            className={inp}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-mono text-[#86efac] mb-1">UNIT</label>
+                          <input
+                            value={wasteItemForm.unit}
+                            onChange={e => setWasteItemForm(f => ({ ...f, unit: e.target.value }))}
+                            placeholder="per trip / drum"
+                            className={inp}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-2">
+                        <input
+                          type="checkbox"
+                          id="active-waste"
+                          checked={wasteItemForm.active}
+                          onChange={e => setWasteItemForm(f => ({ ...f, active: e.target.checked }))}
+                          className="accent-[#16a34a]"
+                        />
+                        <label htmlFor="active-waste" className="text-xs text-[#86efac] cursor-pointer">
+                          Active (Visible to citizens & restaurants for booking)
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 mt-5">
+                      <button
+                        onClick={() => setShowAddWasteItem(false)}
+                        className="flex-1 border border-[#1a3d22] text-[#4b7a5a] hover:text-white py-2 rounded-xl text-xs font-semibold"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        disabled={savingWasteItem || !wasteItemForm.name.trim()}
+                        onClick={handleCreateWasteItem}
+                        className="flex-1 bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-40 text-white py-2 rounded-xl text-xs font-bold"
+                      >
+                        {savingWasteItem ? "Creating..." : "Save Waste Item"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

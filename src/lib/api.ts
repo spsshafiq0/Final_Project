@@ -15,6 +15,7 @@ export interface UserProfile {
   wardId?: string | null;
   ward?: { id: string; name: string; area: string } | null;
   points?: number;
+  walletBalance?: number;
   address?: string | null;
   nid?: string | null;
 }
@@ -103,6 +104,30 @@ export interface PickupScheduleItem {
   createdAt?: string;
 }
 
+export interface CityWasteItem {
+  id: string;
+  name: string;
+  category: string;
+  depositFee: number;
+  unit: string;
+  active: boolean;
+  cityCorpId: string;
+  cityCorp?: { id: string; name: string; code: string };
+  createdAt?: string;
+}
+
+export interface WalletTransaction {
+  id: string;
+  userId: string;
+  type: "DEPOSIT" | "PAYMENT" | "REFUND";
+  amount: number;
+  paymentMethod?: string | null;
+  trxId?: string | null;
+  status: string;
+  description?: string | null;
+  createdAt: string;
+}
+
 export interface PickupItem {
   id: string;
   requesterType: string;
@@ -113,6 +138,14 @@ export interface PickupItem {
   amount: number;
   status: "open" | "accepted" | "completed";
   securityCode?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  cityCorpId?: string | null;
+  cityCorp?: { id: string; name: string; code: string } | null;
+  wardId?: string | null;
+  ward?: { id: string; name: string; area: string } | null;
+  wasteItemId?: string | null;
+  wasteItem?: CityWasteItem | null;
   requesterId?: string;
   requester?: { id: string; fullName: string; phone?: string | null };
   driverId?: string | null;
@@ -157,12 +190,18 @@ export interface ReportItem {
   id: string;
   reportCode: string;
   location: string;
+  lat?: number | null;
+  lng?: number | null;
   description: string;
   imageUrl?: string | null;
   wasteType: string;
-  status: "pending" | "investigating" | "resolved";
+  status: "pending" | "investigating" | "resolved" | "FAKE_REPORT";
   priority: "normal" | "urgent" | "critical";
   pointsEarned: number;
+  isFakeReport?: boolean;
+  fakeReason?: string | null;
+  reportedFakeByDriverId?: string | null;
+  pointsRevoked?: boolean;
   citizenId: string;
   citizen?: { id: string; fullName: string; phone?: string; email?: string } | null;
   wardId?: string | null;
@@ -522,6 +561,16 @@ export const api = {
         method: "PUT",
         body: JSON.stringify(data),
       }),
+    accept: (id: string) =>
+      request<{ message: string; pickup: PickupItem }>(`/pickups/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ action: "accept" }),
+      }),
+    complete: (id: string, securityCode?: string) =>
+      request<{ message: string; pickup: PickupItem }>(`/pickups/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ action: "complete", securityCode }),
+      }),
     delete: (id: string) =>
       request<{ message: string }>(`/pickups/${id}`, {
         method: "DELETE",
@@ -714,6 +763,8 @@ export const api = {
     },
     create: (data: {
       location: string;
+      lat?: number;
+      lng?: number;
       description: string;
       imageUrl?: string;
       wasteType?: string;
@@ -729,6 +780,46 @@ export const api = {
       request<{ success: boolean; report: ReportItem }>("/reports", {
         method: "PUT",
         body: JSON.stringify({ id, status }),
+      }),
+    flagFake: (id: string, reason: string) =>
+      request<{ success: boolean; message: string; report: ReportItem; pointsRevoked?: number }>("/reports", {
+        method: "PUT",
+        body: JSON.stringify({ id, action: "flag_fake", status: "FAKE_REPORT", reason }),
+      }),
+  },
+
+  // City Waste Items (Configured by City Corporation Admin)
+  wasteTypes: {
+    getAll: (filters?: { cityCorpId?: string; active?: boolean }) => {
+      const params = new URLSearchParams();
+      if (filters?.cityCorpId) params.append("cityCorpId", filters.cityCorpId);
+      if (filters?.active !== undefined) params.append("active", String(filters.active));
+      const query = params.toString() ? `?${params.toString()}` : "";
+      return request<CityWasteItem[]>(`/waste-types${query}`);
+    },
+    create: (data: Partial<CityWasteItem>) =>
+      request<CityWasteItem>("/waste-types", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Partial<CityWasteItem>) =>
+      request<CityWasteItem>(`/waste-types?id=${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body: JSON.stringify({ id, ...data }),
+      }),
+    delete: (id: string) =>
+      request<{ success: boolean; message: string }>(`/waste-types?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      }),
+  },
+
+  // Citizen & Business Wallet & Deposits (bKash, Nagad, Rocket, Card, Bank)
+  wallet: {
+    get: () => request<{ walletBalance: number; transactions: WalletTransaction[] }>("/wallet"),
+    deposit: (data: { amount: number; paymentMethod: string; trxId?: string; senderNumber?: string; note?: string }) =>
+      request<{ success: boolean; message: string; walletBalance: number; transaction: WalletTransaction }>("/wallet", {
+        method: "POST",
+        body: JSON.stringify(data),
       }),
   },
 

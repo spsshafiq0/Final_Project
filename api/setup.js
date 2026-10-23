@@ -5923,6 +5923,8 @@ if (!g.__intelliwaste_store) {
     schedules: [],
     withdrawals: [],
     wasteReports: [],
+    cityWasteItems: [],
+    walletTransactions: [],
     reportTypes: [
       { id: "rt-1", type: "Illegal Dumping", pts: 150, icon: "\u26A0\uFE0F" },
       { id: "rt-2", type: "Hazardous Waste", pts: 200, icon: "\u2622\uFE0F" },

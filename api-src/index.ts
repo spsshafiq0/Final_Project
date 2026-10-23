@@ -37,6 +37,8 @@ import auditHandler from "../lib/handlers/audit/index";
 import ranksIndex from "../lib/handlers/ranks/index";
 import rewardsIndex from "../lib/handlers/rewards/index";
 import schedulesIndex from "../lib/handlers/schedules/index";
+import wasteTypesIndex from "../lib/handlers/waste-types/index";
+import walletIndex from "../lib/handlers/wallet/index";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -190,6 +192,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 17. Pickup Schedules
     if (resource === "schedules") {
       return schedulesIndex(req, res);
+    }
+
+    // 18. City Waste Items / Types (City Admin & On-Demand Pickups)
+    if (resource === "waste-types") {
+      return wasteTypesIndex(req, res);
+    }
+
+    // 19. Citizen / Business Wallet & Deposits
+    if (resource === "wallet") {
+      return walletIndex(req, res);
     }
 
     return res.status(200).json({ status: "healthy", endpoint: segments.join("/") });
