@@ -62,6 +62,10 @@ export default function DriverRouteMap({ currentUser, onRefreshStats }: DriverRo
   const [optimizing, setOptimizing] = useState<boolean>(false);
   const [alertToast, setAlertToast] = useState<string | null>(null);
 
+  // Map Tile Style (Google-style roads, Satellite, OSM)
+  const [mapStyle, setMapStyle] = useState<"streets" | "osm" | "satellite">("streets");
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+
   // Driver live location state
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -225,11 +229,12 @@ export default function DriverRouteMap({ currentUser, onRefreshStats }: DriverRo
         preferCanvas: true, // Use Canvas renderer for thousands of bins!
       });
 
-      // Dark Mode Tile Layer (CartoDB Dark Matter)
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      // Google Maps-like Clean Vector Road Tile Layer (CartoDB Voyager)
+      const initialTile = L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         maxZoom: 19,
       }).addTo(map);
+      tileLayerRef.current = initialTile;
 
       // Add Zoom Control to bottom-right
       L.control.zoom({ position: "bottomright" }).addTo(map);
@@ -322,22 +327,34 @@ export default function DriverRouteMap({ currentUser, onRefreshStats }: DriverRo
         // Draw Road Polyline (from OSRM GeoJSON geometry)
         if (trip.geometry?.coordinates) {
           const latLngs = trip.geometry.coordinates.map((c: [number, number]) => [c[1], c[0]]);
+
+          // Road route casing outline (dark background for contrast against road tiles)
+          const casingPolyline = L.polyline(latLngs, {
+            color: "#052e16",
+            weight: isCurrentTrip ? 8 : 4,
+            opacity: 0.9,
+            lineCap: "round",
+            lineJoin: "round",
+          });
+          layers.addLayer(casingPolyline);
+
+          // Core Google Maps-like vibrant road navigation line
           const polyline = L.polyline(latLngs, {
-            color: tripColor,
-            weight: isCurrentTrip ? 6 : 3,
-            opacity: isCurrentTrip ? 0.95 : 0.4,
+            color: isCurrentTrip ? (trip.hasHazard ? "#ef4444" : "#22c55e") : tripColor,
+            weight: isCurrentTrip ? 5 : 3,
+            opacity: isCurrentTrip ? 1 : 0.6,
             dashArray: isCurrentTrip ? undefined : "6, 6",
             lineCap: "round",
             lineJoin: "round",
           });
 
           polyline.bindPopup(`
-            <div style="font-family:sans-serif; font-size:12px; color:#1e293b;">
-              <strong>Trip #${trip.tripNumber}</strong><br/>
-              Stops: ${trip.stopsCount}<br/>
-              Distance: ${trip.distanceKm} km<br/>
-              Estimated Time: ${trip.durationMin} mins<br/>
-              Load: ${trip.loadKg} / ${trip.capacityKg} kg (${trip.utilizationPct}%)
+            <div style="font-family:sans-serif; font-size:12px; color:#1e293b; min-width:180px;">
+              <strong style="color:#0f172a; font-size:13px;">Trip #${trip.tripNumber} Road Route</strong><br/>
+              <span style="color:#475569;">Stops:</span> <strong>${trip.stopsCount}</strong><br/>
+              <span style="color:#475569;">Distance:</span> <strong>${trip.distanceKm} km</strong><br/>
+              <span style="color:#475569;">Estimated Duration:</span> <strong>${trip.durationMin} mins</strong><br/>
+              <span style="color:#475569;">Payload:</span> <strong>${trip.loadKg} / ${trip.capacityKg} kg (${trip.utilizationPct}%)</strong>
             </div>
           `);
           layers.addLayer(polyline);
@@ -442,6 +459,11 @@ export default function DriverRouteMap({ currentUser, onRefreshStats }: DriverRo
   }, [bins, routeData, activeTripIndex, completedBinIds, driverLocation]);
 
   const activeTrip = routeData?.trips?.[activeTripIndex] || routeData?.trips?.[0];
+
+  const nextPendingStop = useMemo(() => {
+    if (!activeTrip?.stops) return null;
+    return activeTrip.stops.find((s: any) => !completedBinIds.includes(String(s.binId))) || null;
+  }, [activeTrip, completedBinIds]);
 
   return (
     <div className="space-y-4">
@@ -601,10 +623,91 @@ export default function DriverRouteMap({ currentUser, onRefreshStats }: DriverRo
         </div>
       )}
 
+      {/* Next Priority Stop Road Navigation Action Bar */}
+      {nextPendingStop && (
+        <div className="bg-gradient-to-r from-[#0d2414] via-[#12381e] to-[#0d2414] border-2 border-[#4ade80]/60 rounded-2xl p-4 shadow-xl flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-[#16a34a] text-white flex items-center justify-center font-mono font-bold text-base shadow-md shrink-0">
+              #{nextPendingStop.stopNumber}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-white font-display font-bold text-sm truncate">
+                  Next Stop: {nextPendingStop.name}
+                </span>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
+                  nextPendingStop.priority === "CRITICAL_HAZARD"
+                    ? "bg-red-500/20 text-red-400 border border-red-500/50"
+                    : "bg-orange-500/20 text-orange-400"
+                }`}>
+                  {nextPendingStop.fillLevel}% Full {nextPendingStop.priority === "CRITICAL_HAZARD" ? "• ⚠️ HAZARD" : ""}
+                </span>
+              </div>
+              <div className="text-xs text-[#86efac] truncate mt-0.5 flex items-center gap-2 flex-wrap">
+                <span>📍 {nextPendingStop.location}</span>
+                <span className="text-[#4b7a5a]">|</span>
+                <span className="font-mono text-[#4ade80]">🚗 {nextPendingStop.legDistanceKm} km (~{nextPendingStop.etaMinutes} mins ETA along road)</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${nextPendingStop.lat},${nextPendingStop.lon}&travelmode=driving`}
+              target="_blank"
+              rel="noreferrer"
+              className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-md transition-all hover:scale-105"
+            >
+              <Navigation size={14} />
+              <span>Drive (Google Maps)</span>
+            </a>
+            <button
+              type="button"
+              onClick={() => handleMarkCollected(nextPendingStop.binId)}
+              className="bg-[#16a34a] hover:bg-[#15803d] text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-md transition-all"
+            >
+              <Check size={14} />
+              <span>Mark Collected</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Content Layout: Map + Responsive Side Panel / Bottom Sheet */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Leaflet Map Container */}
         <div className="lg:col-span-8 bg-[#0d2414] border border-[#1a3d22] rounded-2xl overflow-hidden relative shadow-md">
+          {/* Map Style Controls */}
+          <div className="absolute top-3 left-3 z-[1000] bg-[#061309]/90 backdrop-blur-md border border-[#1a3d22] rounded-xl p-1 shadow-lg flex items-center gap-1 text-[11px] font-mono">
+            <button
+              type="button"
+              onClick={() => setMapStyle("streets")}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                mapStyle === "streets" ? "bg-[#16a34a] text-white font-bold" : "text-[#86efac] hover:bg-[#16a34a]/20"
+              }`}
+            >
+              🗺️ Roads (Google Style)
+            </button>
+            <button
+              type="button"
+              onClick={() => setMapStyle("satellite")}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                mapStyle === "satellite" ? "bg-[#16a34a] text-white font-bold" : "text-[#86efac] hover:bg-[#16a34a]/20"
+              }`}
+            >
+              🛰️ Satellite
+            </button>
+            <button
+              type="button"
+              onClick={() => setMapStyle("osm")}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                mapStyle === "osm" ? "bg-[#16a34a] text-white font-bold" : "text-[#86efac] hover:bg-[#16a34a]/20"
+              }`}
+            >
+              🧭 OSM
+            </button>
+          </div>
+
           {/* Legend Overlay */}
           <div className="absolute top-3 right-3 z-[1000] bg-[#061309]/90 backdrop-blur-md border border-[#1a3d22] rounded-xl p-2.5 text-[11px] font-mono text-[#86efac] shadow-lg space-y-1">
             <div className="flex items-center gap-2">

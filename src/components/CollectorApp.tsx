@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
 import { Truck, MapPin, CheckCircle, AlertTriangle, Clock, Navigation, Package, Shield, ArrowLeft, ChevronRight, Battery, Fuel, Wind, Wallet, Banknote, Home, ListChecks, Trash2, KeyRound, LogIn, RefreshCw, LogOut, Flame, Sparkles, Radio, AlertOctagon, X } from "lucide-react";
-import NearbyBinsMap from "./NearbyBinsMap";
 import { acceptPickupRequest, completePickupRequest, getDriverBalance, getPickupRequests, setDriverBalance, type PickupRequest } from "../data/pickupStore";
 import api, { ReportItem, userStorage } from "../lib/api";
 import ForgotPasswordModal from "./ForgotPasswordModal";
@@ -34,7 +33,7 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
   const [activeStop, setActiveStop] = useState<number | null>(null);
   const [showHazard, setShowHazard] = useState(false);
   const [hazardChecked, setHazardChecked] = useState<number[]>([]);
-  const [activeTab, setActiveTab] = useState<"Home" | "Bins" | "Priority Map" | "Pickups" | "Earnings">("Home");
+  const [activeTab, setActiveTab] = useState<"Route & Map" | "Pickups" | "Citizen Reports" | "Earnings">("Route & Map");
   const [balance, setBalance] = useState(getDriverBalance());
   const [pickupRequests, setPickupRequests] = useState<PickupRequest[]>(getPickupRequests());
   const [driverCodes, setDriverCodes] = useState<Record<string | number, string>>({});
@@ -250,10 +249,9 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
       <div className="bg-[#0a1f0e] border-b border-[#1a3d22] px-3">
         <div className="max-w-5xl mx-auto flex overflow-x-auto scrollbar-hide">
           {[
-            { label: "Home", icon: Home },
-            { label: "Bins", icon: Trash2 },
-            { label: "Priority Map", icon: MapPin },
+            { label: "Route & Map", icon: MapPin },
             { label: "Pickups", icon: ListChecks },
+            { label: "Citizen Reports", icon: AlertTriangle },
             { label: "Earnings", icon: Wallet },
           ].map(item => (
             <button
@@ -262,14 +260,14 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
                 setActiveTab(item.label as typeof activeTab);
                 setBalance(getDriverBalance());
                 setPickupRequests(getPickupRequests());
-                if (item.label === "Priority Map") loadReports();
+                if (item.label === "Citizen Reports") loadReports();
               }}
-              className={`flex-1 min-w-24 py-3 flex items-center justify-center gap-2 text-xs font-semibold border-b-2 transition-all ${
+              className={`flex-1 min-w-28 py-3 flex items-center justify-center gap-2 text-xs font-semibold border-b-2 transition-all ${
                 activeTab === item.label ? "border-[#4ade80] text-[#4ade80]" : "border-transparent text-[#4b7a5a] hover:text-[#86efac]"
               }`}
             >
               <item.icon size={14} /> {item.label}
-              {item.label === "Priority Map" && wasteReports.length > 0 && (
+              {item.label === "Citizen Reports" && wasteReports.length > 0 && (
                 <span className="bg-red-500 text-white font-mono text-[10px] px-1.5 py-0.2 rounded-full">
                   {wasteReports.length}
                 </span>
@@ -279,7 +277,7 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
         </div>
       </div>
 
-      {activeTab === "Home" && (
+      {activeTab === "Route & Map" && (
         <div className="max-w-5xl mx-auto px-4 py-5 space-y-5">
           {/* AI Priority Route & Fuel Cost Reduction Banner */}
           <div className="bg-gradient-to-r from-[#0d2414] via-[#11381c] to-[#0d2414] border border-[#4ade80]/40 rounded-2xl p-4 sm:p-5 shadow-lg">
@@ -341,34 +339,22 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
               <div className="text-[#4b7a5a] text-xs mt-1">Bin routes + citizen pickup earnings</div>
               <button onClick={() => { setWithdrawOpen(true); setWithdrawn(false); }} className="mt-5 bg-[#4ade80] text-[#052e16] rounded-xl px-5 py-2.5 text-sm font-bold flex items-center gap-2"><Banknote size={15} /> Withdraw</button>
             </div>
-            <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-5">
-              <div className="text-[#4b7a5a] text-xs">Today's progress</div>
-              <div className="text-white font-display font-800 text-2xl mt-2">{completedStops.length}/{route.length}</div>
-              <div className="text-[#86efac] text-sm">assigned bins collected</div>
-              <button onClick={() => setActiveTab("Bins")} className="text-[#4ade80] text-xs font-semibold mt-5">View assigned route →</button>
+            <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-5 flex flex-col justify-between">
+              <div>
+                <div className="text-[#4b7a5a] text-xs font-mono">TODAY'S COLLECTION</div>
+                <div className="text-white font-display font-800 text-2xl mt-2">{completedStops.length} Completed</div>
+                <div className="text-[#86efac] text-xs mt-1">Live Neon DB Sync</div>
+              </div>
+              <a href="#driver-route-map" className="text-[#4ade80] text-xs font-semibold mt-4 flex items-center gap-1">
+                <span>View road route map ↓</span>
+              </a>
             </div>
           </div>
 
-          <div>
-            <div className="text-white font-display font-700 mb-3">Priority bins under your track</div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {route.slice(0, 3).map(stop => (
-                <div key={stop.id} className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-white font-bold">{stop.id}</span>
-                    <span className={stop.fill >= 80 ? "text-red-400 font-mono font-bold" : "text-orange-400 font-mono font-bold"}>{stop.fill}%</span>
-                  </div>
-                  <div className="text-[#4b7a5a] text-xs mt-2 truncate">{stop.location}</div>
-                  <div className="flex items-center gap-2 mt-2 font-mono text-[11px]">
-                    <span className={stop.tempCelsius >= 45 ? "text-red-400 font-bold" : "text-[#86efac]"}>🌡️ {stop.tempCelsius}°C</span>
-                    <span className={stop.ammoniaPpm >= 50 ? "text-orange-400 font-bold" : "text-[#4b7a5a]"}>🧪 {stop.ammoniaPpm} ppm NH₃</span>
-                  </div>
-                  <a href={`https://maps.google.com/?q=${stop.location}`} target="_blank" rel="noreferrer" className="text-[#60a5fa] text-xs mt-3 flex items-center gap-1"><Navigation size={12} /> Open location</a>
-                </div>
-              ))}
-            </div>
+          {/* ── UNIFIED PRIORITY-BASED COLLECTION ROUTE MAP (GOOGLE MAPS ROAD STYLE) ── */}
+          <div id="driver-route-map" className="pt-1">
+            <DriverRouteMap currentUser={currentUser} />
           </div>
-          <NearbyBinsMap area="Mohammadpur" dark />
         </div>
       )}
 
@@ -397,185 +383,9 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
         </div>
       </div>
 
-      {/* Hazard alert banner */}
-      {activeTab === "Bins" && route.some(r => (r.hazardLevel !== "NORMAL") && !completedStops.includes(r.stopNumber)) && (
-        <div className="bg-red-500/15 border-b border-red-500/40 px-4 py-3">
-          <div className="max-w-3xl mx-auto flex items-center gap-3">
-            <AlertTriangle size={18} className="text-red-400 shrink-0" />
-            <div className="flex-1">
-              <div className="text-red-400 text-sm font-semibold">Priority Hazard Detected: Stop #1 ({route[0]?.id})</div>
-              <div className="text-red-300 text-xs">
-                {route[0]?.hazardDescription || "High temperature / ammonia gas detected. Prioritized for immediate clearance."}
-              </div>
-            </div>
-            <button onClick={() => setShowHazard(true)} className="text-xs text-red-400 border border-red-400/50 px-3 py-1.5 rounded-lg hover:bg-red-500/10 whitespace-nowrap">
-              Safety Protocol
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Route list */}
-      <div className={`${activeTab === "Bins" ? "block" : "hidden"} max-w-3xl mx-auto px-4 py-4 space-y-3`}>
-        {/* Dynamic Route Optimizer Stats summary */}
-        <div className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles size={16} className="text-[#4ade80]" />
-            <div>
-              <div className="text-white text-xs font-semibold">Priority Route & Fuel Optimizer</div>
-              <div className="text-[#4b7a5a] text-[11px] font-mono">
-                {optResult.optimizationSummary}
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={triggerIotHazardSim}
-            className="text-xs bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 text-red-400 px-2.5 py-1 rounded-lg shrink-0"
-          >
-            Trigger Test Surge
-          </button>
-        </div>
-
-        {route.map(stop => {
-          const isDone = completedStops.includes(stop.stopNumber);
-          const isActive = activeStop === stop.stopNumber;
-          const isHazard = stop.hazardLevel === "DUAL_HAZARD" || stop.hazardLevel === "FIRE_HAZARD" || stop.hazardLevel === "TOXIC_AMMONIA";
-
-          return (
-            <div
-              key={stop.id}
-              className={`border rounded-xl overflow-hidden transition-all ${
-                isDone ? "border-[#1a3d22] opacity-60" :
-                isHazard ? "border-red-500/60 shadow-lg shadow-red-500/10" :
-                stop.fill >= 80 ? "border-orange-500/50" :
-                stop.fill >= 60 ? "border-yellow-500/30" :
-                "border-[#1a3d22]"
-              } ${isDone ? "bg-[#0a1f0e]" : "bg-[#0d2414]"}`}
-            >
-              <div
-                className="flex items-center gap-3 p-4 cursor-pointer"
-                onClick={() => setActiveStop(isActive ? null : stop.stopNumber)}
-              >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-mono font-bold text-sm shrink-0 ${
-                  isDone ? "bg-[#4ade80] text-[#052e16]" :
-                  isHazard ? "bg-red-500/20 text-red-400 border border-red-500" :
-                  stop.fill >= 80 ? "bg-orange-500/20 text-orange-400" :
-                  "bg-[#1a3d22] text-[#4b7a5a]"
-                }`}>
-                  {isDone ? <CheckCircle size={16} /> : stop.stopNumber}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="font-mono font-bold text-white text-sm">{stop.id}</span>
-                    {isHazard && (
-                      <span className="text-[10px] font-mono bg-red-500/20 border border-red-500/50 text-red-400 px-2 py-0.5 rounded-full font-bold animate-pulse">
-                        ⚠️ {stop.priorityBadge}
-                      </span>
-                    )}
-                    {stop.fill >= 80 && !isHazard && (
-                      <span className="text-[10px] font-mono bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full font-semibold">
-                        CRITICAL OVERFLOW
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-[#4b7a5a] text-xs truncate">{stop.location} · {stop.area}</div>
-                  <div className="flex items-center gap-3 mt-1.5 font-mono text-[11px]">
-                    <span className={stop.tempCelsius >= 45 ? "text-red-400 font-bold" : "text-[#86efac]"}>
-                      🌡️ Temp: {stop.tempCelsius}°C
-                    </span>
-                    <span className={stop.ammoniaPpm >= 50 ? "text-red-400 font-bold" : "text-[#4ade80]"}>
-                      🧪 NH₃: {stop.ammoniaPpm} ppm
-                    </span>
-                    <span className="text-[#4b7a5a]">
-                      📍 {stop.distanceFromPrevKm} km away (~{stop.estimatedArrivalMins}m)
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <div className="text-right">
-                    <div className="font-mono text-sm font-bold" style={{ color: stop.fill >= 80 ? "#ef4444" : stop.fill >= 60 ? "#f59e0b" : "#4ade80" }}>
-                      {stop.fill}%
-                    </div>
-                    <div className="text-[#4b7a5a] text-xs font-mono">{stop.capacity || "120L"}</div>
-                  </div>
-                  <ChevronRight size={14} className={`text-[#4b7a5a] transition-transform ${isActive ? "rotate-90" : ""}`} />
-                </div>
-              </div>
-
-              {isActive && !isDone && (
-                <div className="border-t border-[#1a3d22] p-4 space-y-3">
-                  <div className="grid grid-cols-3 gap-2 text-xs font-mono">
-                    <div className="bg-[#061309] rounded-lg p-2.5">
-                      <div className="text-[#4b7a5a] text-[10px]">FILL LEVEL</div>
-                      <div className="font-bold text-sm" style={{ color: stop.fill >= 80 ? "#ef4444" : "#f59e0b" }}>{stop.fill}%</div>
-                    </div>
-                    <div className="bg-[#061309] rounded-lg p-2.5">
-                      <div className="text-[#4b7a5a] text-[10px]">TEMPERATURE</div>
-                      <div className={`font-bold text-sm ${stop.tempCelsius >= 45 ? "text-red-400" : "text-[#86efac]"}`}>{stop.tempCelsius}°C</div>
-                    </div>
-                    <div className="bg-[#061309] rounded-lg p-2.5">
-                      <div className="text-[#4b7a5a] text-[10px]">AMMONIA (NH₃)</div>
-                      <div className={`font-bold text-sm ${stop.ammoniaPpm >= 50 ? "text-red-400" : "text-[#4ade80]"}`}>{stop.ammoniaPpm} ppm</div>
-                    </div>
-                  </div>
-
-                  {isHazard && (
-                    <div className="bg-red-500/10 border border-red-500/40 rounded-xl p-3 text-xs text-red-300">
-                      <div className="font-bold text-red-400 mb-1 flex items-center gap-1.5">
-                        <Flame size={14} /> Hazard Assessment:
-                      </div>
-                      <div>{stop.hazardDescription}</div>
-                      <button onClick={() => setShowHazard(true)} className="mt-2 text-xs text-red-400 underline flex items-center gap-1">
-                        <Shield size={12} /> View Hazmat PPE Protocol
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="flex gap-3">
-                    <a
-                      href={`https://maps.google.com/?q=${stop.location}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex-1 bg-[#1a3d22] border border-[#1a3d22] text-[#4ade80] rounded-lg py-2.5 text-sm font-medium flex items-center justify-center gap-2 hover:border-[#4ade80]/40 transition-colors"
-                    >
-                      <Navigation size={14} />
-                      Navigate ({stop.distanceFromPrevKm} km)
-                    </a>
-                    <button
-                      onClick={() => toggleStop(stop.stopNumber)}
-                      className="flex-1 bg-[#16a34a] text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-[#15803d] transition-colors"
-                    >
-                      Mark Collected
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {isDone && (
-                <div className="border-t border-[#1a3d22] px-4 py-2 flex items-center justify-between">
-                  <span className="text-[#4ade80] text-xs font-mono">✓ Collected & Cleared</span>
-                  <button onClick={() => setCompletedStops(p => p.filter(s => s !== stop.stopNumber))} className="text-[#4b7a5a] text-xs hover:text-[#86efac]">Undo</button>
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* End of route */}
-        {completedStops.length === route.length && route.length > 0 && (
-          <div className="bg-[#0d2414] border border-[#4ade80]/40 rounded-xl p-6 text-center">
-            <CheckCircle size={40} className="text-[#4ade80] mx-auto mb-3" />
-            <div className="font-display font-700 text-white text-xl mb-1">Route Complete! 🎉</div>
-            <div className="text-[#86efac] text-sm mb-4">All {route.length} priority bins collected. Total fuel saved: {optResult.fuelSavedLitres} L (৳{optResult.moneySavedBdt}).</div>
-          </div>
-        )}
-      </div>
-
-      {/* Priority Base Map & Collection Route Optimizer */}
-      {activeTab === "Priority Map" && (
+      {/* Citizen Waste Reports Queue */}
+      {activeTab === "Citizen Reports" && (
         <div className="max-w-5xl mx-auto px-4 py-5 space-y-6">
-          {/* Leaflet CVRP Route Map with Multi-Trip Directions */}
-          <DriverRouteMap currentUser={currentUser} />
 
           {/* Citizen Waste Reports Queue */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-[#1a3d22]">
