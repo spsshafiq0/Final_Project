@@ -31,9 +31,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// node_modules/.pnpm/bcryptjs@2.4.3/node_modules/bcryptjs/dist/bcrypt.js
+// node_modules/bcryptjs/dist/bcrypt.js
 var require_bcrypt = __commonJS({
-  "node_modules/.pnpm/bcryptjs@2.4.3/node_modules/bcryptjs/dist/bcrypt.js"(exports, module) {
+  "node_modules/bcryptjs/dist/bcrypt.js"(exports, module) {
     (function(global, factory) {
       if (typeof define === "function" && define["amd"])
         define([], factory);
@@ -1842,16 +1842,16 @@ var require_bcrypt = __commonJS({
   }
 });
 
-// node_modules/.pnpm/bcryptjs@2.4.3/node_modules/bcryptjs/index.js
+// node_modules/bcryptjs/index.js
 var require_bcryptjs = __commonJS({
-  "node_modules/.pnpm/bcryptjs@2.4.3/node_modules/bcryptjs/index.js"(exports, module) {
+  "node_modules/bcryptjs/index.js"(exports, module) {
     module.exports = require_bcrypt();
   }
 });
 
-// node_modules/.pnpm/safe-buffer@5.2.1/node_modules/safe-buffer/index.js
+// node_modules/safe-buffer/index.js
 var require_safe_buffer = __commonJS({
-  "node_modules/.pnpm/safe-buffer@5.2.1/node_modules/safe-buffer/index.js"(exports, module) {
+  "node_modules/safe-buffer/index.js"(exports, module) {
     var buffer = __require("buffer");
     var Buffer2 = buffer.Buffer;
     function copyProps(src, dst) {
@@ -1907,9 +1907,9 @@ var require_safe_buffer = __commonJS({
   }
 });
 
-// node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/data-stream.js
+// node_modules/jws/lib/data-stream.js
 var require_data_stream = __commonJS({
-  "node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/data-stream.js"(exports, module) {
+  "node_modules/jws/lib/data-stream.js"(exports, module) {
     var Buffer2 = require_safe_buffer().Buffer;
     var Stream = __require("stream");
     var util = __require("util");
@@ -1955,9 +1955,9 @@ var require_data_stream = __commonJS({
   }
 });
 
-// node_modules/.pnpm/ecdsa-sig-formatter@1.0.11/node_modules/ecdsa-sig-formatter/src/param-bytes-for-alg.js
+// node_modules/ecdsa-sig-formatter/src/param-bytes-for-alg.js
 var require_param_bytes_for_alg = __commonJS({
-  "node_modules/.pnpm/ecdsa-sig-formatter@1.0.11/node_modules/ecdsa-sig-formatter/src/param-bytes-for-alg.js"(exports, module) {
+  "node_modules/ecdsa-sig-formatter/src/param-bytes-for-alg.js"(exports, module) {
     "use strict";
     function getParamSize(keySize) {
       var result = (keySize / 8 | 0) + (keySize % 8 === 0 ? 0 : 1);
@@ -1979,9 +1979,9 @@ var require_param_bytes_for_alg = __commonJS({
   }
 });
 
-// node_modules/.pnpm/ecdsa-sig-formatter@1.0.11/node_modules/ecdsa-sig-formatter/src/ecdsa-sig-formatter.js
+// node_modules/ecdsa-sig-formatter/src/ecdsa-sig-formatter.js
 var require_ecdsa_sig_formatter = __commonJS({
-  "node_modules/.pnpm/ecdsa-sig-formatter@1.0.11/node_modules/ecdsa-sig-formatter/src/ecdsa-sig-formatter.js"(exports, module) {
+  "node_modules/ecdsa-sig-formatter/src/ecdsa-sig-formatter.js"(exports, module) {
     "use strict";
     var Buffer2 = require_safe_buffer().Buffer;
     var getParamBytesForAlg = require_param_bytes_for_alg();
@@ -2119,9 +2119,9 @@ var require_ecdsa_sig_formatter = __commonJS({
   }
 });
 
-// node_modules/.pnpm/buffer-equal-constant-time@1.0.1/node_modules/buffer-equal-constant-time/index.js
+// node_modules/buffer-equal-constant-time/index.js
 var require_buffer_equal_constant_time = __commonJS({
-  "node_modules/.pnpm/buffer-equal-constant-time@1.0.1/node_modules/buffer-equal-constant-time/index.js"(exports, module) {
+  "node_modules/buffer-equal-constant-time/index.js"(exports, module) {
     "use strict";
     var Buffer2 = __require("buffer").Buffer;
     var SlowBuffer = __require("buffer").SlowBuffer;
@@ -2153,9 +2153,9 @@ var require_buffer_equal_constant_time = __commonJS({
   }
 });
 
-// node_modules/.pnpm/jwa@2.0.1/node_modules/jwa/index.js
+// node_modules/jwa/index.js
 var require_jwa = __commonJS({
-  "node_modules/.pnpm/jwa@2.0.1/node_modules/jwa/index.js"(exports, module) {
+  "node_modules/jwa/index.js"(exports, module) {
     var Buffer2 = require_safe_buffer().Buffer;
     var crypto = __require("crypto");
     var formatEcdsa = require_ecdsa_sig_formatter();
@@ -2377,9 +2377,9 @@ var require_jwa = __commonJS({
   }
 });
 
-// node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/tostring.js
+// node_modules/jws/lib/tostring.js
 var require_tostring = __commonJS({
-  "node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/tostring.js"(exports, module) {
+  "node_modules/jws/lib/tostring.js"(exports, module) {
     var Buffer2 = __require("buffer").Buffer;
     module.exports = function toString(obj) {
       if (typeof obj === "string")
@@ -2391,9 +2391,9 @@ var require_tostring = __commonJS({
   }
 });
 
-// node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/sign-stream.js
+// node_modules/jws/lib/sign-stream.js
 var require_sign_stream = __commonJS({
-  "node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/sign-stream.js"(exports, module) {
+  "node_modules/jws/lib/sign-stream.js"(exports, module) {
     var Buffer2 = require_safe_buffer().Buffer;
     var DataStream = require_data_stream();
     var jwa = require_jwa();
@@ -2466,9 +2466,9 @@ var require_sign_stream = __commonJS({
   }
 });
 
-// node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/verify-stream.js
+// node_modules/jws/lib/verify-stream.js
 var require_verify_stream = __commonJS({
-  "node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/verify-stream.js"(exports, module) {
+  "node_modules/jws/lib/verify-stream.js"(exports, module) {
     var Buffer2 = require_safe_buffer().Buffer;
     var DataStream = require_data_stream();
     var jwa = require_jwa();
@@ -2581,9 +2581,9 @@ var require_verify_stream = __commonJS({
   }
 });
 
-// node_modules/.pnpm/jws@4.0.1/node_modules/jws/index.js
+// node_modules/jws/index.js
 var require_jws = __commonJS({
-  "node_modules/.pnpm/jws@4.0.1/node_modules/jws/index.js"(exports) {
+  "node_modules/jws/index.js"(exports) {
     var SignStream = require_sign_stream();
     var VerifyStream = require_verify_stream();
     var ALGORITHMS = [
@@ -2614,9 +2614,9 @@ var require_jws = __commonJS({
   }
 });
 
-// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/decode.js
+// node_modules/jsonwebtoken/decode.js
 var require_decode = __commonJS({
-  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/decode.js"(exports, module) {
+  "node_modules/jsonwebtoken/decode.js"(exports, module) {
     var jws = require_jws();
     module.exports = function(jwt2, options) {
       options = options || {};
@@ -2646,9 +2646,9 @@ var require_decode = __commonJS({
   }
 });
 
-// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/JsonWebTokenError.js
+// node_modules/jsonwebtoken/lib/JsonWebTokenError.js
 var require_JsonWebTokenError = __commonJS({
-  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/JsonWebTokenError.js"(exports, module) {
+  "node_modules/jsonwebtoken/lib/JsonWebTokenError.js"(exports, module) {
     var JsonWebTokenError = function(message, error) {
       Error.call(this, message);
       if (Error.captureStackTrace) {
@@ -2664,9 +2664,9 @@ var require_JsonWebTokenError = __commonJS({
   }
 });
 
-// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/NotBeforeError.js
+// node_modules/jsonwebtoken/lib/NotBeforeError.js
 var require_NotBeforeError = __commonJS({
-  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/NotBeforeError.js"(exports, module) {
+  "node_modules/jsonwebtoken/lib/NotBeforeError.js"(exports, module) {
     var JsonWebTokenError = require_JsonWebTokenError();
     var NotBeforeError = function(message, date) {
       JsonWebTokenError.call(this, message);
@@ -2679,9 +2679,9 @@ var require_NotBeforeError = __commonJS({
   }
 });
 
-// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/TokenExpiredError.js
+// node_modules/jsonwebtoken/lib/TokenExpiredError.js
 var require_TokenExpiredError = __commonJS({
-  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/TokenExpiredError.js"(exports, module) {
+  "node_modules/jsonwebtoken/lib/TokenExpiredError.js"(exports, module) {
     var JsonWebTokenError = require_JsonWebTokenError();
     var TokenExpiredError = function(message, expiredAt) {
       JsonWebTokenError.call(this, message);
@@ -2694,9 +2694,9 @@ var require_TokenExpiredError = __commonJS({
   }
 });
 
-// node_modules/.pnpm/ms@2.1.3/node_modules/ms/index.js
+// node_modules/ms/index.js
 var require_ms = __commonJS({
-  "node_modules/.pnpm/ms@2.1.3/node_modules/ms/index.js"(exports, module) {
+  "node_modules/ms/index.js"(exports, module) {
     var s = 1e3;
     var m = s * 60;
     var h = m * 60;
@@ -2810,9 +2810,9 @@ var require_ms = __commonJS({
   }
 });
 
-// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/timespan.js
+// node_modules/jsonwebtoken/lib/timespan.js
 var require_timespan = __commonJS({
-  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/timespan.js"(exports, module) {
+  "node_modules/jsonwebtoken/lib/timespan.js"(exports, module) {
     var ms = require_ms();
     module.exports = function(time, iat) {
       var timestamp = iat || Math.floor(Date.now() / 1e3);
@@ -2831,9 +2831,9 @@ var require_timespan = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/constants.js
+// node_modules/semver/internal/constants.js
 var require_constants = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/constants.js"(exports, module) {
+  "node_modules/semver/internal/constants.js"(exports, module) {
     "use strict";
     var SEMVER_SPEC_VERSION = "2.0.0";
     var MAX_LENGTH = 256;
@@ -2863,9 +2863,9 @@ var require_constants = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/debug.js
+// node_modules/semver/internal/debug.js
 var require_debug = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/debug.js"(exports, module) {
+  "node_modules/semver/internal/debug.js"(exports, module) {
     "use strict";
     var debug = typeof process === "object" && process.env && process.env.NODE_DEBUG && /\bsemver\b/i.test(process.env.NODE_DEBUG) ? (...args) => console.error("SEMVER", ...args) : () => {
     };
@@ -2873,9 +2873,9 @@ var require_debug = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/re.js
+// node_modules/semver/internal/re.js
 var require_re = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/re.js"(exports, module) {
+  "node_modules/semver/internal/re.js"(exports, module) {
     "use strict";
     var {
       MAX_SAFE_COMPONENT_LENGTH,
@@ -2961,9 +2961,9 @@ var require_re = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/parse-options.js
+// node_modules/semver/internal/parse-options.js
 var require_parse_options = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/parse-options.js"(exports, module) {
+  "node_modules/semver/internal/parse-options.js"(exports, module) {
     "use strict";
     var looseOption = Object.freeze({ loose: true });
     var emptyOpts = Object.freeze({});
@@ -2980,9 +2980,9 @@ var require_parse_options = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/identifiers.js
+// node_modules/semver/internal/identifiers.js
 var require_identifiers = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/identifiers.js"(exports, module) {
+  "node_modules/semver/internal/identifiers.js"(exports, module) {
     "use strict";
     var numeric = /^[0-9]+$/;
     var compareIdentifiers = (a, b) => {
@@ -3005,9 +3005,9 @@ var require_identifiers = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/classes/semver.js
+// node_modules/semver/classes/semver.js
 var require_semver = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/classes/semver.js"(exports, module) {
+  "node_modules/semver/classes/semver.js"(exports, module) {
     "use strict";
     var debug = require_debug();
     var { MAX_LENGTH, MAX_SAFE_INTEGER } = require_constants();
@@ -3297,9 +3297,9 @@ var require_semver = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/parse.js
+// node_modules/semver/functions/parse.js
 var require_parse = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/parse.js"(exports, module) {
+  "node_modules/semver/functions/parse.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var parse = (version, options, throwErrors = false) => {
@@ -3319,9 +3319,9 @@ var require_parse = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/valid.js
+// node_modules/semver/functions/valid.js
 var require_valid = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/valid.js"(exports, module) {
+  "node_modules/semver/functions/valid.js"(exports, module) {
     "use strict";
     var parse = require_parse();
     var valid = (version, options) => {
@@ -3332,9 +3332,9 @@ var require_valid = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/clean.js
+// node_modules/semver/functions/clean.js
 var require_clean = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/clean.js"(exports, module) {
+  "node_modules/semver/functions/clean.js"(exports, module) {
     "use strict";
     var parse = require_parse();
     var clean = (version, options) => {
@@ -3345,9 +3345,9 @@ var require_clean = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/inc.js
+// node_modules/semver/functions/inc.js
 var require_inc = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/inc.js"(exports, module) {
+  "node_modules/semver/functions/inc.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var inc = (version, release, options, identifier, identifierBase) => {
@@ -3369,9 +3369,9 @@ var require_inc = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/diff.js
+// node_modules/semver/functions/diff.js
 var require_diff = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/diff.js"(exports, module) {
+  "node_modules/semver/functions/diff.js"(exports, module) {
     "use strict";
     var parse = require_parse();
     var diff = (version1, version2) => {
@@ -3413,9 +3413,9 @@ var require_diff = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/major.js
+// node_modules/semver/functions/major.js
 var require_major = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/major.js"(exports, module) {
+  "node_modules/semver/functions/major.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var major = (a, loose) => new SemVer(a, loose).major;
@@ -3423,9 +3423,9 @@ var require_major = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/minor.js
+// node_modules/semver/functions/minor.js
 var require_minor = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/minor.js"(exports, module) {
+  "node_modules/semver/functions/minor.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var minor = (a, loose) => new SemVer(a, loose).minor;
@@ -3433,9 +3433,9 @@ var require_minor = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/patch.js
+// node_modules/semver/functions/patch.js
 var require_patch = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/patch.js"(exports, module) {
+  "node_modules/semver/functions/patch.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var patch = (a, loose) => new SemVer(a, loose).patch;
@@ -3443,9 +3443,9 @@ var require_patch = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/prerelease.js
+// node_modules/semver/functions/prerelease.js
 var require_prerelease = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/prerelease.js"(exports, module) {
+  "node_modules/semver/functions/prerelease.js"(exports, module) {
     "use strict";
     var parse = require_parse();
     var prerelease = (version, options) => {
@@ -3456,9 +3456,9 @@ var require_prerelease = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/compare.js
+// node_modules/semver/functions/compare.js
 var require_compare = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/compare.js"(exports, module) {
+  "node_modules/semver/functions/compare.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var compare = (a, b, loose) => new SemVer(a, loose).compare(new SemVer(b, loose));
@@ -3466,9 +3466,9 @@ var require_compare = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/rcompare.js
+// node_modules/semver/functions/rcompare.js
 var require_rcompare = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/rcompare.js"(exports, module) {
+  "node_modules/semver/functions/rcompare.js"(exports, module) {
     "use strict";
     var compare = require_compare();
     var rcompare = (a, b, loose) => compare(b, a, loose);
@@ -3476,9 +3476,9 @@ var require_rcompare = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/compare-loose.js
+// node_modules/semver/functions/compare-loose.js
 var require_compare_loose = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/compare-loose.js"(exports, module) {
+  "node_modules/semver/functions/compare-loose.js"(exports, module) {
     "use strict";
     var compare = require_compare();
     var compareLoose = (a, b) => compare(a, b, true);
@@ -3486,9 +3486,9 @@ var require_compare_loose = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/compare-build.js
+// node_modules/semver/functions/compare-build.js
 var require_compare_build = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/compare-build.js"(exports, module) {
+  "node_modules/semver/functions/compare-build.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var compareBuild = (a, b, loose) => {
@@ -3500,9 +3500,9 @@ var require_compare_build = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/sort.js
+// node_modules/semver/functions/sort.js
 var require_sort = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/sort.js"(exports, module) {
+  "node_modules/semver/functions/sort.js"(exports, module) {
     "use strict";
     var compareBuild = require_compare_build();
     var sort = (list, loose) => list.sort((a, b) => compareBuild(a, b, loose));
@@ -3510,9 +3510,9 @@ var require_sort = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/rsort.js
+// node_modules/semver/functions/rsort.js
 var require_rsort = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/rsort.js"(exports, module) {
+  "node_modules/semver/functions/rsort.js"(exports, module) {
     "use strict";
     var compareBuild = require_compare_build();
     var rsort = (list, loose) => list.sort((a, b) => compareBuild(b, a, loose));
@@ -3520,9 +3520,9 @@ var require_rsort = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/gt.js
+// node_modules/semver/functions/gt.js
 var require_gt = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/gt.js"(exports, module) {
+  "node_modules/semver/functions/gt.js"(exports, module) {
     "use strict";
     var compare = require_compare();
     var gt = (a, b, loose) => compare(a, b, loose) > 0;
@@ -3530,9 +3530,9 @@ var require_gt = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/lt.js
+// node_modules/semver/functions/lt.js
 var require_lt = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/lt.js"(exports, module) {
+  "node_modules/semver/functions/lt.js"(exports, module) {
     "use strict";
     var compare = require_compare();
     var lt = (a, b, loose) => compare(a, b, loose) < 0;
@@ -3540,9 +3540,9 @@ var require_lt = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/eq.js
+// node_modules/semver/functions/eq.js
 var require_eq = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/eq.js"(exports, module) {
+  "node_modules/semver/functions/eq.js"(exports, module) {
     "use strict";
     var compare = require_compare();
     var eq = (a, b, loose) => compare(a, b, loose) === 0;
@@ -3550,9 +3550,9 @@ var require_eq = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/neq.js
+// node_modules/semver/functions/neq.js
 var require_neq = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/neq.js"(exports, module) {
+  "node_modules/semver/functions/neq.js"(exports, module) {
     "use strict";
     var compare = require_compare();
     var neq = (a, b, loose) => compare(a, b, loose) !== 0;
@@ -3560,9 +3560,9 @@ var require_neq = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/gte.js
+// node_modules/semver/functions/gte.js
 var require_gte = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/gte.js"(exports, module) {
+  "node_modules/semver/functions/gte.js"(exports, module) {
     "use strict";
     var compare = require_compare();
     var gte = (a, b, loose) => compare(a, b, loose) >= 0;
@@ -3570,9 +3570,9 @@ var require_gte = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/lte.js
+// node_modules/semver/functions/lte.js
 var require_lte = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/lte.js"(exports, module) {
+  "node_modules/semver/functions/lte.js"(exports, module) {
     "use strict";
     var compare = require_compare();
     var lte = (a, b, loose) => compare(a, b, loose) <= 0;
@@ -3580,9 +3580,9 @@ var require_lte = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/cmp.js
+// node_modules/semver/functions/cmp.js
 var require_cmp = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/cmp.js"(exports, module) {
+  "node_modules/semver/functions/cmp.js"(exports, module) {
     "use strict";
     var eq = require_eq();
     var neq = require_neq();
@@ -3630,9 +3630,9 @@ var require_cmp = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/coerce.js
+// node_modules/semver/functions/coerce.js
 var require_coerce = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/coerce.js"(exports, module) {
+  "node_modules/semver/functions/coerce.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var parse = require_parse();
@@ -3676,9 +3676,9 @@ var require_coerce = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/truncate.js
+// node_modules/semver/functions/truncate.js
 var require_truncate = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/truncate.js"(exports, module) {
+  "node_modules/semver/functions/truncate.js"(exports, module) {
     "use strict";
     var parse = require_parse();
     var constants = require_constants();
@@ -3717,9 +3717,9 @@ var require_truncate = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/lrucache.js
+// node_modules/semver/internal/lrucache.js
 var require_lrucache = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/lrucache.js"(exports, module) {
+  "node_modules/semver/internal/lrucache.js"(exports, module) {
     "use strict";
     var LRUCache = class {
       constructor() {
@@ -3755,9 +3755,9 @@ var require_lrucache = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/classes/range.js
+// node_modules/semver/classes/range.js
 var require_range = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/classes/range.js"(exports, module) {
+  "node_modules/semver/classes/range.js"(exports, module) {
     "use strict";
     var SPACE_CHARACTERS = /\s+/g;
     var Range = class _Range {
@@ -4140,9 +4140,9 @@ var require_range = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/classes/comparator.js
+// node_modules/semver/classes/comparator.js
 var require_comparator = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/classes/comparator.js"(exports, module) {
+  "node_modules/semver/classes/comparator.js"(exports, module) {
     "use strict";
     var ANY = Symbol("SemVer ANY");
     var Comparator = class _Comparator {
@@ -4253,9 +4253,9 @@ var require_comparator = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/satisfies.js
+// node_modules/semver/functions/satisfies.js
 var require_satisfies = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/satisfies.js"(exports, module) {
+  "node_modules/semver/functions/satisfies.js"(exports, module) {
     "use strict";
     var Range = require_range();
     var satisfies = (version, range, options) => {
@@ -4270,9 +4270,9 @@ var require_satisfies = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/to-comparators.js
+// node_modules/semver/ranges/to-comparators.js
 var require_to_comparators = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/to-comparators.js"(exports, module) {
+  "node_modules/semver/ranges/to-comparators.js"(exports, module) {
     "use strict";
     var Range = require_range();
     var toComparators = (range, options) => new Range(range, options).set.map((comp) => comp.map((c) => c.value).join(" ").trim().split(" "));
@@ -4280,9 +4280,9 @@ var require_to_comparators = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/max-satisfying.js
+// node_modules/semver/ranges/max-satisfying.js
 var require_max_satisfying = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/max-satisfying.js"(exports, module) {
+  "node_modules/semver/ranges/max-satisfying.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var Range = require_range();
@@ -4309,9 +4309,9 @@ var require_max_satisfying = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/min-satisfying.js
+// node_modules/semver/ranges/min-satisfying.js
 var require_min_satisfying = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/min-satisfying.js"(exports, module) {
+  "node_modules/semver/ranges/min-satisfying.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var Range = require_range();
@@ -4338,9 +4338,9 @@ var require_min_satisfying = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/min-version.js
+// node_modules/semver/ranges/min-version.js
 var require_min_version = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/min-version.js"(exports, module) {
+  "node_modules/semver/ranges/min-version.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var Range = require_range();
@@ -4397,9 +4397,9 @@ var require_min_version = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/valid.js
+// node_modules/semver/ranges/valid.js
 var require_valid2 = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/valid.js"(exports, module) {
+  "node_modules/semver/ranges/valid.js"(exports, module) {
     "use strict";
     var Range = require_range();
     var validRange = (range, options) => {
@@ -4413,9 +4413,9 @@ var require_valid2 = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/outside.js
+// node_modules/semver/ranges/outside.js
 var require_outside = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/outside.js"(exports, module) {
+  "node_modules/semver/ranges/outside.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var Comparator = require_comparator();
@@ -4482,9 +4482,9 @@ var require_outside = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/gtr.js
+// node_modules/semver/ranges/gtr.js
 var require_gtr = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/gtr.js"(exports, module) {
+  "node_modules/semver/ranges/gtr.js"(exports, module) {
     "use strict";
     var outside = require_outside();
     var gtr = (version, range, options) => outside(version, range, ">", options);
@@ -4492,9 +4492,9 @@ var require_gtr = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/ltr.js
+// node_modules/semver/ranges/ltr.js
 var require_ltr = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/ltr.js"(exports, module) {
+  "node_modules/semver/ranges/ltr.js"(exports, module) {
     "use strict";
     var outside = require_outside();
     var ltr = (version, range, options) => outside(version, range, "<", options);
@@ -4502,9 +4502,9 @@ var require_ltr = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/intersects.js
+// node_modules/semver/ranges/intersects.js
 var require_intersects = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/intersects.js"(exports, module) {
+  "node_modules/semver/ranges/intersects.js"(exports, module) {
     "use strict";
     var Range = require_range();
     var intersects = (r1, r2, options) => {
@@ -4516,9 +4516,9 @@ var require_intersects = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/simplify.js
+// node_modules/semver/ranges/simplify.js
 var require_simplify = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/simplify.js"(exports, module) {
+  "node_modules/semver/ranges/simplify.js"(exports, module) {
     "use strict";
     var satisfies = require_satisfies();
     var compare = require_compare();
@@ -4566,9 +4566,9 @@ var require_simplify = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/subset.js
+// node_modules/semver/ranges/subset.js
 var require_subset = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/subset.js"(exports, module) {
+  "node_modules/semver/ranges/subset.js"(exports, module) {
     "use strict";
     var Range = require_range();
     var Comparator = require_comparator();
@@ -4728,9 +4728,9 @@ var require_subset = __commonJS({
   }
 });
 
-// node_modules/.pnpm/semver@7.8.5/node_modules/semver/index.js
+// node_modules/semver/index.js
 var require_semver2 = __commonJS({
-  "node_modules/.pnpm/semver@7.8.5/node_modules/semver/index.js"(exports, module) {
+  "node_modules/semver/index.js"(exports, module) {
     "use strict";
     var internalRe = require_re();
     var constants = require_constants();
@@ -4825,25 +4825,25 @@ var require_semver2 = __commonJS({
   }
 });
 
-// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/asymmetricKeyDetailsSupported.js
+// node_modules/jsonwebtoken/lib/asymmetricKeyDetailsSupported.js
 var require_asymmetricKeyDetailsSupported = __commonJS({
-  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/asymmetricKeyDetailsSupported.js"(exports, module) {
+  "node_modules/jsonwebtoken/lib/asymmetricKeyDetailsSupported.js"(exports, module) {
     var semver = require_semver2();
     module.exports = semver.satisfies(process.version, ">=15.7.0");
   }
 });
 
-// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/rsaPssKeyDetailsSupported.js
+// node_modules/jsonwebtoken/lib/rsaPssKeyDetailsSupported.js
 var require_rsaPssKeyDetailsSupported = __commonJS({
-  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/rsaPssKeyDetailsSupported.js"(exports, module) {
+  "node_modules/jsonwebtoken/lib/rsaPssKeyDetailsSupported.js"(exports, module) {
     var semver = require_semver2();
     module.exports = semver.satisfies(process.version, ">=16.9.0");
   }
 });
 
-// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/validateAsymmetricKey.js
+// node_modules/jsonwebtoken/lib/validateAsymmetricKey.js
 var require_validateAsymmetricKey = __commonJS({
-  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/validateAsymmetricKey.js"(exports, module) {
+  "node_modules/jsonwebtoken/lib/validateAsymmetricKey.js"(exports, module) {
     var ASYMMETRIC_KEY_DETAILS_SUPPORTED = require_asymmetricKeyDetailsSupported();
     var RSA_PSS_KEY_DETAILS_SUPPORTED = require_rsaPssKeyDetailsSupported();
     var allowedAlgorithmsForKeys = {
@@ -4894,17 +4894,17 @@ var require_validateAsymmetricKey = __commonJS({
   }
 });
 
-// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/psSupported.js
+// node_modules/jsonwebtoken/lib/psSupported.js
 var require_psSupported = __commonJS({
-  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/psSupported.js"(exports, module) {
+  "node_modules/jsonwebtoken/lib/psSupported.js"(exports, module) {
     var semver = require_semver2();
     module.exports = semver.satisfies(process.version, "^6.12.0 || >=8.0.0");
   }
 });
 
-// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/verify.js
+// node_modules/jsonwebtoken/verify.js
 var require_verify = __commonJS({
-  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/verify.js"(exports, module) {
+  "node_modules/jsonwebtoken/verify.js"(exports, module) {
     var JsonWebTokenError = require_JsonWebTokenError();
     var NotBeforeError = require_NotBeforeError();
     var TokenExpiredError = require_TokenExpiredError();
@@ -5117,9 +5117,9 @@ var require_verify = __commonJS({
   }
 });
 
-// node_modules/.pnpm/lodash.includes@4.3.0/node_modules/lodash.includes/index.js
+// node_modules/lodash.includes/index.js
 var require_lodash = __commonJS({
-  "node_modules/.pnpm/lodash.includes@4.3.0/node_modules/lodash.includes/index.js"(exports, module) {
+  "node_modules/lodash.includes/index.js"(exports, module) {
     var INFINITY = 1 / 0;
     var MAX_SAFE_INTEGER = 9007199254740991;
     var MAX_INTEGER = 17976931348623157e292;
@@ -5301,9 +5301,9 @@ var require_lodash = __commonJS({
   }
 });
 
-// node_modules/.pnpm/lodash.isboolean@3.0.3/node_modules/lodash.isboolean/index.js
+// node_modules/lodash.isboolean/index.js
 var require_lodash2 = __commonJS({
-  "node_modules/.pnpm/lodash.isboolean@3.0.3/node_modules/lodash.isboolean/index.js"(exports, module) {
+  "node_modules/lodash.isboolean/index.js"(exports, module) {
     var boolTag = "[object Boolean]";
     var objectProto = Object.prototype;
     var objectToString = objectProto.toString;
@@ -5317,9 +5317,9 @@ var require_lodash2 = __commonJS({
   }
 });
 
-// node_modules/.pnpm/lodash.isinteger@4.0.4/node_modules/lodash.isinteger/index.js
+// node_modules/lodash.isinteger/index.js
 var require_lodash3 = __commonJS({
-  "node_modules/.pnpm/lodash.isinteger@4.0.4/node_modules/lodash.isinteger/index.js"(exports, module) {
+  "node_modules/lodash.isinteger/index.js"(exports, module) {
     var INFINITY = 1 / 0;
     var MAX_INTEGER = 17976931348623157e292;
     var NAN = 0 / 0;
@@ -5381,9 +5381,9 @@ var require_lodash3 = __commonJS({
   }
 });
 
-// node_modules/.pnpm/lodash.isnumber@3.0.3/node_modules/lodash.isnumber/index.js
+// node_modules/lodash.isnumber/index.js
 var require_lodash4 = __commonJS({
-  "node_modules/.pnpm/lodash.isnumber@3.0.3/node_modules/lodash.isnumber/index.js"(exports, module) {
+  "node_modules/lodash.isnumber/index.js"(exports, module) {
     var numberTag = "[object Number]";
     var objectProto = Object.prototype;
     var objectToString = objectProto.toString;
@@ -5397,9 +5397,9 @@ var require_lodash4 = __commonJS({
   }
 });
 
-// node_modules/.pnpm/lodash.isplainobject@4.0.6/node_modules/lodash.isplainobject/index.js
+// node_modules/lodash.isplainobject/index.js
 var require_lodash5 = __commonJS({
-  "node_modules/.pnpm/lodash.isplainobject@4.0.6/node_modules/lodash.isplainobject/index.js"(exports, module) {
+  "node_modules/lodash.isplainobject/index.js"(exports, module) {
     var objectTag = "[object Object]";
     function isHostObject(value) {
       var result = false;
@@ -5441,9 +5441,9 @@ var require_lodash5 = __commonJS({
   }
 });
 
-// node_modules/.pnpm/lodash.isstring@4.0.1/node_modules/lodash.isstring/index.js
+// node_modules/lodash.isstring/index.js
 var require_lodash6 = __commonJS({
-  "node_modules/.pnpm/lodash.isstring@4.0.1/node_modules/lodash.isstring/index.js"(exports, module) {
+  "node_modules/lodash.isstring/index.js"(exports, module) {
     var stringTag = "[object String]";
     var objectProto = Object.prototype;
     var objectToString = objectProto.toString;
@@ -5458,9 +5458,9 @@ var require_lodash6 = __commonJS({
   }
 });
 
-// node_modules/.pnpm/lodash.once@4.1.1/node_modules/lodash.once/index.js
+// node_modules/lodash.once/index.js
 var require_lodash7 = __commonJS({
-  "node_modules/.pnpm/lodash.once@4.1.1/node_modules/lodash.once/index.js"(exports, module) {
+  "node_modules/lodash.once/index.js"(exports, module) {
     var FUNC_ERROR_TEXT = "Expected a function";
     var INFINITY = 1 / 0;
     var MAX_INTEGER = 17976931348623157e292;
@@ -5539,9 +5539,9 @@ var require_lodash7 = __commonJS({
   }
 });
 
-// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/sign.js
+// node_modules/jsonwebtoken/sign.js
 var require_sign = __commonJS({
-  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/sign.js"(exports, module) {
+  "node_modules/jsonwebtoken/sign.js"(exports, module) {
     var timespan = require_timespan();
     var PS_SUPPORTED = require_psSupported();
     var validateAsymmetricKey = require_validateAsymmetricKey();
@@ -5764,9 +5764,9 @@ var require_sign = __commonJS({
   }
 });
 
-// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/index.js
+// node_modules/jsonwebtoken/index.js
 var require_jsonwebtoken = __commonJS({
-  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/index.js"(exports, module) {
+  "node_modules/jsonwebtoken/index.js"(exports, module) {
     module.exports = {
       decode: require_decode(),
       verify: require_verify(),
@@ -5931,6 +5931,7 @@ if (!g.__intelliwaste_store) {
     users: [],
     bins: [],
     tracks: [],
+    routes: [],
     alerts: [],
     pickups: [],
     schedules: [],
@@ -7684,7 +7685,12 @@ var bins_default = apiHandler(
       }
       const whereClause = {};
       if (wardId) whereClause.wardId = wardId;
-      if (cityCorpId) whereClause.ward = { cityCorpId };
+      if (cityCorpId) {
+        whereClause.OR = [
+          { cityCorpId },
+          { ward: { cityCorpId } }
+        ];
+      }
       if (status) whereClause.status = status;
       try {
         const bins = await prisma_default.bin.findMany({
@@ -7717,26 +7723,95 @@ var bins_default = apiHandler(
       return res.status(200).json(enriched);
     }
     if (req.method === "POST") {
-      const { binCode, location, capacity, wardId, lat, lng, temp, gas, fill, status, fire } = req.body || {};
+      const {
+        binCode,
+        location,
+        capacity,
+        capacityKg,
+        wardId,
+        ward,
+        cityCorpId,
+        cityCorporation,
+        lat,
+        lng,
+        lon,
+        temp,
+        gas,
+        fill,
+        fillLevel,
+        status,
+        fire,
+        forecastFull90At
+      } = req.body || {};
       if (!binCode || !location) {
         return res.status(400).json({ error: "binCode and location are required" });
       }
-      const assignedWardId = String(wardId || currentUser?.wardId || memoryDb.wards[0]?.id || "1");
+      let assignedCityCorpId = String(
+        cityCorpId || cityCorporation || currentUser?.cityCorpId || ""
+      ).trim();
+      let assignedWardId = String(
+        wardId || ward || currentUser?.wardId || ""
+      ).trim();
+      if (currentUser?.role === "CITY_ADMIN" && currentUser.cityCorpId) {
+        assignedCityCorpId = currentUser.cityCorpId;
+      }
+      if (currentUser?.role === "WARD_ADMIN" && currentUser.wardId) {
+        assignedWardId = currentUser.wardId;
+        if (!assignedCityCorpId && currentUser.cityCorpId) {
+          assignedCityCorpId = currentUser.cityCorpId;
+        }
+      }
+      if (!assignedCityCorpId && memoryDb.cities[0]?.id) {
+        assignedCityCorpId = memoryDb.cities[0].id;
+      }
+      if (!assignedWardId) {
+        return res.status(400).json({ error: "Ward is required" });
+      }
+      let wardRecord = null;
+      try {
+        wardRecord = await prisma_default.ward.findUnique({
+          where: { id: assignedWardId },
+          include: { cityCorp: true }
+        });
+      } catch {
+      }
+      if (!wardRecord) {
+        wardRecord = memoryDb.wards.find((w) => w.id === assignedWardId);
+      }
+      if (!wardRecord) {
+        return res.status(400).json({ error: `Selected Ward '${assignedWardId}' was not found.` });
+      }
+      if (assignedCityCorpId && wardRecord.cityCorpId !== assignedCityCorpId) {
+        return res.status(400).json({
+          error: `Validation failed: Ward '${wardRecord.name || assignedWardId}' does not belong to the selected City Corporation '${assignedCityCorpId}'.`
+        });
+      }
+      if (!assignedCityCorpId) {
+        assignedCityCorpId = wardRecord.cityCorpId;
+      }
+      const parsedLat = Number(lat !== void 0 ? lat : 23.78);
+      const parsedLng = Number(lng !== void 0 ? lng : lon !== void 0 ? lon : 90.4);
+      const parsedFill = Number(fillLevel !== void 0 ? fillLevel : fill || 0);
+      const parsedCapacityKg = Number(capacityKg || (typeof capacity === "string" ? parseInt(capacity, 10) : 120) || 120);
       let createdBin = null;
       try {
         createdBin = await prisma_default.bin.create({
           data: {
             binCode,
             location,
-            capacity: capacity || "120L",
-            fill: fill ? Number(fill) : 0,
+            capacity: capacity || `${parsedCapacityKg}L`,
+            capacityKg: parsedCapacityKg,
+            fill: parsedFill,
+            fillLevel: parsedFill,
             temp: temp || "Normal",
             gas: gas || "Normal",
             fire: Boolean(fire),
             status: status || "normal",
             wardId: assignedWardId,
-            lat: lat ? Number(lat) : 23.78,
-            lng: lng ? Number(lng) : 90.4
+            cityCorpId: assignedCityCorpId,
+            lat: parsedLat,
+            lng: parsedLng,
+            forecastFull90At: forecastFull90At ? new Date(forecastFull90At) : null
           }
         });
       } catch (dbErr) {
@@ -7746,16 +7821,23 @@ var bins_default = apiHandler(
         id: createdBin?.id || `bin-${Date.now()}`,
         binCode,
         location,
-        capacity: capacity || "120L",
-        fill: fill ? Number(fill) : 0,
+        capacity: capacity || `${parsedCapacityKg}L`,
+        capacityKg: parsedCapacityKg,
+        fill: parsedFill,
+        fillLevel: parsedFill,
         weight: 15,
         temp: temp || "28\xB0C",
         gas: gas || "12 ppm",
         fire: Boolean(fire),
         status: status || "normal",
-        lat: lat ? Number(lat) : 23.78,
-        lng: lng ? Number(lng) : 90.4,
+        lat: parsedLat,
+        lng: parsedLng,
+        lon: parsedLng,
         wardId: assignedWardId,
+        ward: assignedWardId,
+        cityCorpId: assignedCityCorpId,
+        cityCorporation: assignedCityCorpId,
+        forecastFull90At: forecastFull90At || null,
         createdAt: (/* @__PURE__ */ new Date()).toISOString()
       };
       memoryDb.bins.push(memBin);
@@ -7818,7 +7900,9 @@ var id_default3 = apiHandler(
         binCode,
         location,
         capacity,
+        capacityKg,
         fill,
+        fillLevel,
         weight,
         temp,
         gas,
@@ -7826,22 +7910,30 @@ var id_default3 = apiHandler(
         status,
         lat,
         lng,
-        lastCollected
+        lastCollected,
+        forecastFull90At
       } = req.body || {};
       let computedStatus = status;
       if (!computedStatus) {
         if (fire) {
           computedStatus = "fire";
-        } else if (fill !== void 0) {
-          if (fill >= 90) computedStatus = "critical";
-          else if (fill >= 70) computedStatus = "warning";
+        } else if (fill !== void 0 || fillLevel !== void 0) {
+          const effectiveFill = fillLevel !== void 0 ? Number(fillLevel) : Number(fill);
+          if (effectiveFill >= 90) computedStatus = "critical";
+          else if (effectiveFill >= 70) computedStatus = "warning";
           else computedStatus = "normal";
         }
       }
+      const parsedFill = fillLevel !== void 0 ? Number(fillLevel) : fill !== void 0 ? Number(fill) : void 0;
+      const parsedCapacityKg = capacityKg !== void 0 ? Number(capacityKg) : void 0;
       if (binCode) bin.binCode = binCode;
       if (location) bin.location = location;
       if (capacity) bin.capacity = capacity;
-      if (fill !== void 0) bin.fill = Number(fill);
+      if (parsedCapacityKg !== void 0) bin.capacityKg = parsedCapacityKg;
+      if (parsedFill !== void 0) {
+        bin.fill = parsedFill;
+        bin.fillLevel = parsedFill;
+      }
       if (weight !== void 0) bin.weight = Number(weight);
       if (temp) bin.temp = temp;
       if (gas) bin.gas = gas;
@@ -7857,7 +7949,8 @@ var id_default3 = apiHandler(
             ...binCode && { binCode },
             ...location && { location },
             ...capacity && { capacity },
-            ...fill !== void 0 && { fill: Number(fill) },
+            ...parsedCapacityKg !== void 0 && { capacityKg: parsedCapacityKg },
+            ...parsedFill !== void 0 && { fill: Math.round(parsedFill), fillLevel: parsedFill },
             ...weight !== void 0 && { weight: Number(weight) },
             ...temp && { temp },
             ...gas && { gas },
@@ -7865,7 +7958,10 @@ var id_default3 = apiHandler(
             ...computedStatus && { status: computedStatus },
             ...lat !== void 0 && { lat: Number(lat) },
             ...lng !== void 0 && { lng: Number(lng) },
-            ...lastCollected && { lastCollected: new Date(lastCollected) }
+            ...lastCollected && { lastCollected: new Date(lastCollected) },
+            ...forecastFull90At !== void 0 && {
+              forecastFull90At: forecastFull90At ? new Date(forecastFull90At) : null
+            }
           }
         }).catch(() => null);
       } catch {
@@ -8172,6 +8268,7 @@ var id_default4 = apiHandler(
       }
       const {
         truckId,
+        truckType,
         route,
         stops,
         status,
@@ -8185,6 +8282,7 @@ var id_default4 = apiHandler(
         driverId
       } = req.body || {};
       if (truckId) track.truckId = truckId;
+      if (truckType) track.truckType = truckType;
       if (route) track.route = route;
       if (stops !== void 0) track.stops = Number(stops);
       if (status) track.status = status;
@@ -8201,6 +8299,7 @@ var id_default4 = apiHandler(
           where: { id },
           data: {
             ...truckId && { truckId },
+            ...truckType && { truckType },
             ...route && { route },
             ...stops !== void 0 && { stops: Number(stops) },
             ...status && { status },
@@ -8551,10 +8650,19 @@ var id_default5 = apiHandler(
         active,
         role,
         cityCorpId,
-        wardId
+        wardId,
+        assignment
       } = req.body || {};
       if (role && role !== user.role && !isSuper) {
         return res.status(403).json({ error: "Forbidden: Only Super Admin can change account roles" });
+      }
+      let targetCityCorpId = cityCorpId;
+      let targetWardId = wardId;
+      if (assignment) {
+        if (assignment.cityCorporation) {
+          targetCityCorpId = assignment.cityCorporation;
+        }
+        targetWardId = assignment.ward || null;
       }
       let hashedPassword;
       if (password) {
@@ -8569,8 +8677,17 @@ var id_default5 = apiHandler(
       if (hashedPassword) user.password = hashedPassword;
       if (active !== void 0 && (isSuper || isCityAdmin)) user.active = Boolean(active);
       if (role && isSuper) user.role = role;
-      if (cityCorpId !== void 0 && isSuper) user.cityCorpId = cityCorpId;
-      if (wardId !== void 0 && (isSuper || isCityAdmin)) user.wardId = wardId;
+      if (targetCityCorpId !== void 0 && (isSuper || isCityAdmin)) {
+        user.cityCorpId = targetCityCorpId;
+        user.assignment = {
+          cityCorporation: targetCityCorpId,
+          ward: targetWardId || null
+        };
+      }
+      if (targetWardId !== void 0 && (isSuper || isCityAdmin)) {
+        user.wardId = targetWardId;
+        if (user.assignment) user.assignment.ward = targetWardId || null;
+      }
       const memUserIdx = memoryDb.users.findIndex((u) => u.id === id || u.username === id);
       if (memUserIdx >= 0) {
         if (fullName) memoryDb.users[memUserIdx].fullName = fullName;
@@ -8579,8 +8696,28 @@ var id_default5 = apiHandler(
         if (hashedPassword) memoryDb.users[memUserIdx].password = hashedPassword;
         if (active !== void 0 && (isSuper || isCityAdmin)) memoryDb.users[memUserIdx].active = Boolean(active);
         if (role && isSuper) memoryDb.users[memUserIdx].role = role;
-        if (cityCorpId !== void 0 && isSuper) memoryDb.users[memUserIdx].cityCorpId = cityCorpId;
-        if (wardId !== void 0 && (isSuper || isCityAdmin)) memoryDb.users[memUserIdx].wardId = wardId;
+        if (targetCityCorpId !== void 0 && (isSuper || isCityAdmin)) {
+          memoryDb.users[memUserIdx].cityCorpId = targetCityCorpId;
+          memoryDb.users[memUserIdx].assignment = {
+            cityCorporation: targetCityCorpId,
+            ward: targetWardId || null
+          };
+        }
+        if (targetWardId !== void 0 && (isSuper || isCityAdmin)) {
+          memoryDb.users[memUserIdx].wardId = targetWardId;
+          if (memoryDb.users[memUserIdx].assignment) {
+            memoryDb.users[memUserIdx].assignment.ward = targetWardId || null;
+          }
+        }
+      }
+      if (assignment || targetCityCorpId !== void 0 || targetWardId !== void 0) {
+        if (Array.isArray(memoryDb.routes)) {
+          memoryDb.routes = memoryDb.routes.filter((r) => r.driverId !== id);
+        }
+        try {
+          await prisma_default.route.deleteMany({ where: { driverId: id } });
+        } catch {
+        }
       }
       try {
         await prisma_default.user.update({
@@ -8592,10 +8729,10 @@ var id_default5 = apiHandler(
             ...hashedPassword && { password: hashedPassword },
             ...active !== void 0 && (isSuper || isCityAdmin) && { active: Boolean(active) },
             ...role && isSuper && { role },
-            ...cityCorpId !== void 0 && isSuper && { cityCorpId },
-            ...wardId !== void 0 && (isSuper || isCityAdmin) && { wardId }
+            ...targetCityCorpId !== void 0 && (isSuper || isCityAdmin) && { cityCorpId: targetCityCorpId },
+            ...targetWardId !== void 0 && (isSuper || isCityAdmin) && { wardId: targetWardId }
           }
-        }).catch(() => null);
+        });
       } catch {
       }
       return res.status(200).json(user);
@@ -9696,12 +9833,408 @@ var stats_default = apiHandler(
   { allowedMethods: ["GET"] }
 );
 
+// scripts/seed.js
+import fs from "node:fs";
+if (!process.env.DATABASE_URL && fs.existsSync(".env")) {
+  const envContent = fs.readFileSync(".env", "utf8");
+  for (const line of envContent.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
+      const idx = trimmed.indexOf("=");
+      const key = trimmed.slice(0, idx).trim();
+      const val = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, "");
+      if (!process.env[key]) {
+        process.env[key] = val;
+      }
+    }
+  }
+}
+var DEFAULT_BIN_COUNT = Number(process.env.BIN_COUNT) || 60;
+var WARD_GEO_CENTERS = {
+  // DNCC
+  "Ward 01": { lat: 23.868, lon: 90.4, area: "Uttara North" },
+  "Ward 11": { lat: 23.815, lon: 90.365, area: "Mirpur 10" },
+  "Ward 19": { lat: 23.792, lon: 90.415, area: "Gulshan & Banani" },
+  "Ward 33": { lat: 23.765, lon: 90.362, area: "Mohammadpur" },
+  "Ward 34": { lat: 23.778, lon: 90.37, area: "Agargaon & Rangs" },
+  // DSCC
+  "Ward 20": { lat: 23.746, lon: 90.378, area: "Dhanmondi" },
+  "Ward 24": { lat: 23.719, lon: 90.388, area: "Lalbagh Fort" },
+  "Ward 39": { lat: 23.725, lon: 90.418, area: "Motijheel Commercial Area" }
+};
+async function runMigrationAndSeed(binCount = DEFAULT_BIN_COUNT) {
+  console.log(`[Seed/Migration Engine] Starting seed with target BIN_COUNT=${binCount}...`);
+  try {
+    const existingBins = await prisma_default.bin.findMany({
+      include: { ward: true }
+    }).catch(() => []);
+    for (const bin of existingBins) {
+      if (!bin.cityCorpId && bin.ward?.cityCorpId) {
+        await prisma_default.bin.update({
+          where: { id: bin.id },
+          data: {
+            cityCorpId: bin.ward.cityCorpId,
+            capacityKg: bin.capacityKg || 120,
+            fillLevel: bin.fillLevel || bin.fill || 0
+          }
+        }).catch(() => {
+        });
+      } else if (!bin.cityCorpId && !bin.wardId) {
+        console.warn(`[Review Required] Bin ${bin.id} (${bin.binCode}) lacks both ward and city corporation.`);
+      }
+    }
+  } catch {
+  }
+  const citiesData = [
+    {
+      id: "cc-dncc",
+      name: "Dhaka North City Corporation",
+      code: "DNCC",
+      address: "Gulshan Center Point, Plot 23-26, Road 90, Gulshan 2, Dhaka",
+      phone: "+880-2-9855501",
+      email: "contact@dncc.gov.bd",
+      pointRate: 0.2,
+      minWithdrawPoints: 100
+    },
+    {
+      id: "cc-dscc",
+      name: "Dhaka South City Corporation",
+      code: "DSCC",
+      address: "Nagar Bhaban, Phoenix Road, Fulbaria, Dhaka",
+      phone: "+880-2-9556014",
+      email: "info@dscc.gov.bd",
+      pointRate: 0.25,
+      minWithdrawPoints: 100
+    },
+    {
+      id: "cc-ccc",
+      name: "Chattogram City Corporation",
+      code: "CCC",
+      address: "Tigerpass, Chattogram",
+      phone: "+880-31-610111",
+      email: "mayor@ccc.gov.bd",
+      pointRate: 0.2,
+      minWithdrawPoints: 100
+    }
+  ];
+  const cityIdMap = /* @__PURE__ */ new Map();
+  for (const c of citiesData) {
+    if (!memoryDb.cities.some((x) => x.id === c.id || x.code === c.code)) {
+      memoryDb.cities.push({
+        ...c,
+        active: true,
+        rewardActive: true,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+    }
+    try {
+      const cityRec = await prisma_default.cityCorporation.upsert({
+        where: { code: c.code },
+        update: { name: c.name, address: c.address, phone: c.phone, email: c.email },
+        create: {
+          id: c.id,
+          name: c.name,
+          code: c.code,
+          address: c.address,
+          phone: c.phone,
+          email: c.email,
+          pointRate: c.pointRate,
+          minWithdrawPoints: c.minWithdrawPoints
+        }
+      });
+      cityIdMap.set(c.code, cityRec.id);
+      cityIdMap.set(c.id, cityRec.id);
+    } catch {
+      cityIdMap.set(c.code, c.id);
+      cityIdMap.set(c.id, c.id);
+    }
+  }
+  const wardsData = [
+    // DNCC Wards
+    { id: "ward-dncc-01", name: "Ward 01", area: "Uttara North", cityCorpId: "cc-dncc", population: 145e3, councilor: "Md. Afsar Uddin" },
+    { id: "ward-dncc-11", name: "Ward 11", area: "Mirpur 10", cityCorpId: "cc-dncc", population: 18e4, councilor: "Dewan Abdul Mannan" },
+    { id: "ward-dncc-19", name: "Ward 19", area: "Gulshan & Banani", cityCorpId: "cc-dncc", population: 12e4, councilor: "Md. Mofizur Rahman" },
+    { id: "ward-dncc-33", name: "Ward 33", area: "Mohammadpur", cityCorpId: "cc-dncc", population: 165e3, councilor: "Tarequzzaman Rajib" },
+    { id: "ward-dncc-34", name: "Ward 34", area: "Agargaon & Rangs", cityCorpId: "cc-dncc", population: 135e3, councilor: "Sheikh Mohammad Hossain" },
+    // DSCC Wards
+    { id: "ward-dscc-20", name: "Ward 20", area: "Dhanmondi", cityCorpId: "cc-dscc", population: 11e4, councilor: "Nasir Ahmed" },
+    { id: "ward-dscc-24", name: "Ward 24", area: "Lalbagh Fort", cityCorpId: "cc-dscc", population: 195e3, councilor: "Mokbul Hossain" },
+    { id: "ward-dscc-39", name: "Ward 39", area: "Motijheel Commercial", cityCorpId: "cc-dscc", population: 14e4, councilor: "Kazi Habib" }
+  ];
+  const wardIdMap = /* @__PURE__ */ new Map();
+  for (const w of wardsData) {
+    const realCityCorpId = cityIdMap.get(w.cityCorpId) || cityIdMap.get("DNCC") || w.cityCorpId;
+    w.cityCorpId = realCityCorpId;
+    if (!memoryDb.wards.some((x) => x.id === w.id)) {
+      memoryDb.wards.push({
+        ...w,
+        reportEnabled: true,
+        withdrawEnabled: true,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+    }
+    try {
+      const existingWard = await prisma_default.ward.findFirst({
+        where: { name: w.name, cityCorpId: realCityCorpId }
+      });
+      let wardRec;
+      if (existingWard) {
+        wardRec = await prisma_default.ward.update({
+          where: { id: existingWard.id },
+          data: { area: w.area, population: w.population, councilor: w.councilor }
+        });
+      } else {
+        wardRec = await prisma_default.ward.create({
+          data: {
+            id: w.id,
+            name: w.name,
+            area: w.area,
+            cityCorpId: realCityCorpId,
+            population: w.population,
+            councilor: w.councilor
+          }
+        });
+      }
+      wardIdMap.set(w.name, wardRec.id);
+      wardIdMap.set(w.id, wardRec.id);
+    } catch {
+      wardIdMap.set(w.name, w.id);
+      wardIdMap.set(w.id, w.id);
+    }
+  }
+  const dnccId = cityIdMap.get("DNCC") || "cc-dncc";
+  const ward33Id = wardIdMap.get("Ward 33") || "ward-dncc-33";
+  const ward19Id = wardIdMap.get("Ward 19") || "ward-dncc-19";
+  const hashedDemoPassword = await hashPassword("password123");
+  const demoDrivers = [
+    {
+      id: "driver-dncc-all",
+      username: "driver_dncc",
+      fullName: "Kamal Hossain (DNCC City-Wide Driver)",
+      email: "kamal.driver@smartcity.gov.bd",
+      phone: "+880-1711-889901",
+      role: "DRIVER",
+      cityCorpId: dnccId,
+      wardId: null,
+      // Entire DNCC
+      assignment: { cityCorporation: dnccId, ward: null }
+    },
+    {
+      id: "driver-ward33",
+      username: "driver_ward33",
+      fullName: "Rafiqul Islam (Ward 33 Mohammadpur Driver)",
+      email: "rafiq.driver@smartcity.gov.bd",
+      phone: "+880-1812-774411",
+      role: "DRIVER",
+      cityCorpId: dnccId,
+      wardId: ward33Id,
+      // Ward 33 Only
+      assignment: { cityCorporation: dnccId, ward: ward33Id }
+    },
+    {
+      id: "driver-ward19",
+      username: "driver_ward19",
+      fullName: "Shah Alam (Ward 19 Gulshan Driver)",
+      email: "shahalam.driver@smartcity.gov.bd",
+      phone: "+880-1913-665522",
+      role: "DRIVER",
+      cityCorpId: dnccId,
+      wardId: ward19Id,
+      // Ward 19 Only
+      assignment: { cityCorporation: dnccId, ward: ward19Id }
+    }
+  ];
+  for (const d of demoDrivers) {
+    const existingMem = memoryDb.users.find((u) => u.username === d.username);
+    if (!existingMem) {
+      memoryDb.users.push({
+        ...d,
+        password: hashedDemoPassword,
+        active: true,
+        points: 0,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+    } else {
+      Object.assign(existingMem, {
+        cityCorpId: d.cityCorpId,
+        wardId: d.wardId,
+        assignment: d.assignment
+      });
+    }
+    try {
+      await prisma_default.user.upsert({
+        where: { username: d.username },
+        update: {
+          fullName: d.fullName,
+          cityCorpId: d.cityCorpId,
+          wardId: d.wardId,
+          role: "DRIVER"
+        },
+        create: {
+          id: d.id,
+          username: d.username,
+          password: hashedDemoPassword,
+          fullName: d.fullName,
+          email: d.email,
+          phone: d.phone,
+          role: "DRIVER",
+          cityCorpId: d.cityCorpId,
+          wardId: d.wardId
+        }
+      });
+    } catch {
+    }
+  }
+  const dnccWards = wardsData.filter((w) => w.cityCorpId === dnccId || w.cityCorpId === "cc-dncc");
+  const binsToCreate = [];
+  for (let i = 1; i <= binCount; i++) {
+    const assignedWard = dnccWards[(i - 1) % dnccWards.length];
+    const geo = WARD_GEO_CENTERS[assignedWard.name] || { lat: 23.78, lon: 90.4, area: assignedWard.area };
+    const latOffset = Math.sin(i * 1.7) * 0.012 + i % 5 * 2e-3;
+    const lonOffset = Math.cos(i * 1.3) * 0.014 + i % 4 * 3e-3;
+    const binLat = Number((geo.lat + latOffset).toFixed(5));
+    const binLng = Number((geo.lon + lonOffset).toFixed(5));
+    let fill = 45;
+    let temp = "Normal";
+    let gas = "Normal";
+    let fire = false;
+    let status = "normal";
+    let forecastFull90At = null;
+    if (i % 10 === 0) {
+      fill = 92 + i % 7;
+      temp = "54\xB0C";
+      gas = "82 ppm NH3 (Toxic)";
+      fire = i % 20 === 0;
+      status = fire ? "fire" : "critical";
+    } else if (i % 3 === 0) {
+      fill = 72 + i * 3 % 25;
+      temp = "34\xB0C";
+      gas = "28 ppm";
+      status = fill >= 85 ? "warning" : "normal";
+      if (i % 6 === 0) {
+        forecastFull90At = new Date(Date.now() + (4 + i % 5) * 3600 * 1e3).toISOString();
+      }
+    } else {
+      fill = 15 + i * 7 % 50;
+      temp = "27\xB0C";
+      gas = "8 ppm";
+      status = "normal";
+    }
+    const binCode = `B-${String(i).padStart(3, "0")}`;
+    const capacityKg = i % 4 === 0 ? 240 : 120;
+    binsToCreate.push({
+      id: `bin-seed-${i}`,
+      binCode,
+      location: `${assignedWard.area}, Sector ${i % 12 + 1}, Road ${i % 24 + 1}`,
+      capacity: `${capacityKg}L`,
+      capacityKg,
+      fill,
+      fillLevel: fill,
+      weight: Math.round(fill / 100 * capacityKg),
+      temp,
+      gas,
+      fire,
+      status,
+      lat: binLat,
+      lng: binLng,
+      lon: binLng,
+      wardId: wardIdMap.get(assignedWard.id) || wardIdMap.get(assignedWard.name) || assignedWard.id,
+      ward: wardIdMap.get(assignedWard.id) || wardIdMap.get(assignedWard.name) || assignedWard.id,
+      cityCorpId: cityIdMap.get(assignedWard.cityCorpId) || assignedWard.cityCorpId,
+      cityCorporation: cityIdMap.get(assignedWard.cityCorpId) || assignedWard.cityCorpId,
+      forecastFull90At,
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    });
+  }
+  const existingCodeSet = new Set(memoryDb.bins.map((b) => b.binCode));
+  for (const b of binsToCreate) {
+    if (!existingCodeSet.has(b.binCode)) {
+      memoryDb.bins.push(b);
+      existingCodeSet.add(b.binCode);
+    } else {
+      const idx = memoryDb.bins.findIndex((x) => x.binCode === b.binCode);
+      if (idx >= 0) {
+        Object.assign(memoryDb.bins[idx], b);
+      }
+    }
+  }
+  let dbCreated = 0;
+  for (const b of binsToCreate) {
+    try {
+      await prisma_default.bin.upsert({
+        where: { binCode: b.binCode },
+        update: {
+          location: b.location,
+          capacity: b.capacity,
+          capacityKg: b.capacityKg,
+          fill: b.fill,
+          fillLevel: b.fillLevel,
+          temp: b.temp,
+          gas: b.gas,
+          fire: b.fire,
+          status: b.status,
+          lat: b.lat,
+          lng: b.lng,
+          wardId: b.wardId,
+          cityCorpId: b.cityCorpId,
+          forecastFull90At: b.forecastFull90At ? new Date(b.forecastFull90At) : null
+        },
+        create: {
+          id: b.id,
+          binCode: b.binCode,
+          location: b.location,
+          capacity: b.capacity,
+          capacityKg: b.capacityKg,
+          fill: b.fill,
+          fillLevel: b.fillLevel,
+          temp: b.temp,
+          gas: b.gas,
+          fire: b.fire,
+          status: b.status,
+          lat: b.lat,
+          lng: b.lng,
+          wardId: b.wardId,
+          cityCorpId: b.cityCorpId,
+          forecastFull90At: b.forecastFull90At ? new Date(b.forecastFull90At) : null
+        }
+      });
+      dbCreated++;
+    } catch (err) {
+      if (dbCreated === 0) console.error("Prisma bin error:", err);
+    }
+  }
+  console.log(`[Seed/Migration Complete] Seeded ${citiesData.length} City Corps, ${wardsData.length} Wards, ${binsToCreate.length} Bins (${dbCreated} synced to PostgreSQL), and 3 Scoped Drivers.`);
+  return {
+    success: true,
+    cities: citiesData.length,
+    wards: wardsData.length,
+    bins: binsToCreate.length,
+    drivers: demoDrivers.length
+  };
+}
+if (process.argv[1] && process.argv[1].endsWith("seed.js")) {
+  runMigrationAndSeed().then((r) => {
+    console.log("Migration and Seed finished successfully:", r);
+    process.exit(0);
+  }).catch((err) => {
+    console.error("Migration/Seed error:", err);
+    process.exit(1);
+  });
+}
+
 // lib/handlers/seed.ts
 var seed_default = apiHandler(
   async (req, res) => {
+    const shouldSeed = req.method === "POST" || req.query.seed === "true" || memoryDb.bins.length === 0;
+    let seedResult = null;
+    if (shouldSeed) {
+      const count = req.query.count ? parseInt(req.query.count, 10) : void 0;
+      seedResult = await runMigrationAndSeed(count);
+    }
     return res.status(200).json({
       success: true,
-      message: memoryDb.isSetupComplete ? "System is fully installed and operational." : "System is ready for first-time Super Admin initialization via /setup.",
+      message: seedResult ? "Idempotent migration and seed executed successfully." : "IntelliWaste system database status.",
+      seedResult,
       stats: {
         cities: memoryDb.cities.length,
         wards: memoryDb.wards.length,
@@ -10634,6 +11167,928 @@ var wallet_default = apiHandler(
   { allowedMethods: ["GET", "POST"] }
 );
 
+// lib/driverScope.ts
+function getDriverBinScope(driver) {
+  if (!driver) {
+    throw new Error("Unauthorized: Authenticated driver context is required");
+  }
+  const assignment = driver.assignment || {};
+  const cityCorp = assignment.cityCorporation || driver.cityCorpId || driver.cityCorp?.id;
+  const rawWard = assignment.ward !== void 0 ? assignment.ward : driver.wardId || driver.ward?.id;
+  const ward = rawWard && rawWard !== "all" && String(rawWard).trim() !== "" ? String(rawWard) : null;
+  if (!cityCorp) {
+    throw new Error("Driver has no assigned City Corporation. Contact City Admin.");
+  }
+  const scope = {
+    cityCorporation: String(cityCorp),
+    cityCorpId: String(cityCorp)
+  };
+  if (ward) {
+    scope.ward = String(ward);
+    scope.wardId = String(ward);
+  }
+  return scope;
+}
+
+// config/routeConfig.js
+var ROUTE_CONFIG = {
+  // Candidate selection thresholds
+  FILL_MUST_VISIT_THRESHOLD: Number(process.env.FILL_MUST_VISIT_THRESHOLD) || 70,
+  // % fill
+  FILL_CRITICAL_THRESHOLD: Number(process.env.FILL_CRITICAL_THRESHOLD) || 90,
+  // % fill
+  FORECAST_WINDOW_HOURS: Number(process.env.FORECAST_WINDOW_HOURS) || 12,
+  // hours until predicted overflow
+  // On-the-way inclusion threshold (optional opportunistic collection)
+  ON_THE_WAY_FILL_THRESHOLD: Number(process.env.ON_THE_WAY_FILL_THRESHOLD) || 50,
+  // %
+  ON_THE_WAY_MAX_METERS: Number(process.env.ON_THE_WAY_MAX_METERS) || 300,
+  // meters from route
+  // Scalability & Clustering
+  MAX_NODES_PER_SOLVE: Number(process.env.MAX_NODES_PER_SOLVE) || 80,
+  // Max cluster size for OSRM table
+  TRUCK_CAPACITY_KG: Number(process.env.TRUCK_CAPACITY_KG) || 1e3,
+  // Standard collection truck payload capacity in kg
+  SOLVER_TIME_LIMIT_MS: Number(process.env.SOLVER_TIME_LIMIT_MS) || 3e3,
+  // Max time per cluster solver run in ms
+  // Skipping Penalties (Objective function)
+  PENALTY_HAZARD_ALERT: 1e5,
+  // Fire / gas / toxic / overflow alerts (practically mandatory)
+  PENALTY_FILL_90: 5e3,
+  // Critical fill >= 90%
+  PENALTY_FILL_70: 1e3,
+  // Must-visit fill >= 70%
+  DISTANCE_COST_WEIGHT: 1,
+  // Weight per km
+  // Speeds and fallback
+  AVERAGE_TRUCK_SPEED_KMH: Number(process.env.AVERAGE_TRUCK_SPEED_KMH) || 25,
+  // City collection average speed (km/h)
+  SERVICE_TIME_PER_BIN_MINS: Number(process.env.SERVICE_TIME_PER_BIN_MINS) || 2,
+  // Handling time per bin stop
+  // Depot & Dump Site (Aminbazar landfill / Central DNCC facility)
+  DEPOT_LOCATION: {
+    lat: Number(process.env.DEPOT_LAT) || 23.8103,
+    lon: Number(process.env.DEPOT_LON) || 90.4125,
+    name: "Central Operations Depot"
+  },
+  DUMP_SITE_LOCATION: {
+    lat: Number(process.env.DUMP_SITE_LAT) || 23.8103,
+    lon: Number(process.env.DUMP_SITE_LON) || 90.4125,
+    name: "Central Solid Waste Landfill / Dump Site"
+  },
+  // OSRM Routing Engine URL
+  // Default public demo instance; configure self-hosted OSRM URL in production (e.g., http://localhost:5000)
+  OSRM_URL: process.env.OSRM_URL || "https://router.project-osrm.org",
+  OSRM_TIMEOUT_MS: Number(process.env.OSRM_TIMEOUT_MS) || 4e3,
+  OSRM_MAX_RETRIES: 2,
+  // Evaluation Baselines
+  DIESEL_PRICE_PER_LITRE_BDT: 105,
+  TRUCK_FUEL_CONSUMPTION_KM_PER_LITRE: 3.5
+  // 3.5 km per liter for loaded municipal compaction truck
+};
+
+// services/routeOptimizer.js
+var matrixCache = /* @__PURE__ */ new Map();
+var geometryCache = /* @__PURE__ */ new Map();
+function hashCoords(coords) {
+  let hash = 0;
+  const str = coords.map((c) => `${c[0].toFixed(5)},${c[1].toFixed(5)}`).join(";");
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return `h_${hash}`;
+}
+function haversineDistanceKm2(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Number((R * c).toFixed(3));
+}
+function computeFallbackMatrix(points, averageSpeedKmh = ROUTE_CONFIG.AVERAGE_TRUCK_SPEED_KMH) {
+  const n = points.length;
+  const distances = Array.from({ length: n }, () => new Float32Array(n));
+  const durations = Array.from({ length: n }, () => new Float32Array(n));
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      if (i === j) {
+        distances[i][j] = 0;
+        durations[i][j] = 0;
+      } else {
+        const d = haversineDistanceKm2(points[i].lat, points[i].lon, points[j].lat, points[j].lon);
+        distances[i][j] = d;
+        durations[i][j] = d / averageSpeedKmh * 60;
+      }
+    }
+  }
+  return { distances, durations, isOsrm: false };
+}
+async function fetchOsrmTable(points) {
+  if (points.length <= 1) {
+    return {
+      distances: [[0]],
+      durations: [[0]],
+      isOsrm: false
+    };
+  }
+  const coords = points.map((p) => [p.lon, p.lat]);
+  const cacheKey = hashCoords(coords);
+  if (matrixCache.has(cacheKey)) {
+    return matrixCache.get(cacheKey);
+  }
+  const coordsString = coords.map((c) => `${c[0].toFixed(6)},${c[1].toFixed(6)}`).join(";");
+  const url = `${ROUTE_CONFIG.OSRM_URL}/table/v1/driving/${coordsString}?annotations=distance,duration`;
+  let osrmResult = null;
+  for (let attempt = 0; attempt <= ROUTE_CONFIG.OSRM_MAX_RETRIES; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), ROUTE_CONFIG.OSRM_TIMEOUT_MS);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timer);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.code === "Ok" && data.distances && data.durations) {
+          const n = points.length;
+          const distances = Array.from({ length: n }, () => new Float32Array(n));
+          const durations = Array.from({ length: n }, () => new Float32Array(n));
+          for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) {
+              distances[i][j] = (data.distances[i][j] || 0) / 1e3;
+              durations[i][j] = (data.durations[i][j] || 0) / 60;
+            }
+          }
+          osrmResult = { distances, durations, isOsrm: true };
+          break;
+        }
+      }
+    } catch {
+    }
+  }
+  if (!osrmResult) {
+    osrmResult = computeFallbackMatrix(points);
+  }
+  matrixCache.set(cacheKey, osrmResult);
+  return osrmResult;
+}
+async function fetchRouteGeometry(waypoints) {
+  if (waypoints.length <= 1) {
+    return {
+      type: "LineString",
+      coordinates: waypoints.map((w) => [w.lon, w.lat])
+    };
+  }
+  const coords = waypoints.map((w) => [w.lon, w.lat]);
+  const cacheKey = "geom_" + hashCoords(coords);
+  if (geometryCache.has(cacheKey)) {
+    return geometryCache.get(cacheKey);
+  }
+  const sampledCoords = coords.length > 70 ? coords.filter((_, idx) => idx % Math.ceil(coords.length / 60) === 0 || idx === coords.length - 1) : coords;
+  const coordsString = sampledCoords.map((c) => `${c[0].toFixed(6)},${c[1].toFixed(6)}`).join(";");
+  const url = `${ROUTE_CONFIG.OSRM_URL}/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ROUTE_CONFIG.OSRM_TIMEOUT_MS);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.code === "Ok" && data.routes?.[0]?.geometry) {
+        const geom = data.routes[0].geometry;
+        geometryCache.set(cacheKey, geom);
+        return geom;
+      }
+    }
+  } catch {
+  }
+  const fallback = {
+    type: "LineString",
+    coordinates: coords
+  };
+  geometryCache.set(cacheKey, fallback);
+  return fallback;
+}
+function isCandidateMustVisit(bin, config = ROUTE_CONFIG) {
+  const fill = Number(bin.fillLevel !== void 0 ? bin.fillLevel : bin.fill) || 0;
+  if (fill >= config.FILL_MUST_VISIT_THRESHOLD) return true;
+  if (bin.fire === true) return true;
+  if (bin.status === "fire" || bin.status === "critical") return true;
+  if (typeof bin.temp === "string" && bin.temp.toLowerCase().includes("high")) return true;
+  if (typeof bin.gas === "string" && (bin.gas.toLowerCase().includes("critical") || bin.gas.toLowerCase().includes("ppm"))) {
+    const num = parseInt(bin.gas, 10);
+    if (!isNaN(num) && num >= 50) return true;
+  }
+  if (Array.isArray(bin.alerts) && bin.alerts.some((a) => !a.resolved && (a.type === "fire" || a.type === "gas" || a.type === "overflow"))) {
+    return true;
+  }
+  if (bin.forecastFull90At) {
+    const forecastTime = new Date(bin.forecastFull90At).getTime();
+    const thresholdTime = Date.now() + config.FORECAST_WINDOW_HOURS * 3600 * 1e3;
+    if (forecastTime <= thresholdTime) return true;
+  }
+  return false;
+}
+function getBinSkipPenalty(bin, config = ROUTE_CONFIG) {
+  const fill = Number(bin.fillLevel !== void 0 ? bin.fillLevel : bin.fill) || 0;
+  const isHazard = bin.fire === true || bin.status === "fire" || bin.status === "critical" || Array.isArray(bin.alerts) && bin.alerts.some((a) => !a.resolved && (a.type === "fire" || a.type === "gas"));
+  if (isHazard) return config.PENALTY_HAZARD_ALERT;
+  if (fill >= config.FILL_CRITICAL_THRESHOLD) return config.PENALTY_FILL_90;
+  if (fill >= config.FILL_MUST_VISIT_THRESHOLD) return config.PENALTY_FILL_70;
+  return 0;
+}
+function getBinDemandKg(bin) {
+  const fill = Number(bin.fillLevel !== void 0 ? bin.fillLevel : bin.fill) || 0;
+  let capacity = 120;
+  if (typeof bin.capacityKg === "number" && bin.capacityKg > 0) {
+    capacity = bin.capacityKg;
+  } else if (typeof bin.capacity === "string") {
+    const parsed = parseInt(bin.capacity, 10);
+    if (!isNaN(parsed) && parsed > 0) capacity = parsed;
+  }
+  return Number((fill / 100 * capacity).toFixed(2));
+}
+function clusterCandidates(candidates, depot, maxNodes = ROUTE_CONFIG.MAX_NODES_PER_SOLVE, maxClusterDemand = ROUTE_CONFIG.TRUCK_CAPACITY_KG) {
+  if (candidates.length <= maxNodes && candidates.reduce((sum, c) => sum + getBinDemandKg(c), 0) <= maxClusterDemand) {
+    return [candidates];
+  }
+  const sorted = [...candidates].map((bin) => {
+    const lat = bin.lat || 0;
+    const lon = bin.lon !== void 0 ? bin.lon : bin.lng || 0;
+    const angle = Math.atan2(lat - depot.lat, lon - depot.lon);
+    const distToDepot = haversineDistanceKm2(depot.lat, depot.lon, lat, lon);
+    return { bin, angle, distToDepot, demand: getBinDemandKg(bin) };
+  }).sort((a, b) => a.angle - b.angle);
+  const clusters = [];
+  let currentCluster = [];
+  let currentDemand = 0;
+  for (const item of sorted) {
+    const wouldExceedDemand = currentDemand + item.demand > maxClusterDemand && currentCluster.length >= 5;
+    const wouldExceedNodes = currentCluster.length >= maxNodes;
+    if (currentCluster.length > 0 && (wouldExceedDemand || wouldExceedNodes)) {
+      clusters.push(currentCluster);
+      currentCluster = [item.bin];
+      currentDemand = item.demand;
+    } else {
+      currentCluster.push(item.bin);
+      currentDemand += item.demand;
+    }
+  }
+  if (currentCluster.length > 0) {
+    clusters.push(currentCluster);
+  }
+  clusters.sort((cA, cB) => {
+    const minA = Math.min(...cA.map((b) => haversineDistanceKm2(depot.lat, depot.lon, b.lat, b.lon !== void 0 ? b.lon : b.lng)));
+    const minB = Math.min(...cB.map((b) => haversineDistanceKm2(depot.lat, depot.lon, b.lat, b.lon !== void 0 ? b.lon : b.lng)));
+    return minA - minB;
+  });
+  return clusters;
+}
+function solveCVRPCluster({
+  nodes,
+  // [0: Depot, 1..N: Bins]
+  distanceMatrix,
+  // NxN
+  durationMatrix,
+  // NxN
+  capacityKg = ROUTE_CONFIG.TRUCK_CAPACITY_KG,
+  timeLimitMs = ROUTE_CONFIG.SOLVER_TIME_LIMIT_MS,
+  startDepotIdx = 0,
+  dumpSiteIdx = 0
+}) {
+  const n = nodes.length;
+  if (n <= 1) return [];
+  const startTime = Date.now();
+  const unassigned = /* @__PURE__ */ new Set();
+  const demands = nodes.map(getBinDemandKg);
+  const penalties = nodes.map((b) => b.isDepot ? 0 : getBinSkipPenalty(b));
+  for (let i = 1; i < n; i++) {
+    unassigned.add(i);
+  }
+  const trips = [];
+  while (unassigned.size > 0) {
+    let currentRoute = [startDepotIdx, dumpSiteIdx];
+    let currentLoad = 0;
+    let bestSeed = -1;
+    let maxSeedScore = -1;
+    for (const idx of unassigned) {
+      const score = penalties[idx] * 10 + distanceMatrix[startDepotIdx][idx];
+      if (score > maxSeedScore) {
+        maxSeedScore = score;
+        bestSeed = idx;
+      }
+    }
+    if (bestSeed === -1) break;
+    currentRoute.splice(1, 0, bestSeed);
+    currentLoad += demands[bestSeed];
+    unassigned.delete(bestSeed);
+    let improved = true;
+    while (improved && unassigned.size > 0) {
+      improved = false;
+      let bestNode = -1;
+      let bestInsertPos = -1;
+      let minInsertCost = Infinity;
+      for (const candidate of unassigned) {
+        const demand = demands[candidate];
+        if (currentLoad + demand > capacityKg) continue;
+        for (let i = 0; i < currentRoute.length - 1; i++) {
+          const u = currentRoute[i];
+          const v = currentRoute[i + 1];
+          const addedDist = distanceMatrix[u][candidate] + distanceMatrix[candidate][v] - distanceMatrix[u][v];
+          const netCost = addedDist - penalties[candidate] / 1e3;
+          if (netCost < minInsertCost) {
+            minInsertCost = netCost;
+            bestNode = candidate;
+            bestInsertPos = i + 1;
+          }
+        }
+      }
+      if (bestNode !== -1) {
+        currentRoute.splice(bestInsertPos, 0, bestNode);
+        currentLoad += demands[bestNode];
+        unassigned.delete(bestNode);
+        improved = true;
+      }
+    }
+    trips.push({ route: currentRoute, loadKg: currentLoad });
+  }
+  for (const trip of trips) {
+    let route = trip.route;
+    let betterFound = true;
+    let iterations = 0;
+    while (betterFound && iterations < 50 && Date.now() - startTime < timeLimitMs) {
+      betterFound = false;
+      iterations++;
+      for (let i = 1; i < route.length - 2; i++) {
+        for (let j = i + 1; j < route.length - 1; j++) {
+          const u1 = route[i - 1];
+          const u2 = route[i];
+          const v1 = route[j];
+          const v2 = route[j + 1];
+          const currentDist = distanceMatrix[u1][u2] + distanceMatrix[v1][v2];
+          const newDist = distanceMatrix[u1][v1] + distanceMatrix[u2][v2];
+          if (newDist + 1e-4 < currentDist) {
+            const reversed = route.slice(i, j + 1).reverse();
+            route.splice(i, reversed.length, ...reversed);
+            betterFound = true;
+            break;
+          }
+        }
+        if (betterFound) break;
+      }
+      if (!betterFound) {
+        for (let segLen = 1; segLen <= 2; segLen++) {
+          for (let i = 1; i <= route.length - 1 - segLen; i++) {
+            const seg = route.slice(i, i + segLen);
+            const prev = route[i - 1];
+            const next = route[i + segLen];
+            const removeCost = distanceMatrix[prev][next] - (distanceMatrix[prev][seg[0]] + distanceMatrix[seg[seg.length - 1]][next]);
+            for (let j = 0; j < route.length - 1; j++) {
+              if (j >= i - 1 && j <= i + segLen - 1) continue;
+              const insPrev = route[j];
+              const insNext = route[j + 1];
+              const addCost = distanceMatrix[insPrev][seg[0]] + distanceMatrix[seg[seg.length - 1]][insNext] - distanceMatrix[insPrev][insNext];
+              if (removeCost + addCost + 1e-4 < 0) {
+                route.splice(i, segLen);
+                const insertAt = j < i ? j + 1 : j + 1 - segLen;
+                route.splice(insertAt, 0, ...seg);
+                betterFound = true;
+                break;
+              }
+            }
+            if (betterFound) break;
+          }
+          if (betterFound) break;
+        }
+      }
+    }
+    trip.route = route;
+  }
+  return trips;
+}
+async function optimizeRouteForScope({
+  binsInScope = [],
+  depot = ROUTE_CONFIG.DEPOT_LOCATION,
+  dumpSite = ROUTE_CONFIG.DUMP_SITE_LOCATION,
+  truckCapacityKg = ROUTE_CONFIG.TRUCK_CAPACITY_KG,
+  config = ROUTE_CONFIG,
+  startLocation = null,
+  // e.g. truck current GPS { lat, lon }
+  includeGeometry = true
+}) {
+  const mustVisitBins = [];
+  const skippedBins = [];
+  for (const bin of binsInScope) {
+    if (isCandidateMustVisit(bin, config)) {
+      mustVisitBins.push(bin);
+    } else {
+      skippedBins.push(bin);
+    }
+  }
+  if (mustVisitBins.length === 0) {
+    return {
+      trips: [],
+      totalDistanceKm: 0,
+      totalDurationMin: 0,
+      totalLoadKg: 0,
+      candidateCount: 0,
+      totalBinsInScope: binsInScope.length,
+      skippedBins: { count: skippedBins.length, ids: skippedBins.map((b) => b.id || b.binCode) },
+      message: "No bins currently meet the collection threshold or hazard criteria."
+    };
+  }
+  const clusters = clusterCandidates(mustVisitBins, depot, config.MAX_NODES_PER_SOLVE, truckCapacityKg);
+  const allTrips = [];
+  let tripCounter = 1;
+  let overallDistanceKm = 0;
+  let overallDurationMin = 0;
+  let overallLoadKg = 0;
+  const geometryTasks = [];
+  for (let cIdx = 0; cIdx < clusters.length; cIdx++) {
+    const clusterBins = clusters[cIdx];
+    const origin = cIdx === 0 && startLocation && typeof startLocation.lat === "number" ? { lat: startLocation.lat, lon: startLocation.lon !== void 0 ? startLocation.lon : startLocation.lng, name: "Driver Current Position", isDepot: true } : { lat: depot.lat, lon: depot.lon, name: depot.name || "Operations Depot", isDepot: true };
+    const dump = { lat: dumpSite.lat, lon: dumpSite.lon, name: dumpSite.name || "Landfill Dump Site", isDepot: true };
+    const nodes = [origin, ...clusterBins.map((b) => ({
+      ...b,
+      lat: Number(b.lat),
+      lon: Number(b.lon !== void 0 ? b.lon : b.lng),
+      isDepot: false
+    }))];
+    const { distances, durations } = await fetchOsrmTable(nodes);
+    const clusterTrips = solveCVRPCluster({
+      nodes,
+      distanceMatrix: distances,
+      durationMatrix: durations,
+      capacityKg: truckCapacityKg,
+      timeLimitMs: config.SOLVER_TIME_LIMIT_MS,
+      startDepotIdx: 0,
+      dumpSiteIdx: 0
+    });
+    for (const rawTrip of clusterTrips) {
+      const stopNodes = rawTrip.route.map((idx) => nodes[idx]);
+      if (stopNodes.length <= 2) continue;
+      let tripDistKm = 0;
+      let tripDurMin = 0;
+      let cumMinutes = 0;
+      const formattedStops = [];
+      for (let s = 1; s < stopNodes.length - 1; s++) {
+        const prevNode = stopNodes[s - 1];
+        const currNode = stopNodes[s];
+        const prevIdx = rawTrip.route[s - 1];
+        const currIdx = rawTrip.route[s];
+        const legDist = Number((distances[prevIdx][currIdx] || haversineDistanceKm2(prevNode.lat, prevNode.lon, currNode.lat, currNode.lon)).toFixed(2));
+        const legDur = Number((durations[prevIdx][currIdx] || legDist / config.AVERAGE_TRUCK_SPEED_KMH * 60).toFixed(1));
+        cumMinutes += legDur + config.SERVICE_TIME_PER_BIN_MINS;
+        tripDistKm += legDist;
+        tripDurMin += legDur + config.SERVICE_TIME_PER_BIN_MINS;
+        const fill = Number(currNode.fillLevel !== void 0 ? currNode.fillLevel : currNode.fill) || 0;
+        const isHazard = currNode.fire === true || currNode.status === "critical" || currNode.status === "fire";
+        formattedStops.push({
+          stopNumber: formattedStops.length + 1,
+          binId: currNode.id || currNode.binCode,
+          name: currNode.binCode || currNode.id || `Bin #${s}`,
+          location: currNode.location || `Stop #${s}`,
+          ward: currNode.ward?.name || currNode.ward?.area || (currNode.wardId ? `Ward ${currNode.wardId}` : "Assigned Ward"),
+          wardId: currNode.wardId || currNode.ward?.id,
+          lat: currNode.lat,
+          lon: currNode.lon,
+          lng: currNode.lon,
+          fillLevel: fill,
+          capacityKg: currNode.capacityKg || 120,
+          demandKg: getBinDemandKg(currNode),
+          priority: isHazard ? "CRITICAL_HAZARD" : fill >= 90 ? "CRITICAL_OVERFLOW" : "MUST_VISIT",
+          etaMinutes: Math.round(cumMinutes),
+          legDistanceKm: legDist
+        });
+      }
+      const lastStopIdx = rawTrip.route[rawTrip.route.length - 2];
+      const endDepotIdx = rawTrip.route[rawTrip.route.length - 1];
+      const returnDist = Number((distances[lastStopIdx][endDepotIdx] || haversineDistanceKm2(stopNodes[stopNodes.length - 2].lat, stopNodes[stopNodes.length - 2].lon, dump.lat, dump.lon)).toFixed(2));
+      const returnDur = Number((durations[lastStopIdx][endDepotIdx] || returnDist / config.AVERAGE_TRUCK_SPEED_KMH * 60).toFixed(1));
+      tripDistKm += returnDist;
+      tripDurMin += returnDur;
+      const hasHazard = formattedStops.some((s) => s.priority === "CRITICAL_HAZARD");
+      const loadKg = Number(rawTrip.loadKg.toFixed(1));
+      const tripObj = {
+        tripNumber: tripCounter++,
+        stops: formattedStops,
+        stopsCount: formattedStops.length,
+        distanceKm: Number(tripDistKm.toFixed(2)),
+        durationMin: Math.round(tripDurMin),
+        loadKg,
+        capacityKg: truckCapacityKg,
+        utilizationPct: Math.round(loadKg / truckCapacityKg * 100),
+        hasHazard,
+        depot,
+        dumpSite,
+        geometry: {
+          type: "LineString",
+          coordinates: stopNodes.map((w) => [w.lon, w.lat])
+        }
+      };
+      allTrips.push(tripObj);
+      if (includeGeometry) {
+        geometryTasks.push(
+          fetchRouteGeometry(stopNodes).then((geom) => {
+            tripObj.geometry = geom;
+          }).catch(() => {
+          })
+        );
+      }
+      overallDistanceKm += tripDistKm;
+      overallDurationMin += tripDurMin;
+      overallLoadKg += loadKg;
+    }
+  }
+  if (geometryTasks.length > 0) {
+    await Promise.all(geometryTasks);
+  }
+  allTrips.sort((a, b) => {
+    if (a.hasHazard && !b.hasHazard) return -1;
+    if (!a.hasHazard && b.hasHazard) return 1;
+    return a.tripNumber - b.tripNumber;
+  });
+  allTrips.forEach((t, idx) => {
+    t.tripNumber = idx + 1;
+  });
+  return {
+    trips: allTrips,
+    totalDistanceKm: Number(overallDistanceKm.toFixed(2)),
+    totalDurationMin: Math.round(overallDurationMin),
+    totalLoadKg: Number(overallLoadKg.toFixed(1)),
+    candidateCount: mustVisitBins.length,
+    totalBinsInScope: binsInScope.length,
+    skippedBins: {
+      count: skippedBins.length,
+      ids: skippedBins.map((b) => b.id || b.binCode)
+    },
+    depot,
+    dumpSite
+  };
+}
+async function compareRouteStrategies(binsInScope = [], depot = ROUTE_CONFIG.DEPOT_LOCATION) {
+  if (!binsInScope || binsInScope.length === 0) {
+    return {
+      baselineA: { name: "Fixed Route (All Bins)", totalDistanceKm: 0, binsVisited: 0, overflowEvents: 0, fuelCostBdt: 0 },
+      baselineB: { name: "Nearest-Neighbor Greedy (All Bins)", totalDistanceKm: 0, binsVisited: 0, overflowEvents: 0, fuelCostBdt: 0 },
+      proposed: { name: "IntelliWaste Threshold & CVRP Optimizer", totalDistanceKm: 0, binsVisited: 0, overflowEvents: 0, fuelCostBdt: 0 }
+    };
+  }
+  const fuelCostPerKm = ROUTE_CONFIG.DIESEL_PRICE_PER_LITRE_BDT / ROUTE_CONFIG.TRUCK_FUEL_CONSUMPTION_KM_PER_LITRE;
+  const fixedNodes = [...binsInScope].sort((a, b) => String(a.binCode || a.id).localeCompare(String(b.binCode || b.id)));
+  let distA = 0;
+  let prevLat = depot.lat;
+  let prevLon = depot.lon;
+  for (const b of fixedNodes) {
+    const lat = b.lat;
+    const lon = b.lon !== void 0 ? b.lon : b.lng;
+    distA += haversineDistanceKm2(prevLat, prevLon, lat, lon);
+    prevLat = lat;
+    prevLon = lon;
+  }
+  distA += haversineDistanceKm2(prevLat, prevLon, depot.lat, depot.lon);
+  const unvisitedB = [...binsInScope];
+  let distB = 0;
+  let currLat = depot.lat;
+  let currLon = depot.lon;
+  while (unvisitedB.length > 0) {
+    let nearestIdx = -1;
+    let minDist = Infinity;
+    for (let i = 0; i < unvisitedB.length; i++) {
+      const b = unvisitedB[i];
+      const d = haversineDistanceKm2(currLat, currLon, b.lat, b.lon !== void 0 ? b.lon : b.lng);
+      if (d < minDist) {
+        minDist = d;
+        nearestIdx = i;
+      }
+    }
+    const [picked] = unvisitedB.splice(nearestIdx, 1);
+    distB += minDist;
+    currLat = picked.lat;
+    currLon = picked.lon !== void 0 ? picked.lon : picked.lng;
+  }
+  distB += haversineDistanceKm2(currLat, currLon, depot.lat, depot.lon);
+  const proposedResult = await optimizeRouteForScope({ binsInScope, depot });
+  const visitedIds = /* @__PURE__ */ new Set();
+  proposedResult.trips.forEach((t) => t.stops.forEach((s) => visitedIds.add(s.binId)));
+  const unvisitedCritical = binsInScope.filter((b) => {
+    const fill = Number(b.fillLevel !== void 0 ? b.fillLevel : b.fill) || 0;
+    const id = b.id || b.binCode;
+    return fill >= 90 && !visitedIds.has(id);
+  }).length;
+  return {
+    baselineA: {
+      name: "Baseline A: Fixed Sequence (All Bins)",
+      totalDistanceKm: Number(distA.toFixed(2)),
+      binsVisited: binsInScope.length,
+      estimatedOverflowEvents: 0,
+      estimatedFuelCostBdt: Math.round(distA * fuelCostPerKm),
+      description: "Static legacy schedule visiting every single bin regardless of fill level"
+    },
+    baselineB: {
+      name: "Baseline B: Nearest-Neighbour Greedy (All Bins)",
+      totalDistanceKm: Number(distB.toFixed(2)),
+      binsVisited: binsInScope.length,
+      estimatedOverflowEvents: 0,
+      estimatedFuelCostBdt: Math.round(distB * fuelCostPerKm),
+      description: "Greedy heuristic visiting all containers without dynamic fill filtering"
+    },
+    proposed: {
+      name: "Proposed: Dynamic Threshold + Forecast + CVRP Optimizer",
+      totalDistanceKm: proposedResult.totalDistanceKm,
+      binsVisited: proposedResult.candidateCount,
+      skippedBinsCount: proposedResult.skippedBins.count,
+      estimatedOverflowEvents: unvisitedCritical,
+      estimatedFuelCostBdt: Math.round(proposedResult.totalDistanceKm * fuelCostPerKm),
+      tripsCount: proposedResult.trips.length,
+      description: "Lean candidate filtering (fill >= 70%, 12h forecast, alerts) with cluster CVRP"
+    },
+    comparisonMetrics: {
+      distanceSavedVsBaselineAKm: Number((distA - proposedResult.totalDistanceKm).toFixed(2)),
+      distanceSavedVsBaselineBKm: Number((distB - proposedResult.totalDistanceKm).toFixed(2)),
+      fuelSavingsVsBaselineABdt: Math.round((distA - proposedResult.totalDistanceKm) * fuelCostPerKm),
+      fuelSavingsVsBaselineBBdt: Math.round((distB - proposedResult.totalDistanceKm) * fuelCostPerKm)
+    }
+  };
+}
+
+// lib/handlers/routes/index.ts
+var lastReoptMap = /* @__PURE__ */ new Map();
+var routes_default = apiHandler(
+  async (req, res, currentUser) => {
+    const driverId = currentUser?.userId || currentUser?.id;
+    if (!driverId) {
+      return res.status(401).json({ error: "Unauthorized: Driver identification required" });
+    }
+    let driverScope = null;
+    try {
+      driverScope = getDriverBinScope(currentUser);
+    } catch (err) {
+      return res.status(403).json({ error: err.message || "Driver scope assignment invalid" });
+    }
+    const segments = Array.isArray(req.query?.path) ? req.query.path : typeof req.query?.path === "string" ? req.query.path.split("/").filter(Boolean) : [];
+    const cleanUrl = (req.url || "").split("?")[0].replace(/^\/api\/?/, "").replace(/^\//, "");
+    const urlSegs = cleanUrl.split("/").filter(Boolean);
+    const action = segments[1] || urlSegs[1] || req.query?.action || "current";
+    async function getBinsInScope(filterWardId) {
+      const targetWardId = filterWardId || driverScope.wardId;
+      const targetCityCorpId = driverScope.cityCorpId;
+      try {
+        const whereClause = {};
+        if (targetWardId) {
+          whereClause.wardId = targetWardId;
+        } else if (targetCityCorpId) {
+          whereClause.OR = [
+            { cityCorpId: targetCityCorpId },
+            { ward: { cityCorpId: targetCityCorpId } }
+          ];
+        }
+        const dbBins = await prisma_default.bin.findMany({
+          where: whereClause,
+          select: {
+            id: true,
+            binCode: true,
+            location: true,
+            capacity: true,
+            capacityKg: true,
+            fill: true,
+            fillLevel: true,
+            temp: true,
+            gas: true,
+            fire: true,
+            status: true,
+            lat: true,
+            lng: true,
+            wardId: true,
+            cityCorpId: true,
+            forecastFull90At: true,
+            alerts: {
+              where: { resolved: false },
+              select: { id: true, type: true, message: true, priority: true }
+            },
+            ward: {
+              select: { id: true, name: true, area: true, cityCorpId: true }
+            }
+          }
+        });
+        if (dbBins && dbBins.length > 0) {
+          return dbBins.map((b) => ({
+            ...b,
+            lon: b.lng,
+            capacityKg: b.capacityKg || 120,
+            fillLevel: b.fillLevel || b.fill || 0
+          }));
+        }
+      } catch (err) {
+        console.warn("[Route DB Notice] Fallback to memory store:", err.message);
+      }
+      let memBins = [...memoryDb.bins];
+      if (targetWardId) {
+        memBins = memBins.filter((b) => b.wardId === targetWardId);
+      } else if (targetCityCorpId) {
+        memBins = memBins.filter((b) => {
+          if (b.cityCorpId === targetCityCorpId) return true;
+          const ward = memoryDb.wards.find((w) => w.id === b.wardId);
+          return ward && ward.cityCorpId === targetCityCorpId;
+        });
+      }
+      return memBins.map((b) => {
+        const ward = memoryDb.wards.find((w) => w.id === b.wardId);
+        const activeAlerts = memoryDb.alerts.filter((a) => a.binId === b.id && !a.resolved);
+        return {
+          ...b,
+          lon: b.lng,
+          capacityKg: b.capacityKg || 120,
+          fillLevel: b.fillLevel || b.fill || 0,
+          ward: ward ? { id: ward.id, name: ward.name, area: ward.area, cityCorpId: ward.cityCorpId } : null,
+          alerts: activeAlerts
+        };
+      });
+    }
+    if (req.method === "GET" && (action === "bins" || req.query.view === "bins")) {
+      const filterWard = req.query.ward || void 0;
+      const allBins = await getBinsInScope(filterWard);
+      const west = req.query.west ? Number(req.query.west) : null;
+      const south = req.query.south ? Number(req.query.south) : null;
+      const east = req.query.east ? Number(req.query.east) : null;
+      const north = req.query.north ? Number(req.query.north) : null;
+      let filtered = allBins;
+      if (west !== null && south !== null && east !== null && north !== null) {
+        filtered = allBins.filter((b) => {
+          const lat = b.lat;
+          const lon = b.lon !== void 0 ? b.lon : b.lng;
+          return lat >= south && lat <= north && lon >= west && lon <= east;
+        });
+      }
+      const limit = req.query.limit ? parseInt(req.query.limit, 10) : 5e3;
+      const offset = req.query.offset ? parseInt(req.query.offset, 10) : 0;
+      const sliced = filtered.slice(offset, offset + limit);
+      const lightweight = sliced.map((b) => ({
+        id: b.id,
+        binCode: b.binCode,
+        location: b.location,
+        lat: b.lat,
+        lon: b.lon !== void 0 ? b.lon : b.lng,
+        lng: b.lon !== void 0 ? b.lon : b.lng,
+        fill: b.fillLevel || b.fill || 0,
+        fillLevel: b.fillLevel || b.fill || 0,
+        status: b.status || "normal",
+        temp: b.temp,
+        gas: b.gas,
+        fire: b.fire,
+        capacityKg: b.capacityKg || 120,
+        wardId: b.wardId,
+        wardName: b.ward?.name || b.ward?.area || `Ward ${b.wardId}`,
+        forecastFull90At: b.forecastFull90At,
+        hasActiveAlert: Array.isArray(b.alerts) && b.alerts.length > 0
+      }));
+      return res.status(200).json({
+        total: filtered.length,
+        scope: driverScope,
+        bins: lightweight
+      });
+    }
+    if (req.method === "GET" && action === "compare") {
+      const allBins = await getBinsInScope();
+      const comparison = await compareRouteStrategies(allBins, ROUTE_CONFIG.DEPOT_LOCATION);
+      return res.status(200).json({
+        scope: driverScope,
+        totalBinsInScope: allBins.length,
+        ...comparison
+      });
+    }
+    if (req.method === "GET" && (action === "optimize" || action === "current")) {
+      if (action === "current") {
+        try {
+          const existingDbRoute = await prisma_default.route.findFirst({
+            where: { driverId, status: "active" },
+            orderBy: { createdAt: "desc" }
+          });
+          if (existingDbRoute) {
+            const parsed = {
+              id: existingDbRoute.id,
+              driverId: existingDbRoute.driverId,
+              scope: JSON.parse(existingDbRoute.scope || "{}"),
+              trips: JSON.parse(existingDbRoute.trips || "[]"),
+              totalDistanceKm: existingDbRoute.totalDistanceKm,
+              totalDurationMin: existingDbRoute.totalDurationMin,
+              status: existingDbRoute.status,
+              createdAt: existingDbRoute.createdAt
+            };
+            return res.status(200).json(parsed);
+          }
+        } catch {
+        }
+        const memRoute = (memoryDb.routes || []).find((r) => r.driverId === driverId && r.status === "active");
+        if (memRoute) {
+          return res.status(200).json(memRoute);
+        }
+      }
+      const binsInScope = await getBinsInScope();
+      const optResult = await optimizeRouteForScope({
+        binsInScope,
+        depot: ROUTE_CONFIG.DEPOT_LOCATION,
+        dumpSite: ROUTE_CONFIG.DUMP_SITE_LOCATION,
+        truckCapacityKg: ROUTE_CONFIG.TRUCK_CAPACITY_KG
+      });
+      const routeRecord = {
+        id: `route-${Date.now()}`,
+        driverId,
+        scope: driverScope,
+        trips: optResult.trips,
+        totalDistanceKm: optResult.totalDistanceKm,
+        totalDurationMin: optResult.totalDurationMin,
+        totalLoadKg: optResult.totalLoadKg,
+        candidateCount: optResult.candidateCount,
+        totalBinsInScope: optResult.totalBinsInScope,
+        skippedBins: optResult.skippedBins,
+        status: "active",
+        depot: optResult.depot,
+        dumpSite: optResult.dumpSite,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      if (!memoryDb.routes) memoryDb.routes = [];
+      memoryDb.routes = memoryDb.routes.filter((r) => r.driverId !== driverId);
+      memoryDb.routes.push(routeRecord);
+      try {
+        await prisma_default.route.deleteMany({ where: { driverId } });
+        await prisma_default.route.create({
+          data: {
+            id: routeRecord.id,
+            driverId,
+            scope: JSON.stringify(driverScope),
+            trips: JSON.stringify(optResult.trips),
+            totalDistanceKm: optResult.totalDistanceKm,
+            totalDurationMin: optResult.totalDurationMin,
+            status: "active"
+          }
+        });
+      } catch {
+      }
+      return res.status(200).json(routeRecord);
+    }
+    if (req.method === "POST" && (action === "reoptimize" || req.body?.action === "reoptimize")) {
+      const now = Date.now();
+      const lastCall = lastReoptMap.get(driverId) || 0;
+      if (now - lastCall < 1500) {
+        return res.status(429).json({ error: "Re-optimization rate limit exceeded. Please wait a moment." });
+      }
+      lastReoptMap.set(driverId, now);
+      const { currentLat, currentLon, currentLng, completedBinIds = [] } = req.body || {};
+      const lat = Number(currentLat);
+      const lon = Number(currentLon !== void 0 ? currentLon : currentLng);
+      const allBins = await getBinsInScope();
+      const completedSet = new Set(completedBinIds.map(String));
+      const remainingBins = allBins.filter((b) => !completedSet.has(String(b.id)) && !completedSet.has(String(b.binCode)));
+      const startLocation = !isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0 ? { lat, lon, name: "Live Truck Position" } : null;
+      const optResult = await optimizeRouteForScope({
+        binsInScope: remainingBins,
+        depot: ROUTE_CONFIG.DEPOT_LOCATION,
+        dumpSite: ROUTE_CONFIG.DUMP_SITE_LOCATION,
+        truckCapacityKg: ROUTE_CONFIG.TRUCK_CAPACITY_KG,
+        startLocation
+      });
+      const updatedRoute = {
+        id: `route-${Date.now()}`,
+        driverId,
+        scope: driverScope,
+        trips: optResult.trips,
+        totalDistanceKm: optResult.totalDistanceKm,
+        totalDurationMin: optResult.totalDurationMin,
+        totalLoadKg: optResult.totalLoadKg,
+        candidateCount: optResult.candidateCount,
+        totalBinsInScope: allBins.length,
+        skippedBins: optResult.skippedBins,
+        status: "active",
+        depot: optResult.depot,
+        dumpSite: optResult.dumpSite,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      if (!memoryDb.routes) memoryDb.routes = [];
+      memoryDb.routes = memoryDb.routes.filter((r) => r.driverId !== driverId);
+      memoryDb.routes.push(updatedRoute);
+      try {
+        await prisma_default.route.deleteMany({ where: { driverId } });
+        await prisma_default.route.create({
+          data: {
+            id: updatedRoute.id,
+            driverId,
+            scope: JSON.stringify(driverScope),
+            trips: JSON.stringify(optResult.trips),
+            totalDistanceKm: optResult.totalDistanceKm,
+            totalDurationMin: optResult.totalDurationMin,
+            status: "active"
+          }
+        });
+      } catch {
+      }
+      return res.status(200).json(updatedRoute);
+    }
+    return res.status(405).json({ error: "Method not allowed on routes endpoint" });
+  },
+  { allowedMethods: ["GET", "POST"] }
+);
+
 // api-src/index.ts
 async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -10748,6 +12203,10 @@ async function handler(req, res) {
     }
     if (resource === "wallet") {
       return wallet_default(req, res);
+    }
+    if (resource === "routes") {
+      req.query.action = subResource || req.query.action || "current";
+      return routes_default(req, res);
     }
     return res.status(200).json({ status: "healthy", endpoint: segments.join("/") });
   } catch (err) {

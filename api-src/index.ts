@@ -39,6 +39,7 @@ import rewardsIndex from "../lib/handlers/rewards/index";
 import schedulesIndex from "../lib/handlers/schedules/index";
 import wasteTypesIndex from "../lib/handlers/waste-types/index";
 import walletIndex from "../lib/handlers/wallet/index";
+import routesIndex from "../lib/handlers/routes/index";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -202,6 +203,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 19. Citizen / Business Wallet & Deposits
     if (resource === "wallet") {
       return walletIndex(req, res);
+    }
+
+    // 20. Dynamic CVRP Routes & Scalable Driver Directions
+    if (resource === "routes") {
+      req.query.action = subResource || (req.query.action as string) || "current";
+      return routesIndex(req, res);
     }
 
     return res.status(200).json({ status: "healthy", endpoint: segments.join("/") });

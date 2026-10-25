@@ -64,11 +64,22 @@ export default apiHandler(
         role,
         cityCorpId,
         wardId,
+        assignment,
       } = req.body || {};
 
       // Privilege escalation protection: Only Super Admin can assign/change admin roles
       if (role && role !== user.role && !isSuper) {
         return res.status(403).json({ error: "Forbidden: Only Super Admin can change account roles" });
+      }
+
+      let targetCityCorpId = cityCorpId;
+      let targetWardId = wardId;
+
+      if (assignment) {
+        if (assignment.cityCorporation) {
+          targetCityCorpId = assignment.cityCorporation;
+        }
+        targetWardId = assignment.ward || null;
       }
 
       let hashedPassword: string | undefined;
@@ -85,8 +96,17 @@ export default apiHandler(
       if (hashedPassword) user.password = hashedPassword;
       if (active !== undefined && (isSuper || isCityAdmin)) user.active = Boolean(active);
       if (role && isSuper) user.role = role;
-      if (cityCorpId !== undefined && isSuper) user.cityCorpId = cityCorpId;
-      if (wardId !== undefined && (isSuper || isCityAdmin)) user.wardId = wardId;
+      if (targetCityCorpId !== undefined && (isSuper || isCityAdmin)) {
+        user.cityCorpId = targetCityCorpId;
+        user.assignment = {
+          cityCorporation: targetCityCorpId,
+          ward: targetWardId || null,
+        };
+      }
+      if (targetWardId !== undefined && (isSuper || isCityAdmin)) {
+        user.wardId = targetWardId;
+        if (user.assignment) user.assignment.ward = targetWardId || null;
+      }
 
       // Update in memory store
       const memUserIdx = memoryDb.users.findIndex((u: StoredUser) => u.id === id || u.username === id);
@@ -97,8 +117,29 @@ export default apiHandler(
         if (hashedPassword) memoryDb.users[memUserIdx].password = hashedPassword;
         if (active !== undefined && (isSuper || isCityAdmin)) memoryDb.users[memUserIdx].active = Boolean(active);
         if (role && isSuper) memoryDb.users[memUserIdx].role = role;
-        if (cityCorpId !== undefined && isSuper) memoryDb.users[memUserIdx].cityCorpId = cityCorpId;
-        if (wardId !== undefined && (isSuper || isCityAdmin)) memoryDb.users[memUserIdx].wardId = wardId;
+        if (targetCityCorpId !== undefined && (isSuper || isCityAdmin)) {
+          memoryDb.users[memUserIdx].cityCorpId = targetCityCorpId;
+          memoryDb.users[memUserIdx].assignment = {
+            cityCorporation: targetCityCorpId,
+            ward: targetWardId || null,
+          };
+        }
+        if (targetWardId !== undefined && (isSuper || isCityAdmin)) {
+          memoryDb.users[memUserIdx].wardId = targetWardId;
+          if (memoryDb.users[memUserIdx].assignment) {
+            memoryDb.users[memUserIdx].assignment.ward = targetWardId || null;
+          }
+        }
+      }
+
+      // If assignment was updated for a driver, clear cached route to refresh it immediately
+      if (assignment || targetCityCorpId !== undefined || targetWardId !== undefined) {
+        if (Array.isArray(memoryDb.routes)) {
+          memoryDb.routes = memoryDb.routes.filter((r: any) => r.driverId !== id);
+        }
+        try {
+          await prisma.route.deleteMany({ where: { driverId: id } });
+        } catch {}
       }
 
       try {
@@ -111,10 +152,10 @@ export default apiHandler(
             ...(hashedPassword && { password: hashedPassword }),
             ...(active !== undefined && (isSuper || isCityAdmin) && { active: Boolean(active) }),
             ...(role && isSuper && { role }),
-            ...(cityCorpId !== undefined && isSuper && { cityCorpId }),
-            ...(wardId !== undefined && (isSuper || isCityAdmin) && { wardId }),
+            ...(targetCityCorpId !== undefined && (isSuper || isCityAdmin) && { cityCorpId: targetCityCorpId }),
+            ...(targetWardId !== undefined && (isSuper || isCityAdmin) && { wardId: targetWardId }),
           },
-        }).catch(() => null);
+        });
       } catch {}
 
       return res.status(200).json(user);

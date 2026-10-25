@@ -49,6 +49,10 @@ export interface StoredUser {
   walletBalance?: number;
   cityCorpId?: string | null;
   wardId?: string | null;
+  assignment?: {
+    cityCorporation: string;
+    ward?: string | null;
+  } | null;
   businessType?: string | null;
   tradeLicense?: string | null;
   licenseNumber?: string | null;
@@ -60,7 +64,9 @@ export interface StoredBin {
   binCode: string;
   location: string;
   capacity: string;
+  capacityKg?: number;
   fill: number;
+  fillLevel?: number;
   weight: number;
   temp: string;
   gas: string;
@@ -70,8 +76,26 @@ export interface StoredBin {
   lastCollected?: string | null;
   lat: number;
   lng: number;
+  lon?: number;
   wardId: string;
+  ward?: string;
+  cityCorpId?: string;
+  cityCorporation?: string;
+  forecastFull90At?: string | null; // TODO: ML-based time-series forecasting model
+  alerts?: any[];
   createdAt: string;
+}
+
+export interface StoredRoute {
+  id: string;
+  driverId: string;
+  scope: any;
+  trips: any[];
+  totalDistanceKm: number;
+  totalDurationMin: number;
+  status: "active" | "completed";
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface StoredTrack {
@@ -218,6 +242,7 @@ if (!g.__intelliwaste_store) {
     users: [] as StoredUser[],
     bins: [] as StoredBin[],
     tracks: [] as StoredTrack[],
+    routes: [] as StoredRoute[],
     alerts: [] as StoredAlert[],
     pickups: [] as any[],
     schedules: [] as StoredPickupSchedule[],

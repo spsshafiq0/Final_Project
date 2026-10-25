@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -8,10 +8,10 @@ import {
   Globe, LogOut, Plus, Edit3, Trash, Search, Download, RefreshCw,
   Users, MapPin, Flame, Wind, X, ChevronRight, Eye, EyeOff, Save, Package,
   Navigation, ExternalLink, ClipboardList, Loader2, Coins, Wallet,
-  Calendar, UserCheck, CheckCircle2, Clock
+  Calendar, UserCheck, CheckCircle2, Clock, Compass
 } from "lucide-react";
 import { type Ward, type Bin, type Track } from "../data/cityData";
-import api, { WardItem, BinItem, TrackItem, UserProfile, WithdrawalItem, ReportItem, AlertItem, PickupScheduleItem, CityWasteItem, userStorage } from "../lib/api";
+import api, { CityCorporationItem, WardItem, BinItem, TrackItem, UserProfile, WithdrawalItem, ReportItem, AlertItem, PickupScheduleItem, CityWasteItem, userStorage } from "../lib/api";
 
 interface MainAdminPanelProps {
   onLogout: () => void;
@@ -165,74 +165,238 @@ function WardModal({
   );
 }
 
-// ── Add / Edit Bin Modal ───────────────────────────────────────────────
+// ── Add / Edit Bin Modal with Cascading Dropdowns & Mini Map Picker ────
 function BinModal({
-  initial, onClose, onSave, title, availableWards
+  initial,
+  onClose,
+  onSave,
+  title,
+  availableWards,
+  availableCities = [
+    { id: "cc-dncc", name: "Dhaka North City Corporation", code: "DNCC" },
+    { id: "cc-dscc", name: "Dhaka South City Corporation", code: "DSCC" },
+    { id: "cc-ccc", name: "Chattogram City Corporation", code: "CCC" },
+  ],
 }: {
-  initial?: Partial<Bin>;
+  initial?: any;
   onClose: () => void;
-  onSave: (b: Partial<Bin>) => void;
+  onSave: (b: any) => void;
   title: string;
   availableWards: Ward[];
+  availableCities?: any[];
 }) {
+  const initialCityId = initial?.cityCorpId || initial?.cityCorporation || "cc-dncc";
+  const [selectedCityCorpId, setSelectedCityCorpId] = useState<string>(initialCityId);
+
+  // Filter wards dynamically by selected City Corporation
+  const filteredWards = useMemo(() => {
+    return availableWards.filter(w => {
+      if (!w.cityCorpId) return true;
+      return w.cityCorpId === selectedCityCorpId;
+    });
+  }, [availableWards, selectedCityCorpId]);
+
   const [form, setForm] = useState({
-    wardId:   initial?.wardId   ?? (availableWards[0]?.id || 1),
+    wardId: initial?.wardId ?? (filteredWards[0]?.id || availableWards[0]?.id || "ward-dncc-01"),
     location: initial?.location ?? "",
     capacity: initial?.capacity ?? "120L",
-    lat:      initial?.lat      ?? 23.78,
-    lng:      initial?.lng      ?? 90.40,
+    capacityKg: initial?.capacityKg ?? 120,
+    lat: initial?.lat ?? 23.8103,
+    lng: initial?.lng ?? initial?.lon ?? 90.4125,
   });
 
+  // When city changes, update ward to first valid ward in that CC
+  const handleCityChange = (newCityId: string) => {
+    setSelectedCityCorpId(newCityId);
+    const validWards = availableWards.filter(w => !w.cityCorpId || w.cityCorpId === newCityId);
+    if (validWards.length > 0) {
+      setForm(f => ({ ...f, wardId: validWards[0].id }));
+    }
+  };
+
+  // Mini Map click-to-pick coordinates (Dhaka Metro bounds approx 23.70 - 23.88 N, 90.34 - 90.46 E)
+  const handleMiniMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const xPct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const yPct = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+
+    const lat = Number((23.88 - yPct * 0.18).toFixed(4));
+    const lng = Number((90.34 + xPct * 0.12).toFixed(4));
+    setForm(f => ({ ...f, lat, lng }));
+  };
+
+  // Calculate pin position on mini map percentage
+  const pinTopPct = Math.max(5, Math.min(95, ((23.88 - form.lat) / 0.18) * 100));
+  const pinLeftPct = Math.max(5, Math.min(95, ((form.lng - 90.34) / 0.12) * 100));
+
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-5">
-          <div className="font-display font-700 text-white">{title}</div>
-          <button onClick={onClose}><X size={16} className="text-[#4b7a5a]" /></button>
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#1a3d22]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-[#16a34a]/20 border border-[#4ade80]/30 flex items-center justify-center text-[#4ade80]">
+              <MapPin size={16} />
+            </div>
+            <div>
+              <div className="font-display font-700 text-white text-base">{title}</div>
+              <div className="text-[11px] text-[#4b7a5a] font-mono">Scoped Bin Creation & Coordinate Picker</div>
+            </div>
+          </div>
+          <button onClick={onClose}><X size={16} className="text-[#4b7a5a] hover:text-white" /></button>
         </div>
+
         <div className="space-y-4">
+          {/* Cascading Dropdown 1: City Corporation (Required) */}
           <div>
-            <label className="block text-[#4b7a5a] text-xs font-mono mb-1">WARD</label>
-            <select value={form.wardId} onChange={e => setForm(f => ({ ...f, wardId: Number(e.target.value) }))} className={sel}>
-              {availableWards.map(w => (
-                <option key={w.id} value={w.id}>{w.name} — {w.area}</option>
+            <label className="block text-xs font-mono text-[#86efac] mb-1">
+              CITY CORPORATION <span className="text-red-400">*</span>
+            </label>
+            <select
+              value={selectedCityCorpId}
+              onChange={e => handleCityChange(e.target.value)}
+              className={sel}
+            >
+              {availableCities.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.code})
+                </option>
               ))}
             </select>
           </div>
+
+          {/* Cascading Dropdown 2: Ward (Filtered by selected CC, Required) */}
           <div>
-            <label className="block text-[#4b7a5a] text-xs font-mono mb-1">SPECIFIC LOCATION / STREET</label>
-            <input value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="e.g. Sector 7, Road 3 Corner" className={inp} />
-          </div>
-          <div>
-            <label className="block text-[#4b7a5a] text-xs font-mono mb-1">CAPACITY</label>
-            <select value={form.capacity} onChange={e => setForm(f => ({ ...f, capacity: e.target.value }))} className={sel}>
-              <option value="120L">120L Standard Smart Bin</option>
-              <option value="240L">240L Commercial Bin</option>
-              <option value="360L">360L Industrial Heavy Bin</option>
+            <label className="block text-xs font-mono text-[#86efac] mb-1">
+              WARD (FILTERED BY SELECTED CC) <span className="text-red-400">*</span>
+            </label>
+            <select
+              value={form.wardId}
+              onChange={e => setForm(f => ({ ...f, wardId: e.target.value }))}
+              className={sel}
+            >
+              {filteredWards.length === 0 ? (
+                <option value="">-- No wards under this City Corporation --</option>
+              ) : (
+                filteredWards.map((w: any) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name} — {w.area}
+                  </option>
+                ))
+              )}
             </select>
           </div>
+
+          {/* Street / Location Name */}
+          <div>
+            <label className="block text-xs font-mono text-[#86efac] mb-1">SPECIFIC STREET / INSTALLATION LOCATION</label>
+            <input
+              value={form.location}
+              onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
+              placeholder="e.g. Sector 7, Road 3 Corner"
+              className={inp}
+            />
+          </div>
+
+          {/* Capacity Selection */}
+          <div>
+            <label className="block text-xs font-mono text-[#86efac] mb-1">CAPACITY & TYPE</label>
+            <select
+              value={form.capacity}
+              onChange={e => {
+                const cap = e.target.value;
+                const capKg = cap === "360L" ? 360 : cap === "240L" ? 240 : 120;
+                setForm(f => ({ ...f, capacity: cap, capacityKg: capKg }));
+              }}
+              className={sel}
+            >
+              <option value="120L">120L Standard Smart Municipal Bin (120 kg)</option>
+              <option value="240L">240L Commercial Container (240 kg)</option>
+              <option value="360L">360L Industrial Compaction Bin (360 kg)</option>
+            </select>
+          </div>
+
+          {/* Interactive Mini Map Coordinate Picker */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-mono text-[#86efac] flex items-center gap-1.5">
+                <Navigation size={12} className="text-[#4ade80]" />
+                <span>PICK COORDINATES (CLICK MAP OR TYPE)</span>
+              </label>
+              <span className="text-[10px] text-[#4b7a5a] font-mono">
+                Lat: {form.lat.toFixed(4)}, Lon: {form.lng.toFixed(4)}
+              </span>
+            </div>
+
+            <div
+              onClick={handleMiniMapClick}
+              className="relative h-36 rounded-xl border border-[#1a3d22] bg-[#061309] overflow-hidden cursor-crosshair group shadow-inner flex items-center justify-center"
+              title="Click anywhere to set coordinates"
+            >
+              <div className="absolute inset-0 bg-[radial-gradient(#1a3d22_1.5px,transparent_1.5px)] [background-size:16px_16px] opacity-60" />
+              <div className="absolute top-2 left-2 text-[10px] font-mono text-[#4b7a5a] bg-[#0d2414]/90 px-2 py-0.5 rounded border border-[#1a3d22] pointer-events-none">
+                📍 Click to set coordinates
+              </div>
+
+              {/* Glowing Pin Marker */}
+              <div
+                style={{ top: `${pinTopPct}%`, left: `${pinLeftPct}%` }}
+                className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all duration-150"
+              >
+                <div className="w-5 h-5 rounded-full bg-[#16a34a] border-2 border-white shadow-lg shadow-[#4ade80]/60 flex items-center justify-center text-[10px] text-white font-bold animate-bounce">
+                  •
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Latitude & Longitude Manual Inputs */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[#4b7a5a] text-xs font-mono mb-1">LATITUDE</label>
-              <input type="number" step="0.001" value={form.lat} onChange={e => setForm(f => ({ ...f, lat: Number(e.target.value) }))} className={inp} />
+              <label className="block text-[11px] font-mono text-[#4b7a5a] mb-1">LATITUDE</label>
+              <input
+                type="number"
+                step="0.0001"
+                value={form.lat}
+                onChange={e => setForm(f => ({ ...f, lat: Number(e.target.value) }))}
+                className={inp}
+              />
             </div>
             <div>
-              <label className="block text-[#4b7a5a] text-xs font-mono mb-1">LONGITUDE</label>
-              <input type="number" step="0.001" value={form.lng} onChange={e => setForm(f => ({ ...f, lng: Number(e.target.value) }))} className={inp} />
+              <label className="block text-[11px] font-mono text-[#4b7a5a] mb-1">LONGITUDE</label>
+              <input
+                type="number"
+                step="0.0001"
+                value={form.lng}
+                onChange={e => setForm(f => ({ ...f, lng: Number(e.target.value) }))}
+                className={inp}
+              />
             </div>
           </div>
         </div>
-        <div className="flex gap-3 mt-6">
-          <button onClick={onClose} className="flex-1 border border-[#1a3d22] text-[#4b7a5a] rounded-xl py-2.5 text-sm hover:border-[#4ade80]/30 transition-colors">Cancel</button>
+
+        <div className="flex gap-3 mt-6 pt-3 border-t border-[#1a3d22]">
+          <button
+            onClick={onClose}
+            className="flex-1 border border-[#1a3d22] text-[#4b7a5a] hover:text-white rounded-xl py-2.5 text-xs font-semibold transition-colors"
+          >
+            Cancel
+          </button>
           <button
             onClick={() => {
-              if (!form.location) return;
-              onSave(form);
+              if (!form.location) {
+                alert("Please enter a specific location or street name.");
+                return;
+              }
+              onSave({
+                ...form,
+                cityCorpId: selectedCityCorpId,
+                cityCorporation: selectedCityCorpId,
+              });
               onClose();
             }}
-            className="flex-1 bg-[#16a34a] text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-[#15803d] flex items-center justify-center gap-2"
+            className="flex-1 bg-[#16a34a] hover:bg-[#15803d] text-white rounded-xl py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-md"
           >
-            <Save size={14} /> Save Bin
+            <Save size={14} /> Save Smart Bin
           </button>
         </div>
       </div>
@@ -392,8 +556,8 @@ function TrackModal({
 
 // ── Add Sub-Admin Modal ────────────────────────────────────────────────
 type SubAdminForm = {
-  id?: number;
-  wardId: number;
+  id?: number | string;
+  wardId: number | string;
   name: string;
   username: string;
   password?: string;
@@ -403,6 +567,7 @@ type SubAdminForm = {
   address: string;
   active: boolean;
 };
+
 
 function AddSubAdminModal({
   onClose,
@@ -572,9 +737,45 @@ function AssignDriverModal({
   const [truckType, setTruckType] = useState<"NORMAL" | "HAZARDOUS">(track.truckType === "HAZARDOUS" ? "HAZARDOUS" : "NORMAL");
   const [submitting, setSubmitting] = useState(false);
 
+  // Scoping state: City Corporation -> Ward
+  const [cityCorps, setCityCorps] = useState<CityCorporationItem[]>([]);
+  const [wards, setWards] = useState<WardItem[]>([]);
+  const [selectedCityCorpId, setSelectedCityCorpId] = useState<string>("");
+  const [selectedWardId, setSelectedWardId] = useState<string>("");
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.all([
+      api.cities.getAll().catch(() => []),
+      api.wards.getAll().catch(() => [])
+    ]).then(([ccs, ws]) => {
+      if (!mounted) return;
+      if (Array.isArray(ccs)) setCityCorps(ccs);
+      if (Array.isArray(ws)) setWards(ws);
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    if (selectedDriverId) {
+      const d = drivers.find(drv => drv.id === selectedDriverId);
+      if (d) {
+        const cc = d.assignment?.cityCorporation || d.cityCorpId || (cityCorps[0]?.id || "");
+        const w = d.assignment?.ward || d.wardId || "";
+        setSelectedCityCorpId(cc);
+        setSelectedWardId(w);
+      }
+    } else {
+      setSelectedCityCorpId("");
+      setSelectedWardId("");
+    }
+  }, [selectedDriverId, drivers, cityCorps]);
+
+  const filteredWards = wards.filter(w => !selectedCityCorpId || w.cityCorpId === selectedCityCorpId);
+
   return (
     <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6 w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#1a3d22]">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-xl bg-[#16a34a]/20 border border-[#4ade80]/30 flex items-center justify-center text-[#4ade80]">
@@ -637,6 +838,65 @@ function AssignDriverModal({
               Select any registered driver to assign them to this truck. You can reassign or swap drivers anytime.
             </p>
           </div>
+
+          {/* Driver Route Scope */}
+          {selectedDriverId && (
+            <div className="p-3.5 rounded-xl bg-[#061309] border border-[#1a3d22] space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-mono text-[#86efac] flex items-center gap-1.5 font-bold">
+                  <Compass size={13} className="text-[#4ade80]" />
+                  DRIVER ROUTE SCOPE (CITY CORP & WARD)
+                </label>
+                <span className="text-[10px] text-[#4ade80] bg-[#16a34a]/20 px-2 py-0.5 rounded border border-[#4ade80]/30 font-mono">
+                  {selectedWardId ? "Ward Scoped" : "CC Wide (All Wards)"}
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#86efac] mb-1">
+                  City Corporation <span className="text-red-400">*</span>
+                </label>
+                <select
+                  value={selectedCityCorpId}
+                  onChange={e => {
+                    setSelectedCityCorpId(e.target.value);
+                    setSelectedWardId("");
+                  }}
+                  className="w-full bg-[#0d2414] border border-[#1a3d22] rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-[#4ade80]"
+                >
+                  <option value="">-- Select City Corporation --</option>
+                  {cityCorps.map(cc => (
+                    <option key={cc.id} value={cc.id}>
+                      {cc.name} ({cc.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#86efac] mb-1">
+                  Ward Coverage <span className="text-[#4b7a5a] text-[10px] font-normal">(Optional — Leave empty for entire CC)</span>
+                </label>
+                <select
+                  value={selectedWardId}
+                  onChange={e => setSelectedWardId(e.target.value)}
+                  disabled={!selectedCityCorpId}
+                  className="w-full bg-[#0d2414] border border-[#1a3d22] rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-[#4ade80] disabled:opacity-50"
+                >
+                  <option value="">-- All Wards in City Corporation (Broad Route) --</option>
+                  {filteredWards.map(w => (
+                    <option key={w.id} value={w.id}>
+                      Ward {w.name} {w.area ? `· ${w.area}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="text-[10px] text-[#4b7a5a] bg-[#0d2414]/60 p-2 rounded border border-[#1a3d22]/60">
+                <strong className="text-[#86efac]">Scope Enforcement:</strong> If no ward is chosen, the driver's route covers all bins across the City Corporation. If a ward is chosen, the driver is strictly limited to that ward.
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-3 mt-6">
@@ -650,6 +910,14 @@ function AssignDriverModal({
             onClick={async () => {
               setSubmitting(true);
               try {
+                if (selectedDriverId && selectedCityCorpId) {
+                  await api.users.update(selectedDriverId, {
+                    assignment: {
+                      cityCorporation: selectedCityCorpId,
+                      ward: selectedWardId || null,
+                    },
+                  }).catch(err => console.warn("Scope update notice:", err));
+                }
                 await onAssign(track.id, selectedDriverId || null, truckType);
                 onClose();
               } finally {
@@ -690,6 +958,7 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
   const cityTitle = currentUser?.cityCorp?.name || "City Corporation";
   const cityCode = currentUser?.cityCorp?.code || "CITY";
 
+  const [localCities, setLocalCities] = useState<CityCorporationItem[]>([]);
   const [localWards, setLocalWards] = useState<Ward[]>([]);
   const [localBins, setLocalBins] = useState<Bin[]>([]);
   const [localTracks, setLocalTracks] = useState<Track[]>([]);
@@ -790,7 +1059,8 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
   useEffect(() => {
     async function fetchData() {
       try {
-        const [apiWards, apiBins, apiTracks, apiUsers, apiWithdrawals, apiReports, apiAlerts, apiDrivers, apiSchedules, apiWasteItems] = await Promise.all([
+        const [apiCities, apiWards, apiBins, apiTracks, apiUsers, apiWithdrawals, apiReports, apiAlerts, apiDrivers, apiSchedules, apiWasteItems] = await Promise.all([
+          api.cities.getAll().catch(() => []),
           api.wards.getAll(cityCorpId).catch(() => []),
           api.bins.getAll({ cityCorpId }).catch(() => []),
           api.tracks.getAll().catch(() => []),
@@ -803,6 +1073,9 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
           api.wasteTypes.getAll({ cityCorpId }).catch(() => []),
         ]);
 
+        if (Array.isArray(apiCities) && apiCities.length > 0) {
+          setLocalCities(apiCities);
+        }
         if (Array.isArray(apiDrivers)) setDrivers(apiDrivers);
         if (Array.isArray(apiSchedules)) setSchedules(apiSchedules);
         if (Array.isArray(apiWasteItems)) setWasteItems(apiWasteItems);
@@ -813,7 +1086,7 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
 
         if (apiWards && apiWards.length > 0) {
           const mappedWards: Ward[] = apiWards.map((w, idx) => ({
-            id: Number(w.id) || idx + 1,
+            id: w.id || idx + 1,
             name: w.name,
             area: w.area,
             population: w.population || 50000,
@@ -821,6 +1094,7 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
             totalBins: w._count?.bins || 0,
             activeTracks: w._count?.tracks || 0,
             subAdmin: null,
+            cityCorpId: w.cityCorpId,
           }));
           setLocalWards(mappedWards);
         }
@@ -843,18 +1117,22 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
         if (apiBins && apiBins.length > 0) {
           const mappedBins: Bin[] = apiBins.map((b) => ({
             id: b.binCode,
-            wardId: 1,
+            dbId: b.id,
+            wardId: b.wardId,
+            cityCorpId: b.cityCorpId || b.ward?.cityCorpId,
             location: b.location,
             area: b.ward?.area || "Dhaka",
-            fill: b.fill,
-            weight: b.weight,
-            temp: b.temp,
-            gas: b.gas,
-            fire: b.fire,
-            status: b.status,
-            capacity: b.capacity,
+            fill: b.fill ?? b.fillLevel ?? 0,
+            fillLevel: b.fillLevel ?? b.fill ?? 0,
+            weight: b.weight || 0,
+            temp: b.temp || "Normal",
+            gas: b.gas || "Normal",
+            fire: b.fire || false,
+            status: b.status || "normal",
+            capacity: b.capacity || "120L",
+            capacityKg: b.capacityKg || 120,
             qr: b.qr || `QR-${b.binCode}`,
-            lastCollected: b.lastCollected || "Today",
+            lastCollected: b.lastCollected ? new Date(b.lastCollected).toLocaleDateString() : "Never",
             lat: b.lat,
             lng: b.lng,
           }));
@@ -1017,75 +1295,159 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
   };
 
   // Save Ward (Add new or Edit)
-  const saveWard = async (form: { name: string; area: string; councilor: string; population: number }) => {
+  const saveWard = async (form: { id?: string | number; name: string; area: string; councilor: string; population: number }) => {
     try {
-      const targetCityCorpId = cityCorpId || currentUser?.cityCorpId || "";
-      if (targetCityCorpId) {
+      const targetCityCorpId = cityCorpId || currentUser?.cityCorpId || (localCities[0]?.id || "");
+      if (form.id && typeof form.id === "string" && form.id.length > 5) {
+        await api.wards.update(form.id, {
+          name: form.name,
+          area: form.area,
+          councilor: form.councilor,
+          population: form.population,
+          cityCorpId: targetCityCorpId,
+        });
+      } else {
         await api.wards.create({
           name: form.name,
           area: form.area,
           councilor: form.councilor,
           population: form.population,
           cityCorpId: targetCityCorpId,
-        }).catch(() => null);
+        });
       }
-    } catch {}
 
-    setLocalWards(prev => {
-      const newWard: Ward = {
-        id: prev.length + 1,
-        name: form.name,
-        area: form.area,
-        councilor: form.councilor,
-        population: form.population,
-        totalBins: 0,
-        activeTracks: 0,
-        subAdmin: null,
-      };
-      return [...prev, newWard];
-    });
+      // Re-fetch wards directly from API to guarantee DB sync
+      const freshWards = await api.wards.getAll(cityCorpId);
+      if (Array.isArray(freshWards) && freshWards.length > 0) {
+        setLocalWards(freshWards.map((w, idx) => ({
+          id: w.id || idx + 1,
+          name: w.name,
+          area: w.area,
+          population: w.population || 50000,
+          councilor: w.councilor || "",
+          totalBins: w._count?.bins || 0,
+          activeTracks: w._count?.tracks || 0,
+          subAdmin: null,
+          cityCorpId: w.cityCorpId,
+        })));
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to save ward to database");
+    }
   };
 
-  const deleteWard = (wardId: number) => {
-    if (!confirm("Are you sure you want to remove this Ward?")) return;
-    setLocalWards(prev => prev.filter(w => w.id !== wardId));
-    setLocalBins(prev => prev.filter(b => b.wardId !== wardId));
-    setLocalTracks(prev => prev.filter(t => t.wardId !== wardId));
-  };
-
-  // Save Bin
-  const saveBin = async (updated: Partial<Bin>) => {
+  const deleteWard = async (wardId: number | string) => {
+    if (!confirm("Are you sure you want to remove this Ward? All associated bins and tracks will also be removed.")) return;
     try {
-      await api.bins.create({
-        binCode: updated.id || `B-${Date.now().toString().slice(-4)}`,
-        location: updated.location || "Street Corner",
-        capacity: updated.capacity || "120L",
-        wardId: String(updated.wardId || 1),
-        lat: updated.lat || 23.78,
-        lng: updated.lng || 90.40,
-      }).catch(() => null);
-    } catch {}
-
-    setLocalBins(prev => {
-      const ward = localWards.find(w => w.id === updated.wardId);
-      const area = updated.area || ward?.area || "Dhaka";
-      const idx = prev.findIndex(b => b.id === (updated as Bin).id);
-      if (idx >= 0) {
-        const n = [...prev];
-        n[idx] = { ...n[idx], ...updated, area } as Bin;
-        return n;
+      if (typeof wardId === "string" && wardId.length > 5) {
+        await api.wards.delete(wardId);
       }
-      const newId = `B-${String(prev.length + 1).padStart(3, "0")}`;
-      return [...prev, { ...updated, id: newId, qr: `QR-${newId}`, area, lastCollected: "Never", status: "normal", fill: 0, weight: 0, temp: "Normal", gas: "Normal", fire: false } as Bin];
-    });
+      setLocalWards(prev => prev.filter(w => String(w.id) !== String(wardId)));
+      setLocalBins(prev => prev.filter(b => String(b.wardId) !== String(wardId)));
+      setLocalTracks(prev => prev.filter(t => String(t.wardId) !== String(wardId)));
+    } catch (err: any) {
+      alert(err.message || "Failed to delete ward from database");
+    }
   };
+
+
+
+  // Save Bin (Create / Edit Smart Bin in Neon PostgreSQL)
+  const saveBin = async (updated: any) => {
+    try {
+      const isExisting = updated.dbId || (updated.id && localBins.some(b => b.id === updated.id || b.dbId === updated.id));
+      const targetId = updated.dbId || updated.id;
+
+      if (isExisting && targetId) {
+        await api.bins.update(targetId, {
+          binCode: updated.id,
+          location: updated.location,
+          capacity: updated.capacity,
+          capacityKg: updated.capacityKg || (updated.capacity === "360L" ? 360 : updated.capacity === "240L" ? 240 : 120),
+          wardId: String(updated.wardId),
+          cityCorpId: updated.cityCorpId,
+          lat: updated.lat,
+          lng: updated.lng,
+          fill: updated.fill,
+          fillLevel: updated.fillLevel,
+        });
+      } else {
+        await api.bins.create({
+          binCode: updated.id || `B-${Date.now().toString().slice(-4)}`,
+          location: updated.location || "Street Corner",
+          capacity: updated.capacity || "120L",
+          capacityKg: updated.capacityKg || (updated.capacity === "360L" ? 360 : updated.capacity === "240L" ? 240 : 120),
+          wardId: String(updated.wardId),
+          cityCorpId: updated.cityCorpId,
+          lat: updated.lat || 23.78,
+          lng: updated.lng || 90.40,
+        });
+      }
+
+      // Re-fetch bins directly from API to guarantee 100% database sync
+      const fresh = await api.bins.getAll({ cityCorpId });
+      if (Array.isArray(fresh) && fresh.length > 0) {
+        setLocalBins(fresh.map((b: any) => ({
+          id: b.binCode,
+          dbId: b.id,
+          wardId: b.wardId,
+          cityCorpId: b.cityCorpId || b.ward?.cityCorpId,
+          location: b.location,
+          area: b.ward?.area || "Dhaka",
+          fill: b.fill ?? b.fillLevel ?? 0,
+          fillLevel: b.fillLevel ?? b.fill ?? 0,
+          weight: b.weight || 0,
+          temp: b.temp || "Normal",
+          gas: b.gas || "Normal",
+          fire: b.fire || false,
+          status: b.status || "normal",
+          capacity: b.capacity || "120L",
+          capacityKg: b.capacityKg || 120,
+          qr: b.qr || `QR-${b.binCode}`,
+          lastCollected: b.lastCollected ? new Date(b.lastCollected).toLocaleDateString() : "Never",
+          lat: b.lat,
+          lng: b.lng,
+        })));
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to save smart bin to database");
+    }
+  };
+
+  const deleteBin = async (bin: any) => {
+    if (!confirm(`Are you sure you want to delete Bin ${bin.id}?`)) return;
+    try {
+      const targetId = bin.dbId || bin.id;
+      await api.bins.delete(targetId);
+      setLocalBins(prev => prev.filter(b => b.id !== bin.id && b.dbId !== targetId));
+    } catch (err: any) {
+      alert(err.message || "Failed to delete bin from database");
+    }
+  };
+
 
   // Save Track (with driver account provisioning & Brevo credentials dispatch)
   const saveTrack = async (updated: any) => {
     try {
-      if (updated.truckId && updated.route) {
+      const isExisting = updated.id && localTracks.some(t => t.id === updated.id);
+      if (isExisting) {
+        await api.tracks.update(updated.id, {
+          truckId: updated.truckId,
+          truckType: updated.truckType,
+          route: updated.route,
+          stops: updated.stops ? Number(updated.stops) : 6,
+          fuel: updated.fuel ? Number(updated.fuel) : 100,
+          status: updated.status || "active",
+          wardId: String(updated.wardId || 1),
+          driverId: updated.driverId,
+          mapsRouteUrl: updated.mapsRouteUrl || "",
+          gpsLat: updated.gpsLat ? Number(updated.gpsLat) : 23.78,
+          gpsLng: updated.gpsLng ? Number(updated.gpsLng) : 90.40,
+        });
+      } else if (updated.truckId && updated.route) {
         await api.tracks.create({
           truckId: updated.truckId,
+          truckType: updated.truckType || "NORMAL",
           driver: updated.driver,
           driverName: updated.driver,
           driverPhone: updated.phone,
@@ -1093,45 +1455,54 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
           driverEmail: updated.driverEmail,
           driverPassword: updated.driverPassword,
           route: updated.route,
-          stops: updated.stops || 6,
-          fuel: updated.fuel || 100,
+          stops: updated.stops ? Number(updated.stops) : 6,
+          fuel: updated.fuel ? Number(updated.fuel) : 100,
           status: updated.status || "active",
           wardId: String(updated.wardId || 1),
           mapsRouteUrl: updated.mapsRouteUrl || "",
-          gpsLat: updated.gpsLat || 23.78,
-          gpsLng: updated.gpsLng || 90.40,
-        }).catch((e) => console.warn("Track create notice:", e));
+          gpsLat: updated.gpsLat ? Number(updated.gpsLat) : 23.78,
+          gpsLng: updated.gpsLng ? Number(updated.gpsLng) : 90.40,
+        });
       }
-    } catch {}
 
-    setLocalTracks(prev => {
-      const idx = prev.findIndex(t => t.id === updated.id);
-      if (idx >= 0) {
-        const n = [...prev];
-        n[idx] = { ...n[idx], ...updated } as Track;
-        return n;
+      // Re-fetch tracks directly from API to guarantee DB sync
+      const freshTracks = await api.tracks.getAll();
+      if (Array.isArray(freshTracks) && freshTracks.length > 0) {
+        setLocalTracks(freshTracks.map((t: any) => ({
+          id: t.id,
+          wardId: t.wardId,
+          truckId: t.truckId,
+          truckType: t.truckType || "NORMAL",
+          driverId: t.driverId,
+          driver: t.driver?.fullName || (t.driverId ? "Driver Assigned" : "No Driver Assigned"),
+          phone: t.driver?.phone || "017XX-XXXXXX",
+          route: t.route,
+          stops: t.stops,
+          status: t.status,
+          progress: t.progress,
+          load: t.load,
+          fuel: t.fuel,
+          startTime: t.startTime || "07:00 AM",
+          gpsLat: t.gpsLat,
+          gpsLng: t.gpsLng,
+          mapsRouteUrl: t.mapsRouteUrl || "",
+        })));
       }
-      const newTrack: Track = {
-        id: updated.id || `TR-${String(prev.length + 1).padStart(3, "0")}`,
-        truckId: updated.truckId || "DNCC-T00",
-        driver: updated.driver || "Assigned Driver",
-        phone: updated.phone || "01700-000000",
-        route: updated.route || "Local Route",
-        stops: updated.stops || 6,
-        status: updated.status || "active",
-        progress: updated.progress || 0,
-        load: updated.load || "0%",
-        fuel: updated.fuel || 100,
-        startTime: updated.startTime || "07:00 AM",
-        wardId: updated.wardId || 1,
-        gpsLat: updated.gpsLat || 23.78,
-        gpsLng: updated.gpsLng || 90.40,
-        mapsRouteUrl: updated.mapsRouteUrl || "",
-        username: updated.driverUsername,
-        email: updated.driverEmail,
-      };
-      return [...prev, newTrack];
-    });
+    } catch (err: any) {
+      alert(err.message || "Failed to save track to database");
+    }
+  };
+
+  const deleteTrack = async (track: any) => {
+    if (!confirm(`Are you sure you want to delete Track ${track.truckId}?`)) return;
+    try {
+      if (track.id && typeof track.id === "string" && track.id.length > 5) {
+        await api.tracks.delete(track.id);
+      }
+      setLocalTracks(prev => prev.filter(t => t.id !== track.id));
+    } catch (err: any) {
+      alert(err.message || "Failed to delete track from database");
+    }
   };
 
   // Save SubAdmin (with auto Brevo email dispatch)
@@ -1146,19 +1517,27 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
         email: form.email,
         wardId: String(form.wardId),
         cityCorpId: cityCorpId || currentUser?.cityCorpId,
-      }).catch((e) => console.warn("SubAdmin create notice:", e));
-    } catch {}
+      });
 
-    setSubAdmins(prev => {
-      const existingIdx = prev.findIndex(a => a.wardId === form.wardId || (form.id && a.id === form.id));
-      if (existingIdx >= 0) {
-        const updated = [...prev];
-        updated[existingIdx] = { ...form, id: form.id || Date.now() };
-        return updated;
+      const freshUsers = await api.users.getAll({ role: "WARD_ADMIN", cityCorpId });
+      if (Array.isArray(freshUsers) && freshUsers.length > 0) {
+        setSubAdmins(freshUsers.map((u: any, idx: number) => ({
+          id: u.id || idx + 1,
+          wardId: u.wardId,
+          name: u.fullName || u.username,
+          username: u.username,
+          email: u.email || "",
+          phone: u.phone || "",
+          nid: u.nid || "",
+          address: u.address || "",
+          active: u.active ?? true,
+        })));
       }
-      return [...prev, { ...form, id: Date.now() }];
-    });
+    } catch (err: any) {
+      alert(err.message || "Failed to create ward sub-admin in database");
+    }
   };
+
 
   const totalCritical = localBins.filter(b => b.status === "critical" || b.status === "fire").length;
   const activeTrucks = localTracks.filter(t => t.status === "active").length;
@@ -1950,7 +2329,7 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
                             <div className="flex items-center gap-2">
                               <a href={`https://maps.google.com/?q=${b.lat},${b.lng}`} target="_blank" rel="noreferrer" title="View on Google Maps" className="text-[#4b7a5a] hover:text-[#60a5fa] transition-colors"><Navigation size={13} /></a>
                               <button onClick={() => setEditBin(b)} title="Edit bin" className="text-[#4b7a5a] hover:text-[#4ade80] transition-colors"><Edit3 size={13} /></button>
-                              <button onClick={() => setLocalBins(p => p.filter(x => x.id !== b.id))} title="Delete" className="text-[#4b7a5a] hover:text-red-400 transition-colors"><Trash size={13} /></button>
+                              <button onClick={() => deleteBin(b)} title="Delete" className="text-[#4b7a5a] hover:text-red-400 transition-colors"><Trash size={13} /></button>
                             </div>
                           </td>
                         </tr>
@@ -2021,11 +2400,12 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
                           <div className="font-mono" style={{ color: t.fuel < 40 ? "#ef4444" : t.fuel < 60 ? "#f59e0b" : "#4ade80" }}>{t.fuel}%</div>
                         </div>
                       </div>
-                      <div className="flex gap-2 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0">
                         <a href={t.mapsRouteUrl || `https://maps.google.com/?q=${t.gpsLat},${t.gpsLng}`} target="_blank" rel="noreferrer" title="Track on Google Maps" className="text-[#4b7a5a] hover:text-[#60a5fa] transition-colors"><Navigation size={14} /></a>
                         <button onClick={() => setEditTrack(t)} title="Edit track" className="text-[#4b7a5a] hover:text-[#4ade80] transition-colors"><Edit3 size={14} /></button>
-                        <button onClick={() => setLocalTracks(p => p.filter(x => x.id !== t.id))} className="text-[#4b7a5a] hover:text-red-400 transition-colors"><Trash size={14} /></button>
+                        <button onClick={() => deleteTrack(t)} title="Delete track" className="text-[#4b7a5a] hover:text-red-400 transition-colors"><Trash size={14} /></button>
                       </div>
+
                     </div>
                   </div>
                 ))}
@@ -2476,8 +2856,8 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
 
       {/* Modals */}
       {showAddWard && <WardModal title="Add Ward & Area" onClose={() => setShowAddWard(false)} onSave={saveWard} />}
-      {showAddBin && <BinModal title="Add New Smart Bin" onClose={() => setShowAddBin(false)} onSave={saveBin} availableWards={localWards} />}
-      {editBin && <BinModal title="Edit Bin" initial={editBin} onClose={() => setEditBin(null)} onSave={saveBin} availableWards={localWards} />}
+      {showAddBin && <BinModal title="Add New Smart Bin" onClose={() => setShowAddBin(false)} onSave={saveBin} availableWards={localWards} availableCities={localCities.length > 0 ? localCities : undefined} />}
+      {editBin && <BinModal title="Edit Bin" initial={editBin} onClose={() => setEditBin(null)} onSave={saveBin} availableWards={localWards} availableCities={localCities.length > 0 ? localCities : undefined} />}
       {showAddTrack && <TrackModal title="Add Collection Track" onClose={() => setShowAddTrack(false)} onSave={saveTrack} availableWards={localWards} />}
       {editTrack && <TrackModal title="Edit Track" initial={editTrack} onClose={() => setEditTrack(null)} onSave={saveTrack} availableWards={localWards} />}
       {showAddSubAdmin && <AddSubAdminModal onClose={() => setShowAddSubAdmin(false)} onSave={saveSubAdmin} availableWards={localWards} />}

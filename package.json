@@ -8,6 +8,8 @@
     "dev": "vite",
     "build": "prisma generate && vite build && esbuild api-src/index.ts --bundle --platform=node --target=node20 --format=esm --banner:js=\"import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);\" --external:@prisma/client --outfile=api/index.js && esbuild api-src/setup.ts --bundle --platform=node --target=node20 --format=esm --banner:js=\"import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);\" --external:@prisma/client --outfile=api/setup.js && esbuild \"api-src/[...path].ts\" --bundle --platform=node --target=node20 --format=esm --banner:js=\"import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);\" --external:@prisma/client --outfile=\"api/[...path].js\"",
     "preview": "vite preview",
+    "test": "node --test tests/routeOptimizer.test.mjs",
+    "seed": "npx tsx scripts/seed.js",
     "format": "oxfmt",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
@@ -16,13 +18,16 @@
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",
+    "@types/leaflet": "^1.9.22",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
+    "leaflet": "^1.9.4",
     "lucide-react": "^1.44.0",
     "prisma": "^6.4.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "recharts": "^3.10.1"
+    "recharts": "^3.10.1",
+    "socket.io-client": "^4.8.4"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",

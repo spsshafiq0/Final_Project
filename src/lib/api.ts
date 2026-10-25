@@ -18,6 +18,10 @@ export interface UserProfile {
   walletBalance?: number;
   address?: string | null;
   nid?: string | null;
+  assignment?: {
+    cityCorporation?: string | null;
+    ward?: string | null;
+  } | null;
 }
 
 export interface CityCorporationItem {
@@ -64,6 +68,10 @@ export interface BinItem {
   lat: number;
   lng: number;
   wardId: string;
+  cityCorpId?: string;
+  capacityKg?: number;
+  fillLevel?: number;
+  forecastFull90At?: string | null;
   ward?: WardItem;
 }
 
@@ -826,6 +834,30 @@ export const api = {
   // Security Audit Logs
   audit: {
     getAll: () => request<AuditLogItem[]>("/audit"),
+  },
+
+  // Dynamic Route Optimizer & Scalable CVRP Collection Routing
+  routes: {
+    getCurrent: () => request<any>("/routes/current"),
+    optimize: () => request<any>("/routes/optimize"),
+    reoptimize: (data: { currentLat: number; currentLon?: number; currentLng?: number; completedBinIds?: string[] }) =>
+      request<any>("/routes/reoptimize", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    getBins: (filters?: { ward?: string; west?: number; south?: number; east?: number; north?: number; limit?: number; offset?: number }) => {
+      const params = new URLSearchParams();
+      if (filters?.ward) params.append("ward", filters.ward);
+      if (filters?.west !== undefined) params.append("west", String(filters.west));
+      if (filters?.south !== undefined) params.append("south", String(filters.south));
+      if (filters?.east !== undefined) params.append("east", String(filters.east));
+      if (filters?.north !== undefined) params.append("north", String(filters.north));
+      if (filters?.limit !== undefined) params.append("limit", String(filters.limit));
+      if (filters?.offset !== undefined) params.append("offset", String(filters.offset));
+      const query = params.toString() ? `?${params.toString()}` : "";
+      return request<{ total: number; scope: any; bins: any[] }>(`/routes/bins${query}`);
+    },
+    compare: () => request<any>("/routes/compare"),
   },
 };
 

@@ -61,7 +61,9 @@ export default apiHandler(
         binCode,
         location,
         capacity,
+        capacityKg,
         fill,
+        fillLevel,
         weight,
         temp,
         gas,
@@ -70,23 +72,32 @@ export default apiHandler(
         lat,
         lng,
         lastCollected,
+        forecastFull90At,
       } = req.body || {};
 
       let computedStatus = status;
       if (!computedStatus) {
         if (fire) {
           computedStatus = "fire";
-        } else if (fill !== undefined) {
-          if (fill >= 90) computedStatus = "critical";
-          else if (fill >= 70) computedStatus = "warning";
+        } else if (fill !== undefined || fillLevel !== undefined) {
+          const effectiveFill = fillLevel !== undefined ? Number(fillLevel) : Number(fill);
+          if (effectiveFill >= 90) computedStatus = "critical";
+          else if (effectiveFill >= 70) computedStatus = "warning";
           else computedStatus = "normal";
         }
       }
 
+      const parsedFill = fillLevel !== undefined ? Number(fillLevel) : (fill !== undefined ? Number(fill) : undefined);
+      const parsedCapacityKg = capacityKg !== undefined ? Number(capacityKg) : undefined;
+
       if (binCode) bin.binCode = binCode;
       if (location) bin.location = location;
       if (capacity) bin.capacity = capacity;
-      if (fill !== undefined) bin.fill = Number(fill);
+      if (parsedCapacityKg !== undefined) bin.capacityKg = parsedCapacityKg;
+      if (parsedFill !== undefined) {
+        bin.fill = parsedFill;
+        bin.fillLevel = parsedFill;
+      }
       if (weight !== undefined) bin.weight = Number(weight);
       if (temp) bin.temp = temp;
       if (gas) bin.gas = gas;
@@ -103,7 +114,8 @@ export default apiHandler(
             ...(binCode && { binCode }),
             ...(location && { location }),
             ...(capacity && { capacity }),
-            ...(fill !== undefined && { fill: Number(fill) }),
+            ...(parsedCapacityKg !== undefined && { capacityKg: parsedCapacityKg }),
+            ...(parsedFill !== undefined && { fill: Math.round(parsedFill), fillLevel: parsedFill }),
             ...(weight !== undefined && { weight: Number(weight) }),
             ...(temp && { temp }),
             ...(gas && { gas }),
@@ -112,6 +124,9 @@ export default apiHandler(
             ...(lat !== undefined && { lat: Number(lat) }),
             ...(lng !== undefined && { lng: Number(lng) }),
             ...(lastCollected && { lastCollected: new Date(lastCollected) }),
+            ...(forecastFull90At !== undefined && {
+              forecastFull90At: forecastFull90At ? new Date(forecastFull90At) : null,
+            }),
           },
         }).catch(() => null);
       } catch {}

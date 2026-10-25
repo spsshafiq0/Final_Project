@@ -2,9 +2,10 @@ import { useState, useMemo, useEffect } from "react";
 import { Truck, MapPin, CheckCircle, AlertTriangle, Clock, Navigation, Package, Shield, ArrowLeft, ChevronRight, Battery, Fuel, Wind, Wallet, Banknote, Home, ListChecks, Trash2, KeyRound, LogIn, RefreshCw, LogOut, Flame, Sparkles, Radio, AlertOctagon, X } from "lucide-react";
 import NearbyBinsMap from "./NearbyBinsMap";
 import { acceptPickupRequest, completePickupRequest, getDriverBalance, getPickupRequests, setDriverBalance, type PickupRequest } from "../data/pickupStore";
-import api, { ReportItem } from "../lib/api";
+import api, { ReportItem, userStorage } from "../lib/api";
 import ForgotPasswordModal from "./ForgotPasswordModal";
 import { optimizePriorityRoute, defaultSmartBinsWithTelemetry, BinTelemetry } from "../lib/routeOptimizer";
+import DriverRouteMap from "./DriverRouteMap";
 
 interface CollectorAppProps {
   onNavigate: (page: string) => void;
@@ -22,7 +23,8 @@ const hazardProtocol = [
 ];
 
 export default function CollectorApp({ onNavigate }: CollectorAppProps) {
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(userStorage.get());
+  const [loggedIn, setLoggedIn] = useState(Boolean(userStorage.get()?.role === "DRIVER" || userStorage.get()));
   const [driverIdentity, setDriverIdentity] = useState("");
   const [driverPassword, setDriverPassword] = useState("");
   const [driverResetPassword, setDriverResetPassword] = useState("");
@@ -154,6 +156,7 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
     try {
       const res = await api.auth.login(driverIdentity, driverPassword);
       if (res?.user) {
+        setCurrentUser(res.user);
         setLoginError("");
         setBalance(getDriverBalance());
         setPickupRequests(getPickupRequests());
@@ -568,10 +571,14 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
         )}
       </div>
 
-      {/* Priority Base Map & Active Citizen Reports */}
+      {/* Priority Base Map & Collection Route Optimizer */}
       {activeTab === "Priority Map" && (
-        <div className="max-w-5xl mx-auto px-4 py-5 space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="max-w-5xl mx-auto px-4 py-5 space-y-6">
+          {/* Leaflet CVRP Route Map with Multi-Trip Directions */}
+          <DriverRouteMap currentUser={currentUser} />
+
+          {/* Citizen Waste Reports Queue */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-[#1a3d22]">
             <div>
               <h2 className="text-white font-display font-700 text-lg flex items-center gap-2">
                 <MapPin className="text-[#4ade80]" size={20} />

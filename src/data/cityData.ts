@@ -1,15 +1,19 @@
 export interface Bin {
   id: string;
-  wardId: number;
+  dbId?: string;
+  wardId: number | string;
+  cityCorpId?: string;
   location: string;
   area: string;
   fill: number;
+  fillLevel?: number;
   weight: number;
   temp: string;
   gas: string;
   fire: boolean;
   status: "normal" | "warning" | "critical" | "fire";
   capacity: string;
+  capacityKg?: number;
   qr: string;
   lastCollected: string;
   lat: number;
@@ -18,7 +22,7 @@ export interface Bin {
 
 export interface Track {
   id: string;
-  wardId: number;
+  wardId: number | string;
   truckId: string;
   truckType?: "NORMAL" | "HAZARDOUS";
   driverId?: string | null;
@@ -41,8 +45,8 @@ export interface Track {
 }
 
 export interface WardSubAdmin {
-  id: number;
-  wardId: number;
+  id: number | string;
+  wardId: number | string;
   name: string;
   email: string;
   phone: string;
@@ -55,7 +59,7 @@ export interface WardSubAdmin {
 }
 
 export interface Ward {
-  id: number;
+  id: number | string;
   name: string;
   area: string;
   population: number;
@@ -63,6 +67,7 @@ export interface Ward {
   totalBins: number;
   activeTracks: number;
   subAdmin: WardSubAdmin | null;
+  cityCorpId?: string | number;
 }
 
 export const wards: Ward[] = [];
@@ -71,14 +76,15 @@ export const bins: Bin[] = [];
 
 export const tracks: Track[] = [];
 
-export function getBinsForWard(wardId: number): Bin[] {
-  return bins.filter(b => b.wardId === wardId);
+export function getBinsForWard(wardId: number | string): Bin[] {
+  return bins.filter(b => String(b.wardId) === String(wardId));
 }
 
-export function getTracksForWard(wardId: number): Track[] {
-  return tracks.filter(t => t.wardId === wardId);
+export function getTracksForWard(wardId: number | string): Track[] {
+  return tracks.filter(t => String(t.wardId) === String(wardId));
 }
 
-export function getWardById(wardId: number): Ward | undefined {
-  return wards.find(w => w.id === wardId);
+export function getWardById(wardId: number | string): Ward | undefined {
+  return wards.find(w => String(w.id) === String(wardId));
 }
+

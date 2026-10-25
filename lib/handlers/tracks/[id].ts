@@ -63,6 +63,7 @@ export default apiHandler(
 
       const {
         truckId,
+        truckType,
         route,
         stops,
         status,
@@ -77,6 +78,7 @@ export default apiHandler(
       } = req.body || {};
 
       if (truckId) track.truckId = truckId;
+      if (truckType) track.truckType = truckType;
       if (route) track.route = route;
       if (stops !== undefined) track.stops = Number(stops);
       if (status) track.status = status;
@@ -94,6 +96,7 @@ export default apiHandler(
           where: { id },
           data: {
             ...(truckId && { truckId }),
+            ...(truckType && { truckType }),
             ...(route && { route }),
             ...(stops !== undefined && { stops: Number(stops) }),
             ...(status && { status }),
@@ -108,6 +111,7 @@ export default apiHandler(
           },
         }).catch(() => null);
       } catch {}
+
 
       return res.status(200).json(track);
     }

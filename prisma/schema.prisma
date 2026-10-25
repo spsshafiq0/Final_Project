@@ -66,6 +66,7 @@ model CityCorporation {
   updatedAt DateTime @updatedAt
 
   wards      Ward[]
+  bins       Bin[]
   admins     User[]           @relation("CityCorpAdmins")
   schedules  PickupSchedule[]
   wasteItems CityWasteItem[]
@@ -123,12 +124,21 @@ model Bin {
   wardId String
   ward   Ward   @relation(fields: [wardId], references: [id], onDelete: Cascade)
 
+  cityCorpId String?
+  cityCorp   CityCorporation? @relation(fields: [cityCorpId], references: [id], onDelete: Cascade)
+
+  capacityKg       Float     @default(120)
+  fillLevel        Float     @default(0)
+  forecastFull90At DateTime? // TODO: ML-based time-series forecasting model
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   alerts Alert[]
 
   @@index([wardId])
+  @@index([cityCorpId, wardId])
+  @@index([lat, lng])
   @@index([status])
   @@map("bins")
 }
@@ -162,6 +172,24 @@ model Track {
   @@index([driverId])
   @@index([status])
   @@map("tracks")
+}
+
+// ─── Optimized Route ───────────────────────────────────────────────────
+model Route {
+  id               String   @id @default(cuid())
+  driverId         String
+  scope            String   // JSON string: { cityCorporation, ward }
+  trips            String   // JSON array of trips with stops, geometry, metrics
+  totalDistanceKm  Float    @default(0)
+  totalDurationMin Float    @default(0)
+  status           String   @default("active") // "active" | "completed"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([driverId])
+  @@index([status])
+  @@map("routes")
 }
 
 // ─── User ──────────────────────────────────────────────────────────────
