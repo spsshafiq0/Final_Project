@@ -184,9 +184,9 @@ function SmartBin3D() {
                 </div>
               </div>
 
-              {/* Bin ID badge */}
+              {/* Bin status badge */}
               <div style={{ background: "rgba(0,217,255,0.08)", border: `1px solid ${C.border}`, borderRadius: 4, padding: "3px 6px", fontSize: 7, fontFamily: "monospace", color: C.muted }}>
-                BIN-ID: B-047 · WARD 10
+                INTELLIWASTE · SMART IOT NODE
               </div>
 
               {/* Fill gauge */}

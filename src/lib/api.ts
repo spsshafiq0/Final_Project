@@ -1,5 +1,5 @@
 // IntelliWaste Unified API Client
-// Handles JWT authentication, CRUD for City Corps, Wards, Bins, Tracks, Users, and Fallback Mock Data
+// Handles JWT authentication, CRUD for City Corps, Wards, Bins, Tracks, Users, and APIs
 
 const API_BASE = "/api";
 
