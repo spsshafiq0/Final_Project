@@ -386,7 +386,7 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
       },
       (err) => {
         setPickupGpsLoading(false);
-        alert(`GPS detection note: ${err.message}. Accurate pickup coordinates set to Dhaka central.`);
+        alert(`GPS detection note: ${err.message}. Accurate pickup coordinates set to default central position.`);
         setPickupCoords({ lat: 23.7542, lng: 90.3654 });
       },
       { enableHighAccuracy: true, timeout: 8000 }

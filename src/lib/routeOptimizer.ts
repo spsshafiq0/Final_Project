@@ -233,7 +233,7 @@ export function optimizePriorityRoute(
     totalOptimizedKm += legDist;
     prevCoord = { lat: bin.lat, lng: bin.lng };
 
-    // Estimate driving time at ~25 km/h in urban Dhaka + 8 min bin collection
+    // Estimate driving time at ~25 km/h in urban traffic + 8 min bin collection
     const drivingTimeMins = Math.round((legDist / 25) * 60);
     cumulativeMinutes += drivingTimeMins + 8;
 
@@ -261,9 +261,9 @@ export function optimizePriorityRoute(
     savedKm = Number((totalOptimizedKm * 0.22).toFixed(2));
   }
 
-  // Diesel waste truck fuel metrics (Bangladesh standards):
+  // Diesel waste truck fuel metrics (standard benchmark):
   // Average fuel consumption: ~0.35 Litres per kilometer
-  // Diesel market price in Bangladesh: ~105 BDT per Litre
+  // Diesel benchmark price: ~105 BDT per Litre
   const DIESEL_LITRE_PER_KM = 0.35;
   const DIESEL_PRICE_BDT = 105;
 
@@ -292,94 +292,7 @@ export function optimizePriorityRoute(
 }
 
 /**
- * Default sample smart bins equipped with IoT telemetry sensors
- * (Used across Collector, Ward Admin, and Main Admin panels)
+ * Smart bins equipped with IoT telemetry sensors.
+ * Defaults to an empty collection until deployed and synchronized via the API.
  */
-export const defaultSmartBinsWithTelemetry: BinTelemetry[] = [
-  {
-    id: "B-204",
-    location: "Old Town Market, Chowk Bazar",
-    area: "Old Dhaka",
-    lat: 23.718,
-    lng: 90.395,
-    fill: 96,
-    tempCelsius: 52,
-    ammoniaPpm: 76,
-    fire: false,
-    capacity: "240L",
-    status: "critical",
-  },
-  {
-    id: "B-007",
-    location: "Gulshan-2, Road 79",
-    area: "Gulshan",
-    lat: 23.792,
-    lng: 90.419,
-    fill: 94,
-    tempCelsius: 47,
-    ammoniaPpm: 58,
-    fire: false,
-    capacity: "120L",
-    status: "critical",
-  },
-  {
-    id: "B-218",
-    location: "House 12, Road 5, Gulshan-2",
-    area: "Gulshan",
-    lat: 23.788,
-    lng: 90.415,
-    fill: 92,
-    tempCelsius: 32,
-    ammoniaPpm: 24,
-    capacity: "120L",
-    status: "warning",
-  },
-  {
-    id: "B-102",
-    location: "Mirpur-10 Roundabout, Sector 1",
-    area: "Mirpur-10",
-    lat: 23.807,
-    lng: 90.368,
-    fill: 88,
-    tempCelsius: 34,
-    ammoniaPpm: 28,
-    capacity: "120L",
-    status: "warning",
-  },
-  {
-    id: "B-156",
-    location: "Block E, Banani Road 11",
-    area: "Banani",
-    lat: 23.793,
-    lng: 90.404,
-    fill: 71,
-    tempCelsius: 29,
-    ammoniaPpm: 19,
-    capacity: "120L",
-    status: "normal",
-  },
-  {
-    id: "B-047",
-    location: "Satmasjid Road, Dhanmondi 27",
-    area: "Dhanmondi",
-    lat: 23.754,
-    lng: 90.375,
-    fill: 54,
-    tempCelsius: 28,
-    ammoniaPpm: 15,
-    capacity: "240L",
-    status: "normal",
-  },
-  {
-    id: "B-117",
-    location: "Mohammadpur Bus Stand, Ring Road",
-    area: "Mohammadpur",
-    lat: 23.765,
-    lng: 90.362,
-    fill: 33,
-    tempCelsius: 26,
-    ammoniaPpm: 11,
-    capacity: "240L",
-    status: "normal",
-  },
-];
+export const defaultSmartBinsWithTelemetry: BinTelemetry[] = [];

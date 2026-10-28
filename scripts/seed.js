@@ -35,7 +35,7 @@ import prisma from "../lib/prisma.js";
 import { memoryDb } from "../lib/store.js";
 import { hashPassword } from "../lib/auth.js";
 
-const DEFAULT_BIN_COUNT = Number(process.env.BIN_COUNT) || 60;
+const DEFAULT_BIN_COUNT = Number(process.env.BIN_COUNT) || 0;
 
 // Coordinate centers for realistic Dhaka metropolitan ward distribution
 const WARD_GEO_CENTERS = {
@@ -76,7 +76,17 @@ export async function runMigrationAndSeed(binCount = DEFAULT_BIN_COUNT) {
     }
   } catch {}
 
-  // 2. Seed City Corporations
+  const shouldSeedDemo = Boolean(process.env.SEED_DEMO_DATA === "true" || binCount > 0);
+  if (!shouldSeedDemo) {
+    console.log("[Seed/Migration Engine] Completed backfill and validation. No demo bins or city corporations injected.");
+    return {
+      message: "Database schema backfill and verification complete. Clean state preserved.",
+      cities: memoryDb.cities.length,
+      wards: memoryDb.wards.length,
+      bins: memoryDb.bins.length,
+      drivers: memoryDb.users.filter(u => u.role === "DRIVER").length,
+    };
+  }
   const citiesData = [
     {
       id: "cc-dncc",

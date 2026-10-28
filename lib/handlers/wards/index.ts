@@ -83,8 +83,8 @@ export default apiHandler(
         cityCorpId = currentUser.cityCorpId;
       }
 
-      if (!cityCorpId && memoryDb.cities[0]?.id) {
-        cityCorpId = memoryDb.cities[0].id;
+      if (!cityCorpId) {
+        return res.status(400).json({ error: "cityCorpId is required to create a ward" });
       }
 
       if (!name || !area) {

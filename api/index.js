@@ -6009,9 +6009,9 @@ if (!g.__intelliwaste_store) {
         description: "A native tree sapling planted in urban green belt with certificate",
         active: true,
         codes: [
-          { id: "c-4-1", code: "TREE-DNCC-0012", isRedeemed: false },
-          { id: "c-4-2", code: "TREE-DNCC-0013", isRedeemed: false },
-          { id: "c-4-3", code: "TREE-DNCC-0014", isRedeemed: false }
+          { id: "c-4-1", code: "TREE-ECO-0012", isRedeemed: false },
+          { id: "c-4-2", code: "TREE-ECO-0013", isRedeemed: false },
+          { id: "c-4-3", code: "TREE-ECO-0014", isRedeemed: false }
         ],
         createdAt: (/* @__PURE__ */ new Date()).toISOString()
       }
@@ -6084,9 +6084,9 @@ if (!g.__intelliwaste_store.rewards || g.__intelliwaste_store.rewards.length ===
       description: "A native tree sapling planted in urban green belt with certificate",
       active: true,
       codes: [
-        { id: "c-4-1", code: "TREE-DNCC-0012", isRedeemed: false },
-        { id: "c-4-2", code: "TREE-DNCC-0013", isRedeemed: false },
-        { id: "c-4-3", code: "TREE-DNCC-0014", isRedeemed: false }
+        { id: "c-4-1", code: "TREE-ECO-0012", isRedeemed: false },
+        { id: "c-4-2", code: "TREE-ECO-0013", isRedeemed: false },
+        { id: "c-4-3", code: "TREE-ECO-0014", isRedeemed: false }
       ],
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
     }
@@ -7499,8 +7499,8 @@ var wards_default = apiHandler(
       if (currentUser?.role === "CITY_ADMIN" && currentUser.cityCorpId) {
         cityCorpId = currentUser.cityCorpId;
       }
-      if (!cityCorpId && memoryDb.cities[0]?.id) {
-        cityCorpId = memoryDb.cities[0].id;
+      if (!cityCorpId) {
+        return res.status(400).json({ error: "cityCorpId is required to create a ward" });
       }
       if (!name || !area) {
         return res.status(400).json({ error: "Name and area are required" });
@@ -7761,9 +7761,6 @@ var bins_default = apiHandler(
           assignedCityCorpId = currentUser.cityCorpId;
         }
       }
-      if (!assignedCityCorpId && memoryDb.cities[0]?.id) {
-        assignedCityCorpId = memoryDb.cities[0].id;
-      }
       if (!assignedWardId) {
         return res.status(400).json({ error: "Ward is required" });
       }
@@ -7781,16 +7778,16 @@ var bins_default = apiHandler(
       if (!wardRecord) {
         return res.status(400).json({ error: `Selected Ward '${assignedWardId}' was not found.` });
       }
-      if (assignedCityCorpId && wardRecord.cityCorpId !== assignedCityCorpId) {
+      if (!assignedCityCorpId) {
+        assignedCityCorpId = wardRecord.cityCorpId;
+      }
+      if (assignedCityCorpId && wardRecord.cityCorpId && wardRecord.cityCorpId !== assignedCityCorpId) {
         return res.status(400).json({
           error: `Validation failed: Ward '${wardRecord.name || assignedWardId}' does not belong to the selected City Corporation '${assignedCityCorpId}'.`
         });
       }
-      if (!assignedCityCorpId) {
-        assignedCityCorpId = wardRecord.cityCorpId;
-      }
-      const parsedLat = Number(lat !== void 0 ? lat : 23.78);
-      const parsedLng = Number(lng !== void 0 ? lng : lon !== void 0 ? lon : 90.4);
+      const parsedLat = Number(lat !== void 0 ? lat : 0);
+      const parsedLng = Number(lng !== void 0 ? lng : lon !== void 0 ? lon : 0);
       const parsedFill = Number(fillLevel !== void 0 ? fillLevel : fill || 0);
       const parsedCapacityKg = Number(capacityKg || (typeof capacity === "string" ? parseInt(capacity, 10) : 120) || 120);
       let createdBin = null;
@@ -7808,7 +7805,7 @@ var bins_default = apiHandler(
             fire: Boolean(fire),
             status: status || "normal",
             wardId: assignedWardId,
-            cityCorpId: assignedCityCorpId,
+            cityCorpId: assignedCityCorpId || null,
             lat: parsedLat,
             lng: parsedLng,
             forecastFull90At: forecastFull90At ? new Date(forecastFull90At) : null
@@ -8838,23 +8835,13 @@ var withdrawals_default = apiHandler(
         if (ward) {
           ward = {
             ...ward,
-            cityCorp: memoryDb.cities.find((c) => c.id === ward.cityCorpId) || {
-              name: "Dhaka North City Corporation",
-              code: "DNCC",
-              pointRate: 0.2,
-              minWithdrawPoints: 100,
-              rewardActive: true
-            }
+            cityCorp: memoryDb.cities.find((c) => c.id === ward.cityCorpId) || null
           };
         }
       }
-      const cityCorp = ward?.cityCorp || {
-        pointRate: 0.2,
-        minWithdrawPoints: 100,
-        rewardActive: true,
-        code: "DNCC"
-      };
-      const bdtAmount = Math.round(pointsToDeduct * (cityCorp.pointRate || 0.2) * 100) / 100;
+      const cityCorp = ward?.cityCorp || (ward?.cityCorpId ? memoryDb.cities.find((c) => c.id === ward.cityCorpId) : null);
+      const pointRate = cityCorp?.pointRate ?? 0.2;
+      const bdtAmount = Math.round(pointsToDeduct * pointRate * 100) / 100;
       const code = `WDR-${Math.floor(1e3 + Math.random() * 9e3)}`;
       const finalCitizenId = currentUser?.userId || `usr-guest-${Date.now()}`;
       const finalWardId = ward?.id || wardId;
@@ -8893,7 +8880,7 @@ var withdrawals_default = apiHandler(
         ward: {
           id: finalWardId,
           name: ward?.name || "Ward 01",
-          area: ward?.area || "Uttara",
+          area: ward?.area || "Central Area",
           cityCorp
         },
         notes: notes || null,
@@ -9849,7 +9836,7 @@ if (!process.env.DATABASE_URL && fs.existsSync(".env")) {
     }
   }
 }
-var DEFAULT_BIN_COUNT = Number(process.env.BIN_COUNT) || 60;
+var DEFAULT_BIN_COUNT = Number(process.env.BIN_COUNT) || 0;
 var WARD_GEO_CENTERS = {
   // DNCC
   "Ward 01": { lat: 23.868, lon: 90.4, area: "Uttara North" },
@@ -9884,6 +9871,17 @@ async function runMigrationAndSeed(binCount = DEFAULT_BIN_COUNT) {
       }
     }
   } catch {
+  }
+  const shouldSeedDemo = Boolean(process.env.SEED_DEMO_DATA === "true" || binCount > 0);
+  if (!shouldSeedDemo) {
+    console.log("[Seed/Migration Engine] Completed backfill and validation. No demo bins or city corporations injected.");
+    return {
+      message: "Database schema backfill and verification complete. Clean state preserved.",
+      cities: memoryDb.cities.length,
+      wards: memoryDb.wards.length,
+      bins: memoryDb.bins.length,
+      drivers: memoryDb.users.filter((u) => u.role === "DRIVER").length
+    };
   }
   const citiesData = [
     {
@@ -10225,15 +10223,15 @@ if (process.argv[1] && process.argv[1].endsWith("seed.js")) {
 // lib/handlers/seed.ts
 var seed_default = apiHandler(
   async (req, res) => {
-    const shouldSeed = req.method === "POST" || req.query.seed === "true" || memoryDb.bins.length === 0;
+    const shouldSeed = req.method === "POST" && (req.query.force === "true" || req.body?.force === true);
     let seedResult = null;
     if (shouldSeed) {
-      const count = req.query.count ? parseInt(req.query.count, 10) : void 0;
+      const count = req.query.count ? parseInt(req.query.count, 10) : 0;
       seedResult = await runMigrationAndSeed(count);
     }
     return res.status(200).json({
       success: true,
-      message: seedResult ? "Idempotent migration and seed executed successfully." : "IntelliWaste system database status.",
+      message: seedResult ? "Database migration/seed executed successfully." : "IntelliWaste system database status.",
       seedResult,
       stats: {
         cities: memoryDb.cities.length,
@@ -11225,7 +11223,7 @@ var ROUTE_CONFIG = {
   // City collection average speed (km/h)
   SERVICE_TIME_PER_BIN_MINS: Number(process.env.SERVICE_TIME_PER_BIN_MINS) || 2,
   // Handling time per bin stop
-  // Depot & Dump Site (Aminbazar landfill / Central DNCC facility)
+  // Central Operations Depot & Solid Waste Facility
   DEPOT_LOCATION: {
     lat: Number(process.env.DEPOT_LAT) || 23.8103,
     lon: Number(process.env.DEPOT_LON) || 90.4125,

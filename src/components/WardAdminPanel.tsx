@@ -57,8 +57,8 @@ function WardBinModal({
     capacity: initial?.capacity ?? "120L",
     capacityKg: initial?.capacityKg ?? 120,
     fill: initial?.fill ?? initial?.fillLevel ?? 0,
-    lat: initial?.lat ?? 23.8103,
-    lng: initial?.lng ?? 90.4125,
+    lat: initial?.lat ?? 0,
+    lng: initial?.lng ?? 0,
   });
   const [saving, setSaving] = useState(false);
 
@@ -753,13 +753,13 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
   const [editBin, setEditBin] = useState<Bin | null>(null);
   const [updateBin, setUpdateBin] = useState<string | null>(null);
   const [expandedBin, setExpandedBin] = useState<string | null>(null);
-  const [localBins, setLocalBins] = useState<Bin[]>(() => getBinsForWard(Number(wardId) || 1));
-  const [localTracks, setLocalTracks] = useState<Track[]>(() => getTracksForWard(Number(wardId) || 1));
+  const [localBins, setLocalBins] = useState<Bin[]>([]);
+  const [localTracks, setLocalTracks] = useState<Track[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [recentSubmissions, setRecentSubmissions] = useState([
-    { bin: "B-013", organic: 18, plastic: 9, paper: 7, metal: 4, total: 42, time: "Today 10:30", done: true },
-    { bin: "B-012", organic: 22, plastic: 11, paper: 6, metal: 5, total: 52, time: "Yesterday 15:00", done: true },
-  ]);
+  const [recentSubmissions, setRecentSubmissions] = useState<any[]>([]);
+
+
+
 
   // Driver assignment & truck management
   const [drivers, setDrivers] = useState<UserProfile[]>([]);
@@ -903,6 +903,7 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
           api.users.getAll({ role: "DRIVER" }).catch(() => []),
           api.schedules.getAll({ wardId: String(wardId) }).catch(() => []),
         ]);
+      
 
         if (Array.isArray(driversRes)) setDrivers(driversRes);
         if (Array.isArray(schedulesRes)) setWardSchedules(schedulesRes);
@@ -1168,6 +1169,7 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
       },
       ...prev,
     ]);
+  
     setLocalBins(prev =>
       prev.map(b =>
         b.id === data.binId

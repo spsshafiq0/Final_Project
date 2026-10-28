@@ -172,11 +172,11 @@ function BinModal({
   onSave,
   title,
   availableWards,
-  availableCities = [
-    { id: "cc-dncc", name: "Dhaka North City Corporation", code: "DNCC" },
-    { id: "cc-dscc", name: "Dhaka South City Corporation", code: "DSCC" },
-    { id: "cc-ccc", name: "Chattogram City Corporation", code: "CCC" },
-  ],
+  availableCities = [],
+
+
+
+
 }: {
   initial?: any;
   onClose: () => void;
@@ -185,7 +185,7 @@ function BinModal({
   availableWards: Ward[];
   availableCities?: any[];
 }) {
-  const initialCityId = initial?.cityCorpId || initial?.cityCorporation || "cc-dncc";
+  const initialCityId = initial?.cityCorpId || initial?.cityCorporation || (availableCities[0]?.id || "");
   const [selectedCityCorpId, setSelectedCityCorpId] = useState<string>(initialCityId);
 
   // Filter wards dynamically by selected City Corporation
@@ -197,12 +197,12 @@ function BinModal({
   }, [availableWards, selectedCityCorpId]);
 
   const [form, setForm] = useState({
-    wardId: initial?.wardId ?? (filteredWards[0]?.id || availableWards[0]?.id || "ward-dncc-01"),
+    wardId: initial?.wardId ?? (filteredWards[0]?.id || availableWards[0]?.id || ""),
     location: initial?.location ?? "",
     capacity: initial?.capacity ?? "120L",
     capacityKg: initial?.capacityKg ?? 120,
-    lat: initial?.lat ?? 23.8103,
-    lng: initial?.lng ?? initial?.lon ?? 90.4125,
+    lat: initial?.lat ?? 0,
+    lng: initial?.lng ?? initial?.lon ?? 0,
   });
 
   // When city changes, update ward to first valid ward in that CC
@@ -452,7 +452,7 @@ function TrackModal({
             </div>
             <div>
               <label className="block text-[#4b7a5a] text-xs font-mono mb-1">TRUCK ID</label>
-              <input value={form.truckId} onChange={e => setForm(f => ({ ...f, truckId: e.target.value }))} placeholder="DNCC-T00" className={inp} />
+              <input value={form.truckId} onChange={e => setForm(f => ({ ...f, truckId: e.target.value }))} placeholder="TRK-01" className={inp} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -1121,7 +1121,7 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
             wardId: b.wardId,
             cityCorpId: b.cityCorpId || b.ward?.cityCorpId,
             location: b.location,
-            area: b.ward?.area || "Dhaka",
+            area: b.ward?.area || b.location || "Central",
             fill: b.fill ?? b.fillLevel ?? 0,
             fillLevel: b.fillLevel ?? b.fill ?? 0,
             weight: b.weight || 0,
@@ -1393,7 +1393,7 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
           wardId: b.wardId,
           cityCorpId: b.cityCorpId || b.ward?.cityCorpId,
           location: b.location,
-          area: b.ward?.area || "Dhaka",
+          area: b.ward?.area || b.location || "Central",
           fill: b.fill ?? b.fillLevel ?? 0,
           fillLevel: b.fillLevel ?? b.fill ?? 0,
           weight: b.weight || 0,
@@ -2856,8 +2856,8 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
 
       {/* Modals */}
       {showAddWard && <WardModal title="Add Ward & Area" onClose={() => setShowAddWard(false)} onSave={saveWard} />}
-      {showAddBin && <BinModal title="Add New Smart Bin" onClose={() => setShowAddBin(false)} onSave={saveBin} availableWards={localWards} availableCities={localCities.length > 0 ? localCities : undefined} />}
-      {editBin && <BinModal title="Edit Bin" initial={editBin} onClose={() => setEditBin(null)} onSave={saveBin} availableWards={localWards} availableCities={localCities.length > 0 ? localCities : undefined} />}
+      {showAddBin && <BinModal title="Add New Smart Bin" onClose={() => setShowAddBin(false)} onSave={saveBin} availableWards={localWards} availableCities={localCities} />}
+      {editBin && <BinModal title="Edit Bin" initial={editBin} onClose={() => setEditBin(null)} onSave={saveBin} availableWards={localWards} availableCities={localCities} />}
       {showAddTrack && <TrackModal title="Add Collection Track" onClose={() => setShowAddTrack(false)} onSave={saveTrack} availableWards={localWards} />}
       {editTrack && <TrackModal title="Edit Track" initial={editTrack} onClose={() => setEditTrack(null)} onSave={saveTrack} availableWards={localWards} />}
       {showAddSubAdmin && <AddSubAdminModal onClose={() => setShowAddSubAdmin(false)} onSave={saveSubAdmin} availableWards={localWards} />}

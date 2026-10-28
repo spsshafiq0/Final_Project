@@ -42,7 +42,7 @@ export default function DriverRouteMap({ currentUser, onRefreshStats }: DriverRo
   // Driver Assignment State
   const assignment = useMemo(() => {
     return currentUser?.assignment || {
-      cityCorporation: currentUser?.cityCorpId || currentUser?.cityCorp?.id || "cc-dncc",
+      cityCorporation: currentUser?.cityCorpId || currentUser?.cityCorp?.id || "",
       ward: currentUser?.wardId || currentUser?.ward?.id || null,
     };
   }, [currentUser]);

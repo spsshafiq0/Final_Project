@@ -80,14 +80,14 @@ export default function NearbyBinsMap({ area = "Mohammadpur", dark = false }: Ne
         () => {
           // If citizen denies permission, use default metropolitan center
           setUserLocation({ lat: 23.7601, lng: 90.3654 });
-          setDetectedAreaName(area || "Mohammadpur");
+          setDetectedAreaName(area || "Nearby Sector");
           setLocationLoading(false);
         },
         { enableHighAccuracy: true, timeout: 8000 }
       );
     } else {
       setUserLocation({ lat: 23.7601, lng: 90.3654 });
-      setDetectedAreaName(area || "Mohammadpur");
+      setDetectedAreaName(area || "Nearby Sector");
       setLocationLoading(false);
     }
   }, [area]);

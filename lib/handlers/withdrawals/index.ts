@@ -94,25 +94,14 @@ export default apiHandler(
         if (ward) {
           ward = {
             ...ward,
-            cityCorp: memoryDb.cities.find((c: any) => c.id === ward.cityCorpId) || {
-              name: "Dhaka North City Corporation",
-              code: "DNCC",
-              pointRate: 0.20,
-              minWithdrawPoints: 100,
-              rewardActive: true,
-            },
+            cityCorp: memoryDb.cities.find((c: any) => c.id === ward.cityCorpId) || null,
           };
         }
       }
 
-      const cityCorp = ward?.cityCorp || {
-        pointRate: 0.20,
-        minWithdrawPoints: 100,
-        rewardActive: true,
-        code: "DNCC",
-      };
-
-      const bdtAmount = Math.round(pointsToDeduct * (cityCorp.pointRate || 0.20) * 100) / 100;
+      const cityCorp = ward?.cityCorp || (ward?.cityCorpId ? memoryDb.cities.find((c: any) => c.id === ward.cityCorpId) : null);
+      const pointRate = cityCorp?.pointRate ?? 0.20;
+      const bdtAmount = Math.round(pointsToDeduct * pointRate * 100) / 100;
       const code = `WDR-${Math.floor(1000 + Math.random() * 9000)}`;
       const finalCitizenId = currentUser?.userId || `usr-guest-${Date.now()}`;
       const finalWardId = ward?.id || wardId;
@@ -153,7 +142,7 @@ export default apiHandler(
         ward: {
           id: finalWardId,
           name: ward?.name || "Ward 01",
-          area: ward?.area || "Uttara",
+          area: ward?.area || "Central Area",
           cityCorp,
         },
         notes: notes || null,

@@ -231,5 +231,30 @@ describe("IntelliWaste Route Optimizer Unit Test Suite", () => {
     assert.ok(visibleBinsB.some(b => b.wardId === "ward-19"));
     assert.ok(!visibleBinsB.some(b => b.cityCorpId === "cc-dscc"), "Must NOT see DSCC bins");
   });
+
+  test("9. Route optimizer handles empty bins list gracefully without crashing", async () => {
+    const result = await optimizeRouteForScope({
+      binsInScope: [],
+      depot,
+      dumpSite,
+    });
+    assert.equal(result.candidateCount, 0);
+    assert.equal(result.trips.length, 0);
+    assert.equal(result.totalDistanceKm, 0);
+  });
+
+  test("10. Dynamic City Corporation and Ward scope assignment works with arbitrary custom IDs", () => {
+    const driverCustom = {
+      id: "driver-custom-01",
+      cityCorpId: "city-sylhet-north",
+      wardId: "ward-sn-04",
+      assignment: { cityCorporation: "city-sylhet-north", ward: "ward-sn-04" },
+    };
+    const scope = getDriverBinScope(driverCustom);
+    assert.equal(scope.cityCorpId, "city-sylhet-north");
+    assert.equal(scope.cityCorporation, "city-sylhet-north");
+    assert.equal(scope.wardId, "ward-sn-04");
+    assert.equal(scope.ward, "ward-sn-04");
+  });
 });
 

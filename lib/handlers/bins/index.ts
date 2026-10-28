@@ -112,10 +112,6 @@ export default apiHandler(
         }
       }
 
-      if (!assignedCityCorpId && memoryDb.cities[0]?.id) {
-        assignedCityCorpId = memoryDb.cities[0].id;
-      }
-
       if (!assignedWardId) {
         return res.status(400).json({ error: "Ward is required" });
       }
@@ -137,19 +133,19 @@ export default apiHandler(
         return res.status(400).json({ error: `Selected Ward '${assignedWardId}' was not found.` });
       }
 
-      if (assignedCityCorpId && wardRecord.cityCorpId !== assignedCityCorpId) {
+      // Inherit cityCorpId from ward if not directly specified
+      if (!assignedCityCorpId) {
+        assignedCityCorpId = wardRecord.cityCorpId;
+      }
+
+      if (assignedCityCorpId && wardRecord.cityCorpId && wardRecord.cityCorpId !== assignedCityCorpId) {
         return res.status(400).json({
           error: `Validation failed: Ward '${wardRecord.name || assignedWardId}' does not belong to the selected City Corporation '${assignedCityCorpId}'.`,
         });
       }
 
-      // If assignedCityCorpId was empty, inherit from ward
-      if (!assignedCityCorpId) {
-        assignedCityCorpId = wardRecord.cityCorpId;
-      }
-
-      const parsedLat = Number(lat !== undefined ? lat : 23.78);
-      const parsedLng = Number(lng !== undefined ? lng : (lon !== undefined ? lon : 90.40));
+      const parsedLat = Number(lat !== undefined ? lat : 0);
+      const parsedLng = Number(lng !== undefined ? lng : (lon !== undefined ? lon : 0));
       const parsedFill = Number(fillLevel !== undefined ? fillLevel : (fill || 0));
       const parsedCapacityKg = Number(capacityKg || (typeof capacity === "string" ? parseInt(capacity, 10) : 120) || 120);
 
@@ -169,7 +165,7 @@ export default apiHandler(
             fire: Boolean(fire),
             status: status || "normal",
             wardId: assignedWardId,
-            cityCorpId: assignedCityCorpId,
+            cityCorpId: assignedCityCorpId || null,
             lat: parsedLat,
             lng: parsedLng,
             forecastFull90At: forecastFull90At ? new Date(forecastFull90At) : null,

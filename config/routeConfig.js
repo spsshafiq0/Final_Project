@@ -28,7 +28,7 @@ export const ROUTE_CONFIG = {
   AVERAGE_TRUCK_SPEED_KMH: Number(process.env.AVERAGE_TRUCK_SPEED_KMH) || 25,     // City collection average speed (km/h)
   SERVICE_TIME_PER_BIN_MINS: Number(process.env.SERVICE_TIME_PER_BIN_MINS) || 2, // Handling time per bin stop
 
-  // Depot & Dump Site (Aminbazar landfill / Central DNCC facility)
+  // Central Operations Depot & Solid Waste Facility
   DEPOT_LOCATION: {
     lat: Number(process.env.DEPOT_LAT) || 23.8103,
     lon: Number(process.env.DEPOT_LON) || 90.4125,

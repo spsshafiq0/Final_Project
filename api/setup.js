@@ -5996,9 +5996,9 @@ if (!g.__intelliwaste_store) {
         description: "A native tree sapling planted in urban green belt with certificate",
         active: true,
         codes: [
-          { id: "c-4-1", code: "TREE-DNCC-0012", isRedeemed: false },
-          { id: "c-4-2", code: "TREE-DNCC-0013", isRedeemed: false },
-          { id: "c-4-3", code: "TREE-DNCC-0014", isRedeemed: false }
+          { id: "c-4-1", code: "TREE-ECO-0012", isRedeemed: false },
+          { id: "c-4-2", code: "TREE-ECO-0013", isRedeemed: false },
+          { id: "c-4-3", code: "TREE-ECO-0014", isRedeemed: false }
         ],
         createdAt: (/* @__PURE__ */ new Date()).toISOString()
       }
@@ -6071,9 +6071,9 @@ if (!g.__intelliwaste_store.rewards || g.__intelliwaste_store.rewards.length ===
       description: "A native tree sapling planted in urban green belt with certificate",
       active: true,
       codes: [
-        { id: "c-4-1", code: "TREE-DNCC-0012", isRedeemed: false },
-        { id: "c-4-2", code: "TREE-DNCC-0013", isRedeemed: false },
-        { id: "c-4-3", code: "TREE-DNCC-0014", isRedeemed: false }
+        { id: "c-4-1", code: "TREE-ECO-0012", isRedeemed: false },
+        { id: "c-4-2", code: "TREE-ECO-0013", isRedeemed: false },
+        { id: "c-4-3", code: "TREE-ECO-0014", isRedeemed: false }
       ],
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
     }

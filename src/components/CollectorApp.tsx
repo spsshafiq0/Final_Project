@@ -3,7 +3,7 @@ import { Truck, MapPin, CheckCircle, AlertTriangle, Clock, Navigation, Package, 
 import { acceptPickupRequest, completePickupRequest, getDriverBalance, getPickupRequests, setDriverBalance, type PickupRequest } from "../data/pickupStore";
 import api, { ReportItem, userStorage } from "../lib/api";
 import ForgotPasswordModal from "./ForgotPasswordModal";
-import { optimizePriorityRoute, defaultSmartBinsWithTelemetry, BinTelemetry } from "../lib/routeOptimizer";
+import { optimizePriorityRoute, BinTelemetry } from "../lib/routeOptimizer";
 import DriverRouteMap from "./DriverRouteMap";
 
 interface CollectorAppProps {
@@ -51,8 +51,41 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
   const [flagSuccessMsg, setFlagSuccessMsg] = useState<string>("");
 
   // IoT Smart Bins Telemetry State & AI Priority Route Optimization
-  const [binsList, setBinsList] = useState<BinTelemetry[]>(defaultSmartBinsWithTelemetry);
+  const [binsList, setBinsList] = useState<BinTelemetry[]>([]);
   const [iotAlertToast, setIotAlertToast] = useState<string | null>(null);
+
+  // Dynamically load live bins from database/API
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchLiveBins() {
+      try {
+        const liveBins = await api.bins.getAll();
+        if (isMounted && Array.isArray(liveBins) && liveBins.length > 0) {
+          setBinsList(
+            liveBins.map((b: any) => ({
+              id: b.binCode || b.id,
+              location: b.location || "Smart Bin Location",
+              area: b.ward?.area || b.ward?.name || "Service Sector",
+              lat: Number(b.lat) || 0,
+              lng: Number(b.lng) || Number(b.lon) || 0,
+              fill: Number(b.fill ?? b.fillLevel ?? 0),
+              tempCelsius: b.temp === "High" ? 48 : (typeof b.tempCelsius === "number" ? b.tempCelsius : 28),
+              ammoniaPpm: (b.gas === "Critical" || b.gas === "Elevated") ? 65 : (typeof b.ammoniaPpm === "number" ? b.ammoniaPpm : 16),
+              fire: Boolean(b.fire),
+              status: b.status || "normal",
+              capacity: b.capacity || "120L",
+            }))
+          );
+        }
+      } catch (err) {
+        console.warn("[CollectorApp] Notice fetching live bins:", err);
+      }
+    }
+    fetchLiveBins();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Dynamically calculate optimized route prioritizing hazards and minimizing fuel
   const optResult = useMemo(() => {
@@ -62,8 +95,10 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
   const route = optResult.orderedStops;
 
   const triggerIotHazardSim = () => {
-    setBinsList(prev => prev.map(b => {
-      if (b.id === "B-204") {
+    if (binsList.length === 0) { setIotAlertToast("⚠️ No bins currently deployed."); return; }
+    const targetBin = binsList[0];
+    setBinsList(prev => prev.map((b, idx) => {
+      if (idx === 0) {
         return {
           ...b,
           tempCelsius: 54,
@@ -75,7 +110,7 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
       }
       return b;
     }));
-    setIotAlertToast("🚨 IoT TELEMETRY ALERT: High Temperature (54°C) & Toxic Ammonia (82 ppm) detected at Bin B-204! Dynamic AI Re-Routing: Stop #1 assigned with priority.");
+    setIotAlertToast(`🚨 IoT TELEMETRY ALERT: High Temperature (54°C) & Toxic Ammonia (82 ppm) detected at Bin ${targetBin?.id || "Deployed Bin"}! Dynamic AI Re-Routing: Stop #1 assigned with priority.`);
   };
 
   const handleDriverComplete = (jobId: number, amount: number) => {
@@ -415,7 +450,7 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
                 <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse"></span>
                 <span>Active Google Coordinate Hotspots ({wasteReports.length})</span>
               </span>
-              <span className="text-[#4b7a5a]">Dhaka Metropolis Grid</span>
+              <span className="text-[#4b7a5a]">Municipal Geo Grid</span>
             </div>
             <div className="rounded-xl overflow-hidden border border-[#1a3d22] bg-[#061309] h-64 sm:h-80 relative flex items-center justify-center">
               {/* Dynamic Coordinate Pins Map Visualization */}
@@ -650,7 +685,7 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
               </div>
               <div>
                 <div className="font-display font-700 text-white">Hazard Safety Protocol</div>
-                <div className="text-red-400 text-xs font-mono">MANDATORY — Read before approaching B-204</div>
+                <div className="text-red-400 text-xs font-mono">MANDATORY — Read before approaching hazardous bin</div>
               </div>
             </div>
             <div className="space-y-3">

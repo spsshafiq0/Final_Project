@@ -1,5 +1,6 @@
 {
-  "description": "This responsive web application offers a modern design and comprehensive features for users seeking an intuitive interface for both desktop and mobile devices.",
+  "title": "IntelliWaste",
+  "description": "IntelliWaste - IoT Smart Waste Management System",
   "robots": {
     "index": false
   },
