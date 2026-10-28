@@ -40,9 +40,7 @@ html, body, #root {
 }
 
 /*
- * Keep generated icon/chart SVG nodes from becoming Figma preview inspection
- * targets. Their source lives inside third-party renderers, so resolving them
- * directly can time out; the owning React element remains selectable.
+ * Prevent pointer-events on raw icon/chart SVG nodes to ensure owning React elements receive click events.
  */
 .lucide,
 .recharts-surface {
