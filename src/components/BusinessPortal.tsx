@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, CheckCircle, Clock, Home, LogIn, LogOut, RefreshCw, ShieldCheck, Store, UserPlus, Wallet, KeyRound } from "lucide-react";
 import NearbyBinsMap from "./NearbyBinsMap";
 import { addPickupRequest, completePickupRequest, getPickupRequests, type PickupRequest } from "../data/pickupStore";
@@ -25,11 +25,21 @@ export default function BusinessPortal({ onNavigate }: BusinessPortalProps) {
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [forgotOpen, setForgotOpen] = useState(false);
-  const [balance, setBalance] = useState(Number(localStorage.getItem("intelliwaste-business-balance") ?? "6000"));
+  const [balance, setBalance] = useState(Number(localStorage.getItem("intelliwaste-business-balance") ?? "0"));
   const [requests, setRequests] = useState<PickupRequest[]>(getPickupRequests());
-  const [form, setForm] = useState({ area: "Mohammadpur", address: "", wasteType: "Restaurant Mixed Waste", date: "", amount: "450" });
+  const [wards, setWards] = useState<any[]>([]);
+  const [form, setForm] = useState({ area: "", address: "", wasteType: "Restaurant Mixed Waste", date: "", amount: "200" });
   const [codes, setCodes] = useState<Record<string | number, string>>({});
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    api.wards.getAll().then((res: any) => {
+      if (Array.isArray(res) && res.length > 0) {
+        setWards(res);
+        setForm(f => ({ ...f, area: f.area || res[0].area || res[0].name }));
+      }
+    }).catch(() => {});
+  }, []);
 
   const login = async () => {
     if (!email || !password || (authMode === "register" && !shopName)) {
@@ -184,7 +194,11 @@ export default function BusinessPortal({ onNavigate }: BusinessPortalProps) {
             <div className="text-[#4b7a5a] text-xs mt-1 mb-4">Your deposit is released only after security-code confirmation.</div>
             <div className="space-y-3">
               <select value={form.area} onChange={(event) => setForm((current) => ({ ...current, area: event.target.value }))} className="w-full border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm outline-none">
-                {["Mohammadpur", "Dhanmondi", "Gulshan", "Banani", "Uttara", "Mirpur-10"].map((area) => <option key={area}>{area}</option>)}
+                {wards.length > 0 ? (
+                  wards.map((w: any) => <option key={w.id} value={w.area || w.name}>{w.name} — {w.area}</option>)
+                ) : (
+                  <option value="Central Municipal Sector">Central Municipal Sector</option>
+                )}
               </select>
               <input value={form.address} onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))} placeholder="Complete pickup address" className="w-full border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm outline-none" />
               <select value={form.wasteType} onChange={(event) => setForm((current) => ({ ...current, wasteType: event.target.value }))} className="w-full border border-[#e2f5e9] rounded-xl px-4 py-3 text-sm outline-none">

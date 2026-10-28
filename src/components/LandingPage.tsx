@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import api from "../lib/api";
 import {
   Trash2, Cpu, Zap, Shield, TrendingUp, Recycle,
   Users, ChevronRight, ArrowDown, CheckCircle, Globe,
@@ -310,6 +311,15 @@ const pill = (color: string): React.CSSProperties => ({
 export default function LandingPage({ onNavigate }: LandingPageProps) {
   const [activeFeature, setActiveFeature] = useState(0);
   const [scrolled, setScrolled] = useState(false);
+  const [liveBins, setLiveBins] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.bins.getAll().then((res: any) => {
+      if (Array.isArray(res) && res.length > 0) {
+        setLiveBins(res.slice(0, 5));
+      }
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 50);
@@ -467,26 +477,26 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
             {/* Live bin data strip */}
             <div style={{ width: "100%", maxWidth: 340, background: "rgba(7,20,42,0.85)", border: `1px solid ${C.border}`, borderRadius: 16, padding: 16, backdropFilter: "blur(12px)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <span style={{ fontFamily: "monospace", fontSize: 10, color: C.cyan, letterSpacing: 1 }}>LIVE BIN STATUS — DHAKA CITY</span>
+                <span style={{ fontFamily: "monospace", fontSize: 10, color: C.cyan, letterSpacing: 1 }}>LIVE IOT TELEMETRY MONITOR</span>
                 <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.lime, display: "inline-block" }} className="pulse-cyan" />
               </div>
-              {[
-                { id: "B-102", level: 87, weight: "42 kg", loc: "Mirpur-10" },
-                { id: "B-047", level: 54, weight: "28 kg", loc: "Dhanmondi" },
-                { id: "B-218", level: 92, weight: "51 kg", loc: "Gulshan-2" },
-                { id: "B-331", level: 23, weight: "12 kg", loc: "Motijheel" },
-                { id: "B-156", level: 71, weight: "37 kg", loc: "Banani" },
-              ].map(b => (
-                <div key={b.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: `1px solid ${C.border}` }}>
-                  <span style={{ fontFamily: "monospace", fontSize: 10, color: C.muted, width: 44 }}>{b.id}</span>
-                  <div style={{ flex: 1, height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${b.level}%`, borderRadius: 2, background: b.level > 80 ? C.danger : b.level > 60 ? C.amber : C.lime }} />
+              {liveBins.length > 0 ? (
+                liveBins.map(b => (
+                  <div key={b.id || b.binCode} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: `1px solid ${C.border}` }}>
+                    <span style={{ fontFamily: "monospace", fontSize: 10, color: C.muted, width: 44 }}>{b.binCode || b.id}</span>
+                    <div style={{ flex: 1, height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${b.fill ?? b.fillLevel ?? 0}%`, borderRadius: 2, background: (b.fill ?? b.fillLevel ?? 0) > 80 ? C.danger : (b.fill ?? b.fillLevel ?? 0) > 60 ? C.amber : C.lime }} />
+                    </div>
+                    <span style={{ fontFamily: "monospace", fontSize: 10, color: (b.fill ?? b.fillLevel ?? 0) > 80 ? C.danger : (b.fill ?? b.fillLevel ?? 0) > 60 ? C.amber : C.lime, width: 28 }}>{b.fill ?? b.fillLevel ?? 0}%</span>
+                    <span style={{ fontFamily: "monospace", fontSize: 9, color: C.muted, width: 36 }}>{b.weight || 0}kg</span>
+                    <span style={{ fontSize: 9, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.ward?.name || b.location}</span>
                   </div>
-                  <span style={{ fontFamily: "monospace", fontSize: 10, color: b.level > 80 ? C.danger : b.level > 60 ? C.amber : C.lime, width: 28 }}>{b.level}%</span>
-                  <span style={{ fontFamily: "monospace", fontSize: 9, color: C.muted, width: 36 }}>{b.weight}</span>
-                  <span style={{ fontSize: 9, color: C.muted }}>{b.loc}</span>
+                ))
+              ) : (
+                <div style={{ padding: "16px 0", textAlign: "center", fontSize: 11, color: C.muted, fontFamily: "monospace" }}>
+                  Awaiting live IoT telemetry from deployed bins.
                 </div>
-              ))}
+              )}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 12 }}>
                 {[{ label: "Active Trucks", v: "14", c: C.lime }, { label: "Critical Bins", v: "3", c: C.danger }, { label: "Sorted Today", v: "2.1t", c: C.cyan }].map(m => (
                   <div key={m.label} style={{ background: "rgba(0,217,255,0.04)", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 0", textAlign: "center" }}>

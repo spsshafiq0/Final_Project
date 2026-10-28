@@ -27,12 +27,7 @@ const guides = [
   { cat: "❌ Medical / Biohazard Waste", icon: "☢️", color: "#fca5a5", items: "Syringes, bandages, medical sharps — NEVER in the regular bin. Schedule a certified medical waste pickup.", allowed: false },
 ];
 
-const pickupSlots = [
-  { date: "Tue, Sep 12", time: "8:00 – 11:00 AM", type: "Organic", zone: "Mohammadpur", available: true },
-  { date: "Thu, Sep 14", time: "9:00 – 12:00 PM", type: "Recyclable", zone: "Mohammadpur", available: true },
-  { date: "Sat, Sep 16", time: "7:00 – 10:00 AM", type: "General", zone: "Mohammadpur", available: true },
-  { date: "Mon, Sep 18", time: "10:00 – 1:00 PM", type: "Hazardous", zone: "Mohammadpur", available: false },
-];
+const pickupSlots: any[] = [];
 
 const TABS = ["Dashboard", "Report Issue", "Schedule Pickup", "Bin Guide", "Rewards", "Leaderboard"];
 
@@ -84,7 +79,7 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
 
   const [bookedSlot, setBookedSlot] = useState<number | null>(null);
   const [redeemedReward, setRedeemedReward] = useState<string | null>(null);
-  const [pickupForm, setPickupForm] = useState({ address: "", area: "Mohammadpur", waste: "", date: "", deposit: "250" });
+  const [pickupForm, setPickupForm] = useState({ address: "", area: "", waste: "", date: "", deposit: "" });
   const [pickupRequested, setPickupRequested] = useState(false);
   const [pickupRequests, setPickupRequests] = useState<PickupRequest[]>(getPickupRequests());
   const [codes, setCodes] = useState<Record<string | number, string>>({});
@@ -484,7 +479,7 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
         () => {
           setReportLocationLoading(false);
           setReportCoords({ lat: 23.7542, lng: 90.3654 });
-          if (!reportLocation) setReportLocation("Mohammadpur Area");
+          if (!reportLocation) setReportLocation("Current Detected Location");
         },
         { enableHighAccuracy: true, timeout: 6000 }
       );
@@ -745,7 +740,7 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
               </button>
               <div>
                 <div className="font-display font-700 text-lg">Citizen Portal</div>
-                <div className="text-[#86efac] text-xs">IntelliWaste — Mohammadpur Zone</div>
+                <div className="text-[#86efac] text-xs">IntelliWaste — {userStorage.get()?.ward?.area ? `${userStorage.get()?.ward?.name} (${userStorage.get()?.ward?.area})` : "Citizen Service Zone"}</div>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -825,7 +820,7 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
             (c) => c.username === citizenName || c.fullName === citizenName || c.phone === citizenPhone || c.id === userStorage.get()?.id
           );
           const myRank = myRankIdx >= 0 ? myRankIdx + 1 : 1;
-          const userZone = userStorage.get()?.ward?.area || userStorage.get()?.address || "Mohammadpur";
+          const userZone = userStorage.get()?.ward?.area || userStorage.get()?.address || "Service Zone";
 
           return (
             <div className="space-y-6">
@@ -867,7 +862,7 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
                 </div>
               </div>
 
-              <NearbyBinsMap area="Mohammadpur" />
+              <NearbyBinsMap area={userStorage.get()?.ward?.area || userStorage.get()?.address || "Nearby Sector"} />
 
               {/* Stats grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -1189,7 +1184,7 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
             <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl p-4 flex items-start gap-3">
               <Clock size={16} className="text-[#16a34a] mt-0.5 shrink-0" />
               <div className="text-sm text-[#052e16]">
-                <span className="font-semibold">Zone: {selectedWardData?.name || "Mohammadpur"}</span> — Scheduled routes are coordinated by City Corporation and Ward administration. Normal waste goes to standard trucks; toxic materials route to certified Hazardous trucks.
+                <span className="font-semibold">Zone: {selectedWardData?.name || selectedWardData?.area || "All Municipal Sectors"}</span> — Scheduled routes are coordinated by City Corporation and Ward administration. Normal waste goes to standard trucks; toxic materials route to certified Hazardous trucks.
               </div>
             </div>
 
@@ -1200,7 +1195,13 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
                 <span className="text-xs text-[#4b7a5a] font-normal">Updated live</span>
               </div>
 
-              {(liveSchedules.length > 0 ? liveSchedules : pickupSlots).map((slot: any, i: number) => {
+              {liveSchedules.length === 0 ? (
+                <div className="bg-white border border-[#e2f5e9] rounded-xl p-8 text-center text-[#4b7a5a] text-sm">
+                  <Calendar size={28} className="mx-auto mb-2 text-[#86efac]" />
+                  No pickup schedules published yet by municipal administration for this sector.
+                </div>
+              ) : (
+                liveSchedules.map((slot: any, i: number) => {
                 const isHazardous = slot.wasteType === "Hazardous" || slot.type === "Hazardous";
                 const displayType = slot.wasteType || slot.type || "General";
                 const displayDate = slot.date;
@@ -1248,7 +1249,7 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
                     </div>
                   </div>
                 );
-              })}
+              }))}
             </div>
             <div className="bg-white border border-[#e2f5e9] rounded-xl p-4 sm:p-5">
               <div className="font-display font-600 text-[#052e16] mb-1">Request On-Demand Pickup</div>
@@ -2134,7 +2135,7 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
         {/* Leaderboard */}
         {activeTab === "Leaderboard" && (() => {
           const sortedCitizens = [...citizens].sort((a, b) => (b.points || 0) - (a.points || 0));
-          const userZone = userStorage.get()?.ward?.area || userStorage.get()?.address || "Mohammadpur";
+          const userZone = userStorage.get()?.ward?.area || userStorage.get()?.address || "Service Zone";
 
           return (
             <div className="space-y-6">

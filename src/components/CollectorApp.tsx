@@ -669,7 +669,19 @@ export default function CollectorApp({ onNavigate }: CollectorAppProps) {
           </div>
           <div className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-5">
             <div className="text-white font-display font-700 mb-4">Recent earnings</div>
-            {[["Citizen pickup · Cafe Riverside", "+ ৳450", "Today, 10:24"], ["Route completion bonus", "+ ৳800", "Yesterday, 17:40"], ["Citizen pickup · Hotel Green View", "+ ৳700", "Sep 09, 14:10"]].map(row => <div key={row[0]} className="flex items-center justify-between gap-3 py-3 border-b border-[#1a3d22] last:border-0"><div><div className="text-[#86efac] text-sm">{row[0]}</div><div className="text-[#4b7a5a] text-xs">{row[2]}</div></div><div className="text-[#4ade80] font-mono font-bold">{row[1]}</div></div>)}
+            {pickupRequests.filter(r => r.status === "completed").length > 0 ? (
+              pickupRequests.filter(r => r.status === "completed").map(req => (
+                <div key={req.id} className="flex items-center justify-between gap-3 py-3 border-b border-[#1a3d22] last:border-0">
+                  <div>
+                    <div className="text-[#86efac] text-sm">{req.wasteType} · {req.address || req.area}</div>
+                    <div className="text-[#4b7a5a] text-xs">{req.createdAt}</div>
+                  </div>
+                  <div className="text-[#4ade80] font-mono font-bold">+ ৳{req.amount}</div>
+                </div>
+              ))
+            ) : (
+              <div className="text-[#4b7a5a] text-xs py-4 text-center">No completed pickup earnings recorded yet.</div>
+            )}
           </div>
           <div className="text-[#4b7a5a] text-xs bg-[#061309] border border-[#1a3d22] rounded-xl p-4">Withdrawals are reviewed and settled under your service contract with the Main Admin.</div>
         </div>

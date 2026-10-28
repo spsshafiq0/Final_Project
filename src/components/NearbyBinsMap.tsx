@@ -22,7 +22,7 @@ function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: num
   return R * c;
 }
 
-export default function NearbyBinsMap({ area = "Mohammadpur", dark = false }: NearbyBinsMapProps) {
+export default function NearbyBinsMap({ area = "Nearby Sector", dark = false }: NearbyBinsMapProps) {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [detectedAreaName, setDetectedAreaName] = useState<string>("");
   const [locationLoading, setLocationLoading] = useState<boolean>(true);
@@ -63,16 +63,7 @@ export default function NearbyBinsMap({ area = "Mohammadpur", dark = false }: Ne
               }
             }
           } catch {
-            // Intelligent local approximation if offline
-            if (lat > 23.75 && lat < 23.78 && lng > 90.34 && lng < 90.38) {
-              setDetectedAreaName("Mohammadpur");
-            } else if (lat > 23.73 && lat < 23.76 && lng > 90.36 && lng < 90.39) {
-              setDetectedAreaName("Dhanmondi");
-            } else if (lat > 23.78 && lat < 23.83) {
-              setDetectedAreaName("Mirpur");
-            } else {
-              setDetectedAreaName("Your Location");
-            }
+            setDetectedAreaName("Your Area");
           } finally {
             setLocationLoading(false);
           }
