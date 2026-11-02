@@ -13,6 +13,11 @@ import {
   Truck,
   Users,
   Building2,
+  ArrowLeft,
+  Sparkles,
+  Lock,
+  User,
+  SlidersHorizontal,
 } from "lucide-react"
 import api, {
   WardItem,
@@ -29,7 +34,7 @@ interface AdminLoginProps {
 
 export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
   const [tab, setTab] =
-    useState<"city" | "ward" | "super" | "driver" | "citizen">("city")
+    useState<"city" | "ward" | "super" | "driver" | "citizen">("super")
   const [ward, setWard] = useState<string>("1")
   const [pass, setPass] = useState("")
   const [username, setUsername] = useState("")
@@ -48,7 +53,6 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
   // List of unique City Corporations available
   const availableCities = useMemo(() => {
     if (dynamicCities.length > 0) return dynamicCities
-    // Fallback: extract distinct cities from wards if wards have cityCorp info
     const map = new Map<string, CityCorporationItem>()
     for (const w of dynamicWards) {
       const cid = String(w.cityCorpId || w.cityCorp?.id || "")
@@ -106,7 +110,6 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
 
   // Load wards & cities from database/API and check setup lock status
   useEffect(() => {
-    // Check backend to verify if initial setup was completed
     api.setup
       .getStatus()
       .then((res) => {
@@ -137,9 +140,7 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
           setWard(String(wards[0].id))
         }
       } catch (e) {
-        console.warn(
-          "Could not fetch remote cities/wards for login dropdown, using fallback.",
-        )
+        console.warn("Could not fetch remote cities/wards for login dropdown")
       }
     }
     loadData()
@@ -180,332 +181,309 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
     }
   }
 
-  return (
-    <div
-      className="min-h-screen bg-[#061309] flex flex-col items-center justify-center px-4 py-8"
-      style={{
-        background: "linear-gradient(135deg, #061309 0%, #0a1f0e 100%)",
-      }}
-    >
-      <div className="absolute inset-0 map-grid opacity-20 pointer-events-none" />
+  const roleMeta = {
+    super: {
+      title: "Ministry & Super Administrator",
+      badge: "NATIONAL AUTHORITY",
+      badgeColor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+      desc: "System-wide jurisdiction: configure national city corporations, appoint central commissioners, and audit country-wide waste metrics.",
+      accent: "text-emerald-400",
+    },
+    city: {
+      title: "City Corporation Administrator",
+      badge: "MUNICIPAL LEVEL",
+      badgeColor: "bg-cyan-500/10 text-cyan-400 border-cyan-500/30",
+      desc: "Manage city-wide wards, configure reward point conversion rates, inspect live fleet tracks, and dispatch collection vehicles.",
+      accent: "text-cyan-400",
+    },
+    ward: {
+      title: "Ward Sub-Admin & Operations Desk",
+      badge: "LOCAL DISPATCH",
+      badgeColor: "bg-teal-500/10 text-teal-400 border-teal-500/30",
+      desc: "Monitor local smart bins, supervise assigned drivers, and disburse physical cash to citizens using digital verification vouchers.",
+      accent: "text-teal-400",
+    },
+    driver: {
+      title: "Fleet Driver & Collector",
+      badge: "FIELD FLEET",
+      badgeColor: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+      desc: "Turn-by-turn OSRM CVRP route navigation, container emptying validation, and high-priority hazard intervention.",
+      accent: "text-amber-400",
+    },
+    citizen: {
+      title: "Citizen & Commercial Account",
+      badge: "PUBLIC SERVICE",
+      badgeColor: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+      desc: "Report local dumping with GPS photos, request bulky item pickup, and redeem verified recycling points for cash vouchers.",
+      accent: "text-blue-400",
+    },
+  }
 
-      <div className="relative z-10 w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-[#16a34a] rounded-2xl flex items-center justify-center mx-auto mb-4 glow-green shadow-lg">
-            <Recycle size={30} className="text-white" />
+  const activeMeta = roleMeta[tab]
+
+  return (
+    <div className="min-h-screen bg-[#030712] text-slate-100 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden font-sans">
+      
+      {/* Background Gradients & Grids */}
+      <div className="absolute inset-0 bg-grid-pattern opacity-40 pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-emerald-500/10 rounded-full blur-[140px] pointer-events-none" />
+      
+      {/* Back to Home Button */}
+      <div className="relative z-10 w-full max-w-lg mb-6">
+        <button
+          onClick={() => onNavigate("landing")}
+          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer group"
+        >
+          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+          <span>Back to IntelliWaste Home</span>
+        </button>
+      </div>
+
+      <div className="relative z-10 w-full max-w-lg">
+        
+        {/* Header Branding */}
+        <div className="text-center mb-8">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center mx-auto mb-3 shadow-xl shadow-emerald-500/20 border border-emerald-400/30">
+            <Recycle size={28} className="text-white" />
           </div>
-          <div className="font-display font-800 text-2xl text-white">
-            IntelliWaste Operations
-          </div>
-          <div className="text-[#4b7a5a] text-sm mt-1">
-            Smart City Waste Management Platform
-          </div>
+          <h1 className="font-display font-extrabold text-2xl sm:text-3xl tracking-tight text-white">
+            Operations Command Portal
+          </h1>
+          <p className="text-slate-400 text-xs sm:text-sm mt-1">
+            Authenticate to access your municipal role dashboard
+          </p>
         </div>
 
-        {/* Card */}
-        <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6 sm:p-8 shadow-2xl">
-          {/* Role tabs */}
-          <div className="flex flex-wrap gap-1 bg-[#061309] rounded-xl p-1 mb-5">
-            <button
-              onClick={() => {
-                setTab("super")
-                setError("")
-              }}
-              className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
-                tab === "super"
-                  ? "bg-[#16a34a] text-white shadow"
-                  : "text-[#4b7a5a] hover:text-[#86efac]"
-              }`}
-            >
-              <Globe2 size={13} />
-              Super
-            </button>
-            <button
-              onClick={() => {
-                setTab("city")
-                setError("")
-              }}
-              className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
-                tab === "city"
-                  ? "bg-[#16a34a] text-white shadow"
-                  : "text-[#4b7a5a] hover:text-[#86efac]"
-              }`}
-            >
-              <Shield size={13} />
-              City Corp
-            </button>
-            <button
-              onClick={() => {
-                setTab("ward")
-                setError("")
-              }}
-              className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
-                tab === "ward"
-                  ? "bg-[#16a34a] text-white shadow"
-                  : "text-[#4b7a5a] hover:text-[#86efac]"
-              }`}
-            >
-              <Recycle size={13} />
-              Ward
-            </button>
-            <button
-              onClick={() => {
-                setTab("driver")
-                setError("")
-              }}
-              className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
-                tab === "driver"
-                  ? "bg-[#16a34a] text-white shadow"
-                  : "text-[#4b7a5a] hover:text-[#86efac]"
-              }`}
-            >
-              <Truck size={13} />
-              Driver
-            </button>
-            <button
-              onClick={() => {
-                setTab("citizen")
-                setError("")
-              }}
-              className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-1.5 rounded-lg text-[11px] font-semibold transition-all ${
-                tab === "citizen"
-                  ? "bg-[#16a34a] text-white shadow"
-                  : "text-[#4b7a5a] hover:text-[#86efac]"
-              }`}
-            >
-              <Users size={13} />
-              Citizen
-            </button>
+        {/* Main Glassmorphic Card */}
+        <div className="glass-panel-elevated rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-800">
+          
+          {/* Segmented Role Selector */}
+          <div className="mb-6">
+            <label className="block text-[11px] font-mono uppercase text-slate-400 tracking-wider mb-2">
+              Select Operating Role
+            </label>
+            <div className="grid grid-cols-5 gap-1.5 p-1 bg-slate-950/80 border border-slate-800 rounded-2xl">
+              {[
+                { id: "super", label: "Super", icon: Globe2 },
+                { id: "city", label: "City Corp", icon: Building2 },
+                { id: "ward", label: "Ward", icon: Recycle },
+                { id: "driver", label: "Driver", icon: Truck },
+                { id: "citizen", label: "Citizen", icon: Users },
+              ].map((r) => {
+                const Icon = r.icon
+                const isActive = tab === r.id
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => {
+                      setTab(r.id as any)
+                      setError("")
+                    }}
+                    className={`py-2.5 px-1 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+                      isActive
+                        ? "bg-slate-800 text-white shadow-lg border border-slate-700"
+                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/40"
+                    }`}
+                  >
+                    <Icon size={14} className={isActive ? "text-emerald-400" : "text-slate-400"} />
+                    <span className="text-[10px] font-medium truncate max-w-full">{r.label}</span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
-          {/* Role info */}
-          <div className="bg-[#061309] border border-[#1a3d22] rounded-xl p-3.5 mb-5">
-            {tab === "super" && (
-              <div>
-                <div className="text-[#4ade80] font-mono text-xs mb-1">
-                  👑 SUPER ADMIN (MINISTRY CENTRAL)
-                </div>
-                <div className="text-[#4b7a5a] text-xs leading-relaxed">
-                  National authority: Add City Corporations, assign Central
-                  Admins, and view country-wide operational metrics.
-                </div>
-              </div>
-            )}
-            {tab === "city" && (
-              <div>
-                <div className="text-[#4ade80] font-mono text-xs mb-1">
-                  🏢 CITY CORPORATION ADMIN
-                </div>
-                <div className="text-[#4b7a5a] text-xs leading-relaxed">
-                  Jurisdiction management: Configure point-to-cash rate,
-                  manage wards, assign sub-admins, view all trucks & bins.
-                </div>
-              </div>
-            )}
-            {tab === "ward" && (
-              <div>
-                <div className="text-[#60a5fa] font-mono text-xs mb-1">
-                  🏛️ WARD SUB-ADMIN
-                </div>
-                <div className="text-[#4b7a5a] text-xs leading-relaxed">
-                  Ward level: Monitor local smart bins & trucks, disburse
-                  physical cash to citizens with digital voucher codes.
-                </div>
-              </div>
-            )}
-            {tab === "driver" && (
-              <div>
-                <div className="text-[#f59e0b] font-mono text-xs mb-1">
-                  🚚 TRUCK DRIVER / COLLECTOR
-                </div>
-                <div className="text-[#4b7a5a] text-xs leading-relaxed">
-                  Field operations: Real-time route navigation, bin emptying
-                  logs, hazard protocol, and paid pickup jobs.
-                </div>
-              </div>
-            )}
-            {tab === "citizen" && (
-              <div>
-                <div className="text-[#38bdf8] font-mono text-xs mb-1">
-                  👤 CITIZEN USER (REWARDS & CASH OUT)
-                </div>
-                <div className="text-[#4b7a5a] text-xs leading-relaxed">
-                  Public portal: Earn recycling points, claim cash payout
-                  vouchers, schedule pickups, and report garbage issues.
-                </div>
-              </div>
-            )}
+          {/* Role Context Banner */}
+          <div className="bg-slate-950/70 border border-slate-800/90 rounded-2xl p-4 mb-6">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${activeMeta.badgeColor}`}>
+                {activeMeta.badge}
+              </span>
+              <span className="text-[11px] font-mono text-slate-500">Security: Encrypted JWT</span>
+            </div>
+            <h3 className="font-display font-bold text-sm text-white mb-1">{activeMeta.title}</h3>
+            <p className="text-slate-400 text-xs leading-relaxed">{activeMeta.desc}</p>
           </div>
 
-          {/* City Corporation and Ward selectors for Ward Admin */}
+          {/* Ward & City Dropdowns for Ward Admin Role */}
           {tab === "ward" && (
-            <div className="space-y-4 mb-4">
-              {/* Select City Corporation */}
+            <div className="space-y-4 mb-6 p-4 rounded-2xl bg-slate-950/50 border border-slate-800">
               <div>
-                <label className="block text-[#4b7a5a] text-xs font-mono mb-1.5 flex items-center gap-1.5">
-                  <Building2 size={13} className="text-[#60a5fa]" />
-                  SELECT CITY CORPORATION
+                <label className="block text-slate-400 text-xs font-mono mb-1.5 flex items-center gap-1.5">
+                  <Building2 size={13} className="text-cyan-400" />
+                  <span>JURISDICTION CITY CORPORATION</span>
                 </label>
                 {availableCities.length > 0 ? (
                   <select
                     value={selectedCityCorpId}
                     onChange={(e) => handleCityChange(e.target.value)}
-                    className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-[#86efac] text-sm focus:border-[#4ade80] outline-none"
+                    className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-slate-100 text-xs focus:border-emerald-400 outline-none"
                   >
                     {availableCities.map((c) => (
-                      <option key={c.id} value={c.id}>
+                      <option key={c.id} value={c.id} className="bg-slate-900 text-white">
                         {c.name} {c.code ? `(${c.code})` : ""}
                       </option>
                     ))}
                   </select>
                 ) : (
-                  <div className="text-xs text-[#86efac]/70 p-2.5 bg-[#061309] border border-[#1a3d22] rounded-xl font-mono">
+                  <div className="text-xs text-slate-400 p-2.5 bg-slate-900 border border-slate-800 rounded-xl font-mono">
                     No City Corporations registered yet.
                   </div>
                 )}
               </div>
 
-              {/* Select Ward filtered by selected City Corporation */}
               <div>
-                <label className="block text-[#4b7a5a] text-xs font-mono mb-1.5 flex items-center gap-1.5">
-                  <Recycle size={13} className="text-[#86efac]" />
-                  SELECT YOUR WARD
+                <label className="block text-slate-400 text-xs font-mono mb-1.5 flex items-center gap-1.5">
+                  <Recycle size={13} className="text-teal-400" />
+                  <span>ASSIGNED WARD NUMBER</span>
                 </label>
                 {displayWards.length > 0 ? (
                   <select
                     value={ward}
                     onChange={(e) => setWard(e.target.value)}
-                    className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-[#86efac] text-sm focus:border-[#4ade80] outline-none"
+                    className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-slate-100 text-xs focus:border-emerald-400 outline-none"
                   >
                     {displayWards.map((w) => (
-                      <option key={w.id} value={w.id}>
+                      <option key={w.id} value={w.id} className="bg-slate-900 text-white">
                         {w.name} {w.area ? `— ${w.area}` : ""}
                       </option>
                     ))}
                   </select>
                 ) : (
-                  <div className="text-xs text-[#86efac]/70 p-2.5 bg-[#061309] border border-[#1a3d22] rounded-xl font-mono">
-                    No wards registered under this City Corporation.
+                  <div className="text-xs text-slate-400 p-2.5 bg-slate-900 border border-slate-800 rounded-xl font-mono">
+                    No wards configured under this City Corporation.
                   </div>
                 )}
               </div>
             </div>
           )}
 
-          {/* Username */}
-          <div className="mb-4">
-            <label className="block text-[#4b7a5a] text-xs font-mono mb-1.5">
-              USERNAME
-            </label>
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter your registered username"
-              autoComplete="username"
-              className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm focus:border-[#4ade80] outline-none"
-            />
-          </div>
-
-          {/* Password */}
-          <div className="mb-4">
-            <label className="block text-[#4b7a5a] text-xs font-mono mb-1.5">
-              PASSWORD
-            </label>
-            <div className="relative">
-              <input
-                type={showPass ? "text" : "password"}
-                value={pass}
-                onChange={(e) => setPass(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                placeholder="••••••••"
-                autoComplete="current-password"
-                className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-4 py-2.5 text-white text-sm focus:border-[#4ade80] outline-none pr-12"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPass((s) => !s)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4b7a5a] hover:text-[#86efac]"
-              >
-                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-
-          <div className="flex justify-end mb-4">
-            <button
-              type="button"
-              onClick={() => setForgotOpen(true)}
-              className="text-xs text-[#4ade80] hover:underline flex items-center gap-1.5 font-medium"
-            >
-              <KeyRound size={12} /> Forgot password?
-            </button>
-          </div>
-
-          {error && (
-            <div className="flex items-center gap-2 text-red-400 text-xs mb-4 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
-              <AlertCircle size={13} className="shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <button
-            onClick={handleLogin}
-            disabled={loading}
-            className="w-full bg-[#16a34a] text-white font-semibold py-3 rounded-xl hover:bg-[#15803d] transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+          {/* Credentials Form */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleLogin()
+            }}
+            className="space-y-4"
           >
-            {loading ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <>
-                Login as{" "}
-                {tab === "super"
-                  ? "Super Admin"
-                  : tab === "city"
-                    ? "City Admin"
-                    : tab === "ward"
-                      ? "Ward Sub-Admin"
-                      : tab === "driver"
-                        ? "Driver"
-                        : "Citizen"}
-                <ChevronRight size={16} />
-              </>
-            )}
-          </button>
+            {/* Username Input */}
+            <div>
+              <label className="block text-xs font-mono text-slate-300 mb-1.5">
+                USERNAME OR EMAIL
+              </label>
+              <div className="relative">
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500">
+                  <User size={16} />
+                </div>
+                <input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder={
+                    tab === "super"
+                      ? "e.g. spsshafiq"
+                      : tab === "city"
+                        ? "e.g. dncc_admin"
+                        : tab === "ward"
+                          ? "e.g. ward33_admin"
+                          : tab === "driver"
+                            ? "e.g. driver_01"
+                            : "Your registered username or email"
+                  }
+                  autoComplete="username"
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-white text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30 outline-none transition-all placeholder:text-slate-600"
+                />
+              </div>
+            </div>
 
-          {/* First-Time Server Setup & Root Admin Wizard (Hidden once setup is complete) */}
+            {/* Password Input */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-mono text-slate-300">
+                  SECURE PASSWORD
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setForgotOpen(true)}
+                  className="text-xs text-emerald-400 hover:text-emerald-300 hover:underline flex items-center gap-1 font-medium cursor-pointer"
+                >
+                  <KeyRound size={12} />
+                  <span>Forgot?</span>
+                </button>
+              </div>
+              <div className="relative">
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500">
+                  <Lock size={16} />
+                </div>
+                <input
+                  type={showPass ? "text" : "password"}
+                  value={pass}
+                  onChange={(e) => setPass(e.target.value)}
+                  placeholder="••••••••••••"
+                  autoComplete="current-password"
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-10 pr-11 py-3 text-white text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30 outline-none transition-all placeholder:text-slate-600"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer"
+                >
+                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="flex items-center gap-2 text-rose-400 text-xs bg-rose-500/10 border border-rose-500/25 rounded-xl px-3.5 py-2.5">
+                <AlertCircle size={15} className="shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-2 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 hover:opacity-95 text-slate-950 font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 text-sm"
+            >
+              {loading ? (
+                <Loader2 size={18} className="animate-spin text-slate-950" />
+              ) : (
+                <>
+                  <span>Sign in as {activeMeta.title.split(" ")[0]}</span>
+                  <ChevronRight size={16} />
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* First-time installer quick trigger if not initialized */}
           {!isSetupDone && (
-            <div className="mt-5 pt-4 border-t border-[#1a3d22]">
-              <div className="bg-[#061309] border border-[#1a3d22] rounded-xl p-3 flex items-center justify-between">
+            <div className="mt-6 pt-5 border-t border-slate-800">
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
                 <div>
                   <div className="text-white text-xs font-semibold flex items-center gap-1.5">
-                    <Shield size={13} className="text-[#4ade80]" />
-                    <span>First-Time Setup / Installer</span>
+                    <Shield size={13} className="text-emerald-400" />
+                    <span>First-Time Setup Assistant</span>
                   </div>
-                  <div className="text-[#4b7a5a] text-[11px] mt-0.5">
-                    Private registration form to create initial Super Admin
+                  <div className="text-slate-400 text-[11px] mt-0.5">
+                    Initialize central databases &amp; Super Admin
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => onNavigate("setup")}
-                  className="bg-[#16a34a]/20 hover:bg-[#16a34a]/40 border border-[#16a34a]/50 text-[#4ade80] text-xs px-3 py-1.5 rounded-lg font-mono transition-colors"
+                  className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs px-3 py-1.5 rounded-lg font-mono transition-colors cursor-pointer"
                 >
-                  Open Setup →
+                  Setup →
                 </button>
               </div>
             </div>
           )}
 
-          <div className="text-center mt-5">
-            <button
-              onClick={() => onNavigate("landing")}
-              className="text-xs text-[#4b7a5a] hover:text-[#86efac] transition-colors"
-            >
-              ← Back to public portal
-            </button>
-          </div>
         </div>
+
       </div>
 
       {/* Unified Brevo Email OTP Forgot Password Modal */}
@@ -525,7 +503,7 @@ export default function AdminLogin({ onLogin, onNavigate }: AdminLoginProps) {
                   : "CITIZEN"
         }
         onSuccess={(newP) => {
-          setPass(newP);
+          setPass(newP)
         }}
       />
     </div>
