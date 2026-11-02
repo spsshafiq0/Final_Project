@@ -94,7 +94,7 @@ function SmartBin3D() {
       <div style={{ width: W, height: H, perspective: 1000, perspectiveOrigin: "50% 35%" }}>
         <div className="bin-spin relative" style={{ width: W, height: H, transformStyle: "preserve-3d" }}>
           <div style={bottomFace} />
-          
+
           {/* Back */}
           <div style={backFace}>
             <div className="w-full h-full flex flex-col items-center justify-center gap-2">
@@ -140,7 +140,7 @@ function SmartBin3D() {
           {/* Front Face Display */}
           <div style={frontFace}>
             <div className="scan-line absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent pointer-events-none z-10" />
-            
+
             <div className="p-2.5 flex flex-col h-full gap-2 text-slate-100">
               {/* Header */}
               <div className="flex justify-between items-center">
@@ -219,6 +219,9 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
   const [activeTab, setActiveTab] = useState<"citizen" | "driver" | "ward" | "city">("citizen");
   const [liveBins, setLiveBins] = useState<any[]>([]);
   const [activeSorterItem, setActiveSorterItem] = useState("Plastic Bottle (PET)");
+  const [isSetupDone, setIsSetupDone] = useState<boolean>(() => {
+    return localStorage.getItem("intelliwaste_setup_locked") !== "false";
+  });
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40);
@@ -227,11 +230,29 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
   }, []);
 
   useEffect(() => {
+    api.setup
+      .getStatus()
+      .then((res) => {
+        if (res?.isSetupComplete === false) {
+          setIsSetupDone(false);
+          localStorage.removeItem("intelliwaste_setup_locked");
+        } else {
+          setIsSetupDone(true);
+          localStorage.setItem("intelliwaste_setup_locked", "true");
+        }
+      })
+      .catch(() => {
+        setIsSetupDone(true);
+        localStorage.setItem("intelliwaste_setup_locked", "true");
+      });
+  }, []);
+
+  useEffect(() => {
     api.bins.getAll().then((res: any) => {
       if (Array.isArray(res) && res.length > 0) {
         setLiveBins(res.slice(0, 5));
       }
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   const conveyorItems = [
@@ -246,17 +267,16 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
 
   return (
     <div className="bg-[#030712] text-slate-100 min-h-screen selection:bg-emerald-500/30 selection:text-emerald-200 overflow-x-hidden font-sans">
-      
+
       {/* ── TOP FROSTED NAVBAR ────────────────────────────────────────── */}
       <nav
-        className={`fixed top-0 left-0 right-0 z-50 h-20 transition-all duration-300 ${
-          scrolled
+        className={`fixed top-0 left-0 right-0 z-50 h-20 transition-all duration-300 ${scrolled
             ? "glass-panel-elevated bg-[#030712]/85 border-b border-slate-800/80 shadow-2xl"
             : "bg-transparent border-b border-transparent"
-        }`}
+          }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
-          
+
           {/* Brand Logo */}
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 border border-emerald-400/40">
@@ -283,14 +303,16 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
 
           {/* Right Action Buttons */}
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => onNavigate("setup")}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 transition-all cursor-pointer"
-              title="First-time system setup & Super Admin credentials"
-            >
-              <SlidersHorizontal size={13} className="text-emerald-400" />
-              <span>Setup</span>
-            </button>
+            {!isSetupDone && (
+              <button
+                onClick={() => onNavigate("setup")}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 transition-all cursor-pointer"
+                title="First-time system setup & Super Admin credentials"
+              >
+                <SlidersHorizontal size={13} className="text-emerald-400" />
+                <span>Setup</span>
+              </button>
+            )}
 
             <button
               onClick={() => onNavigate("citizen")}
@@ -321,10 +343,10 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
-            
+
             {/* Left Content Column */}
             <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
-              
+
               {/* Status Pill Badge */}
               <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono font-medium shadow-sm">
                 <span className="relative flex h-2 w-2">
@@ -398,7 +420,7 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
             {/* Right Interactive Telemetry & 3D Column */}
             <div className="lg:col-span-5 flex flex-col items-center">
               <div className="relative w-full max-w-md">
-                
+
                 {/* 3D Smart Receptacle */}
                 <SmartBin3D />
 
@@ -424,9 +446,8 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
                             <span className="text-slate-300 font-bold">{b.binCode || b.id}</span>
                             <div className="flex-1 mx-3 h-1.5 bg-slate-800 rounded-full overflow-hidden">
                               <div
-                                className={`h-full rounded-full ${
-                                  fill > 80 ? "bg-rose-500" : fill > 60 ? "bg-amber-400" : "bg-emerald-400"
-                                }`}
+                                className={`h-full rounded-full ${fill > 80 ? "bg-rose-500" : fill > 60 ? "bg-amber-400" : "bg-emerald-400"
+                                  }`}
                                 style={{ width: `${fill}%` }}
                               />
                             </div>
@@ -479,7 +500,7 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
       {/* ── BENTO GRID: ENTERPRISE PLATFORM CAPABILITIES ────────────────── */}
       <section id="features" className="py-24 border-t border-slate-800/80 bg-slate-950/60 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
+
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
             <span className="text-xs font-mono tracking-widest text-emerald-400 uppercase bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/30">
               Core Architecture
@@ -493,7 +514,7 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-            
+
             {/* Bento Card 1: CVRP Route Optimization */}
             <div id="cvrp" className="md:col-span-7 glass-panel-interactive rounded-3xl p-8 flex flex-col justify-between relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/20 transition-all" />
@@ -627,7 +648,7 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
       {/* ── INTERACTIVE CONVEYOR SIMULATOR ───────────────────────────────── */}
       <section className="py-24 border-t border-slate-800/80 bg-slate-950 relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
+
           <div className="text-center max-w-2xl mx-auto mb-14 space-y-2">
             <span className="text-xs font-mono tracking-widest text-teal-400 uppercase bg-teal-500/10 px-3 py-1 rounded-full border border-teal-500/30">
               Interactive Testbed
@@ -646,11 +667,10 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
               <button
                 key={item.name}
                 onClick={() => setActiveSorterItem(item.name)}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
-                  activeSorterItem === item.name
+                className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${activeSorterItem === item.name
                     ? "bg-slate-800 text-white border border-emerald-500 shadow-md shadow-emerald-500/20"
                     : "bg-slate-900/60 text-slate-400 border border-slate-800 hover:text-slate-200"
-                }`}
+                  }`}
               >
                 <span>{item.icon}</span>
                 <span>{item.name}</span>
@@ -661,7 +681,7 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
           {/* Sorter Visual Display Card */}
           <div className="glass-panel-elevated rounded-3xl p-6 sm:p-10 border border-slate-800">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              
+
               {/* Conveyor Belt Visualization */}
               <div className="lg:col-span-7 space-y-4">
                 <div className="flex justify-between items-center text-xs font-mono">
@@ -675,15 +695,14 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
                 {/* Animated Belt Container */}
                 <div className="h-28 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex items-center relative overflow-hidden">
                   <div className="absolute inset-0 bg-grid-pattern opacity-30 pointer-events-none" />
-                  
+
                   {/* Moving Items */}
                   <div className="conveyor-belt flex items-center gap-8 w-[200%]">
                     {conveyorItems.concat(conveyorItems).map((it, idx) => (
                       <div
                         key={idx}
-                        className={`w-14 h-14 rounded-2xl bg-slate-800/90 border flex items-center justify-center text-2xl shadow-lg shrink-0 transition-all ${
-                          it.name === activeSorterItem ? "border-emerald-400 scale-110 shadow-emerald-500/30" : "border-slate-700 opacity-60"
-                        }`}
+                        className={`w-14 h-14 rounded-2xl bg-slate-800/90 border flex items-center justify-center text-2xl shadow-lg shrink-0 transition-all ${it.name === activeSorterItem ? "border-emerald-400 scale-110 shadow-emerald-500/30" : "border-slate-700 opacity-60"
+                          }`}
                       >
                         {it.icon}
                       </div>
@@ -745,7 +764,7 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
       {/* ── STAKEHOLDERS & PORTALS SECTION ─────────────────────────────── */}
       <section id="stakeholders" className="py-24 border-t border-slate-800/80 bg-slate-950/40 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
+
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
             <span className="text-xs font-mono tracking-widest text-cyan-400 uppercase bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/30">
               Complete Multi-Role System
@@ -796,7 +815,7 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
       <footer className="border-t border-slate-800/80 bg-[#02050e] py-16 text-slate-400 text-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
-            
+
             <div className="md:col-span-2 space-y-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center">
@@ -821,7 +840,9 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
                 <li><button onClick={() => onNavigate("business")} className="hover:text-emerald-400 transition-colors cursor-pointer">Commercial &amp; Restaurant App</button></li>
                 <li><button onClick={() => onNavigate("collector")} className="hover:text-emerald-400 transition-colors cursor-pointer">Driver &amp; Collector Map</button></li>
                 <li><button onClick={() => onNavigate("admin")} className="hover:text-emerald-400 transition-colors cursor-pointer">Municipal Admin Dashboard</button></li>
-                <li><button onClick={() => onNavigate("setup")} className="hover:text-emerald-400 transition-colors cursor-pointer">Initial System Setup</button></li>
+                {!isSetupDone && (
+                  <li><button onClick={() => onNavigate("setup")} className="hover:text-emerald-400 transition-colors cursor-pointer">Initial System Setup</button></li>
+                )}
               </ul>
             </div>
 
