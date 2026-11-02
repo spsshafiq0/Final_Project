@@ -40,6 +40,7 @@ import schedulesIndex from "../lib/handlers/schedules/index";
 import wasteTypesIndex from "../lib/handlers/waste-types/index";
 import walletIndex from "../lib/handlers/wallet/index";
 import routesIndex from "../lib/handlers/routes/index";
+import wardPaymentIndex from "../lib/handlers/ward-payment/index";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -209,6 +210,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (resource === "routes") {
     req.query.action = subResource || (req.query.action as string) || "current";
     return routesIndex(req, res);
+  }
+
+  // 21. Ward Payment Configurations & City Admin Approvals
+  if (resource === "ward-payment") {
+    return wardPaymentIndex(req, res);
   }
 
   return res.status(200).json({ status: "healthy", endpoint: segments.join("/") });

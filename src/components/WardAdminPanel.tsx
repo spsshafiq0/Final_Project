@@ -4,11 +4,12 @@ import {
   Plus, Edit3, Trash, Search, Download, RefreshCw,
   MapPin, Flame, Wind, X, Save, ChevronDown, ChevronUp,
   BarChart2, Package, CheckCircle, Clock, Navigation, ExternalLink,
-  Banknote, CheckCircle2, Calendar, ToggleLeft, ToggleRight, UserCheck, ShieldAlert, Compass
+  Banknote, CheckCircle2, Calendar, ToggleLeft, ToggleRight, UserCheck, ShieldAlert, Compass,
+  CreditCard, ArrowDownLeft, ArrowUpRight, Copy, Check, AlertOctagon, HelpCircle, ShieldCheck
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { getBinsForWard, getTracksForWard, getWardById, type Bin, type Track, wards } from "../data/cityData";
-import api, { CityCorporationItem, WardItem, WithdrawalItem, PickupScheduleItem, UserProfile, TrackItem } from "../lib/api";
+import api, { CityCorporationItem, WardItem, WithdrawalItem, PickupScheduleItem, UserProfile, TrackItem, WalletTransaction, WardPaymentConfigItem } from "../lib/api";
 
 interface WardAdminPanelProps {
   wardId: string | number;
@@ -17,7 +18,8 @@ interface WardAdminPanelProps {
 
 const TABS = [
   { id: "overview",    icon: BarChart2, label: "Ward Overview" },
-  { id: "withdrawals", icon: Banknote,  label: "Cash Payouts" },
+  { id: "cash",        icon: Banknote,  label: "Cash Transactions" },
+  { id: "payments",    icon: CreditCard, label: "Payment Details" },
   { id: "bins",        icon: Trash2,    label: "My Bins" },
   { id: "tracks",      icon: Truck,     label: "My Tracks" },
   { id: "schedules",   icon: Calendar,  label: "Pickup Schedules" },
@@ -785,7 +787,10 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
   const [wardWithdrawEnabled, setWardWithdrawEnabled] = useState(true);
   const [updatingWardPolicy, setUpdatingWardPolicy] = useState(false);
 
-  // Cash Withdrawals State
+  // Cash Transactions: Sub-tabs (Cash Out, Cash In, Scam Watchlist)
+  const [cashSubTab, setCashSubTab] = useState<"cash-out" | "cash-in" | "scam-watchlist">("cash-out");
+
+  // Cash Withdrawals (Cash Out) State
   const [withdrawals, setWithdrawals] = useState<WithdrawalItem[]>([]);
   const [loadingWithdrawals, setLoadingWithdrawals] = useState(false);
   const [payoutSearch, setPayoutSearch] = useState("");
@@ -796,6 +801,32 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
   const [isProcessingPayout, setIsProcessingPayout] = useState(false);
   const [payoutError, setPayoutError] = useState("");
   const [payoutSuccess, setPayoutSuccess] = useState("");
+
+  // Cash In (Citizen Deposits) State
+  const [deposits, setDeposits] = useState<WalletTransaction[]>([]);
+  const [loadingDeposits, setLoadingDeposits] = useState(false);
+  const [depositFilter, setDepositFilter] = useState<string>("ALL");
+  const [depositSearch, setDepositSearch] = useState<string>("");
+  const [depositStats, setDepositStats] = useState({ pendingCount: 0, scamCount: 0 });
+  const [processingDepositId, setProcessingDepositId] = useState<string | null>(null);
+  const [depositSuccessMsg, setDepositSuccessMsg] = useState<string>("");
+  const [depositErrorMsg, setDepositErrorMsg] = useState<string>("");
+  const [rejectDepositModal, setRejectDepositModal] = useState<WalletTransaction | null>(null);
+  const [rejectDepositReason, setRejectDepositReason] = useState<string>("");
+
+  // Payment Details (Ward Receiving Config) State
+  const [paymentConfig, setPaymentConfig] = useState<WardPaymentConfigItem | null>(null);
+  const [loadingPaymentConfig, setLoadingPaymentConfig] = useState(false);
+  const [isSavingPaymentConfig, setIsSavingPaymentConfig] = useState(false);
+  const [paymentForm, setPaymentForm] = useState({
+    bkashNumber: "",
+    nagadNumber: "",
+    rocketNumber: "",
+    bankDetails: "",
+    otherDetails: "",
+  });
+  const [paymentConfigSuccess, setPaymentConfigSuccess] = useState("");
+  const [paymentConfigError, setPaymentConfigError] = useState("");
 
   const fetchWardWithdrawals = async () => {
     setLoadingWithdrawals(true);
@@ -810,6 +841,104 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
       setWithdrawals([]);
     } finally {
       setLoadingWithdrawals(false);
+    }
+  };
+
+  const fetchWardDeposits = async () => {
+    setLoadingDeposits(true);
+    try {
+      const res = await api.wallet.adminGetAll({ wardId: String(wardId) });
+      if (res && Array.isArray(res.transactions)) {
+        setDeposits(res.transactions);
+        if (res.stats) setDepositStats(res.stats);
+      } else {
+        setDeposits([]);
+      }
+    } catch {
+      setDeposits([]);
+    } finally {
+      setLoadingDeposits(false);
+    }
+  };
+
+  const handleConfirmDeposit = async (tx: WalletTransaction) => {
+    setProcessingDepositId(tx.id);
+    setDepositErrorMsg("");
+    setDepositSuccessMsg("");
+    try {
+      const res = await api.wallet.reviewDeposit(tx.id, "approve");
+      if (res?.success) {
+        setDepositSuccessMsg(res.message || `Deposit of ৳${tx.amount} approved & credited to citizen!`);
+        fetchWardDeposits();
+      }
+    } catch (err: any) {
+      setDepositErrorMsg(err?.message || "Failed to confirm deposit.");
+    } finally {
+      setProcessingDepositId(null);
+    }
+  };
+
+  const handleRejectDeposit = async () => {
+    if (!rejectDepositModal) return;
+    setProcessingDepositId(rejectDepositModal.id);
+    try {
+      const res = await api.wallet.reviewDeposit(
+        rejectDepositModal.id,
+        "reject",
+        rejectDepositReason.trim() || "Transaction ID could not be verified on mobile banking statement."
+      );
+      if (res?.success) {
+        setDepositSuccessMsg(res.message || "Deposit rejected.");
+        setRejectDepositModal(null);
+        setRejectDepositReason("");
+        fetchWardDeposits();
+      }
+    } catch (err: any) {
+      setDepositErrorMsg(err?.message || "Failed to reject deposit.");
+    } finally {
+      setProcessingDepositId(null);
+    }
+  };
+
+  const fetchWardPaymentConfig = async () => {
+    setLoadingPaymentConfig(true);
+    try {
+      const cfg = await api.wardPayment.getForWard(String(wardId));
+      if (cfg) {
+        setPaymentConfig(cfg);
+        setPaymentForm({
+          bkashNumber: cfg.pendingBkash || cfg.bkashNumber || "",
+          nagadNumber: cfg.pendingNagad || cfg.nagadNumber || "",
+          rocketNumber: cfg.pendingRocket || cfg.rocketNumber || "",
+          bankDetails: cfg.pendingBank || cfg.bankDetails || "",
+          otherDetails: cfg.pendingOther || cfg.otherDetails || "",
+        });
+      }
+    } catch {
+      // fallback
+    } finally {
+      setLoadingPaymentConfig(false);
+    }
+  };
+
+  const handleSavePaymentConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingPaymentConfig(true);
+    setPaymentConfigError("");
+    setPaymentConfigSuccess("");
+    try {
+      const res = await api.wardPayment.update({
+        wardId: String(wardId),
+        ...paymentForm,
+      });
+      if (res?.success) {
+        setPaymentConfigSuccess(res.message);
+        if (res.config) setPaymentConfig(res.config);
+      }
+    } catch (err: any) {
+      setPaymentConfigError(err?.message || "Failed to submit payment details.");
+    } finally {
+      setIsSavingPaymentConfig(false);
     }
   };
 
@@ -976,6 +1105,8 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
 
     loadWardData();
     fetchWardWithdrawals();
+    fetchWardDeposits();
+    fetchWardPaymentConfig();
   }, [wardId]);
 
   const handleSaveBin = async (binData: Partial<Bin>) => {
@@ -1130,7 +1261,10 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
     setPayoutError("");
     setPayoutSuccess("");
     try {
-      const res = await api.withdrawals.process(wdr.id, "pay", voucherCodeInput);
+      const res = await api.withdrawals.process(wdr.id, {
+        status: "paid",
+        secretCode: voucherCodeInput.trim().toUpperCase(),
+      });
       const updatedItem = (res as any)?.withdrawal || res || { ...wdr, status: "paid", paidAt: new Date().toISOString() };
       setWithdrawals(prev => prev.map(item => item.id === wdr.id ? { ...item, status: "paid", paidAt: new Date().toISOString() } : item));
       setPayoutReceipt(updatedItem);
@@ -1216,16 +1350,34 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
           <div className="text-[#4b7a5a] text-xs">Councilor: {ward.councilor}</div>
         </div>
         <nav className="flex-1 p-3 space-y-1">
-          {TABS.map(item => (
-            <button
-              key={item.id}
-              onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === item.id ? "bg-[#16a34a] text-white" : "text-[#4b7a5a] hover:bg-[#0d2414] hover:text-[#86efac]"}`}
-            >
-              <item.icon size={16} />
-              {item.label}
-            </button>
-          ))}
+          {TABS.map(item => {
+            const isTabActive = activeTab === item.id || (item.id === "cash" && activeTab === "withdrawals");
+            const pendingClaimsCount = withdrawals.filter(w => w.status === "pending").length;
+            const totalCashPending = depositStats.pendingCount + pendingClaimsCount;
+
+            return (
+              <button
+                key={item.id}
+                onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isTabActive ? "bg-[#16a34a] text-white shadow" : "text-[#4b7a5a] hover:bg-[#0d2414] hover:text-[#86efac]"}`}
+              >
+                <div className="flex items-center gap-3">
+                  <item.icon size={16} />
+                  <span>{item.label}</span>
+                </div>
+                {item.id === "cash" && totalCashPending > 0 && (
+                  <span className="bg-yellow-400 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full font-mono">
+                    {totalCashPending}
+                  </span>
+                )}
+                {item.id === "payments" && paymentConfig?.status === "PENDING_APPROVAL" && (
+                  <span className="bg-amber-500/20 text-amber-300 text-[9px] font-bold px-1.5 py-0.5 rounded font-mono">
+                    PENDING
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </nav>
         {/* Ward restriction reminder */}
         <div className="p-3 mx-3 mb-2 bg-[#061309] border border-[#1a3d22] rounded-xl">
@@ -1246,7 +1398,9 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
           <div className="flex items-center gap-3">
             <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-[#4b7a5a]"><Package size={18} /></button>
             <div>
-              <div className="font-display font-700 text-white">{TABS.find(t => t.id === activeTab)?.label}</div>
+              <div className="font-display font-700 text-white">
+                {TABS.find(t => t.id === activeTab || (t.id === "cash" && activeTab === "withdrawals"))?.label}
+              </div>
               <div className="text-[#4b7a5a] text-xs font-mono">{ward.name} · {ward.area}</div>
             </div>
           </div>
@@ -1423,8 +1577,8 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
             </div>
           )}
 
-          {/* ── CASH PAYOUTS (Ward Admin) ── */}
-          {activeTab === "withdrawals" && (
+          {/* ── CASH TRANSACTIONS (Ward Admin: Cash Out, Cash In, Scam Watchlist) ── */}
+          {(activeTab === "cash" || activeTab === "withdrawals") && (
             <div className="space-y-5">
               {payoutSuccess && (
                 <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 flex items-center justify-between text-green-400 text-sm">
@@ -1446,29 +1600,110 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
                 </div>
               )}
 
+              {depositSuccessMsg && (
+                <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 flex items-center justify-between text-green-400 text-sm">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={18} />
+                    <span>{depositSuccessMsg}</span>
+                  </div>
+                  <button onClick={() => setDepositSuccessMsg("")} className="text-green-300 hover:text-white text-xs font-mono">DISMISS</button>
+                </div>
+              )}
+
+              {depositErrorMsg && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between text-red-400 text-sm">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={18} />
+                    <span>{depositErrorMsg}</span>
+                  </div>
+                  <button onClick={() => setDepositErrorMsg("")} className="text-red-300 hover:text-white text-xs font-mono">DISMISS</button>
+                </div>
+              )}
+
               {/* Header Info */}
               <div className="bg-gradient-to-r from-[#0d2414] to-[#081b0f] border border-[#1a3d22] rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
                     <Banknote className="text-[#4ade80]" size={22} />
-                    <h2 className="font-display font-bold text-lg text-white">Ward Cash Disbursal Office</h2>
+                    <h2 className="font-display font-bold text-lg text-white">Ward Financial & Cash Desk</h2>
                     <span className="bg-[#16a34a]/20 text-[#4ade80] text-xs px-2.5 py-0.5 rounded-full font-mono font-semibold">
                       {ward.name}
                     </span>
                   </div>
                   <p className="text-[#86efac] text-xs mt-1">
-                    Citizens can bring their recycling reward vouchers here to collect cash in person.
+                    Manage Cash In (citizen wallet deposits), Cash Out (points cash handover), and Anti-Scam protection.
                   </p>
                 </div>
                 <button
-                  onClick={fetchWardWithdrawals}
-                  disabled={loadingWithdrawals}
+                  onClick={() => {
+                    fetchWardWithdrawals();
+                    fetchWardDeposits();
+                  }}
+                  disabled={loadingWithdrawals || loadingDeposits}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#1a3d22] bg-[#061309] text-xs text-[#86efac] hover:text-white hover:border-[#4ade80] transition-colors"
                 >
-                  <RefreshCw size={12} className={loadingWithdrawals ? "animate-spin" : ""} />
-                  <span>Refresh Claims</span>
+                  <RefreshCw size={12} className={loadingWithdrawals || loadingDeposits ? "animate-spin" : ""} />
+                  <span>Refresh Transactions</span>
                 </button>
               </div>
+
+              {/* Sub-tab Navigation */}
+              <div className="flex flex-wrap items-center gap-2 border-b border-[#1a3d22] pb-3">
+                <button
+                  onClick={() => setCashSubTab("cash-out")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    cashSubTab === "cash-out"
+                      ? "bg-[#16a34a] text-white shadow"
+                      : "bg-[#0d2414] text-[#86efac] hover:text-white border border-[#1a3d22]"
+                  }`}
+                >
+                  <ArrowDownLeft size={14} />
+                  <span>Cash Out (Citizen Claims)</span>
+                  {withdrawals.filter(w => w.status === "pending").length > 0 && (
+                    <span className="bg-yellow-400 text-black px-1.5 py-0.2 rounded-full font-mono text-[10px]">
+                      {withdrawals.filter(w => w.status === "pending").length}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setCashSubTab("cash-in")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    cashSubTab === "cash-in"
+                      ? "bg-[#16a34a] text-white shadow"
+                      : "bg-[#0d2414] text-[#86efac] hover:text-white border border-[#1a3d22]"
+                  }`}
+                >
+                  <ArrowUpRight size={14} />
+                  <span>Cash In (Citizen Deposits)</span>
+                  {depositStats.pendingCount > 0 && (
+                    <span className="bg-amber-400 text-black px-1.5 py-0.2 rounded-full font-mono text-[10px]">
+                      {depositStats.pendingCount}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setCashSubTab("scam-watchlist")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    cashSubTab === "scam-watchlist"
+                      ? "bg-red-600 text-white shadow"
+                      : "bg-[#0d2414] text-red-400 hover:text-red-300 border border-red-500/20"
+                  }`}
+                >
+                  <ShieldAlert size={14} />
+                  <span>Scam Watchlist</span>
+                  {depositStats.scamCount > 0 && (
+                    <span className="bg-red-400 text-black px-1.5 py-0.2 rounded-full font-mono text-[10px]">
+                      {depositStats.scamCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* ── SUB-TAB 1: CASH OUT (WITHDRAWALS) ── */}
+              {cashSubTab === "cash-out" && (
+                <div className="space-y-4">
 
               {/* KPI Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1604,7 +1839,7 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
                                     <button
                                       onClick={() => {
                                         setActiveVoucherModal(item);
-                                        setVoucherCodeInput(item.verificationCode); // prefill or leave to verify
+                                        setVoucherCodeInput(""); // Require citizen to show voucher code
                                         setPayoutError("");
                                       }}
                                       className="bg-[#16a34a] hover:bg-[#15803d] text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow transition-all"
@@ -1648,6 +1883,490 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
               </div>
             </div>
           )}
+
+          {/* ── SUB-TAB 2: CASH IN (CITIZEN DEPOSITS) ── */}
+          {cashSubTab === "cash-in" && (
+            <div className="space-y-4">
+              {/* KPI Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-[#86efac] font-mono">PENDING DEPOSIT CHECKS</span>
+                    <Clock size={16} className="text-amber-400" />
+                  </div>
+                  <div className="text-2xl font-bold font-display text-amber-400">
+                    ৳{deposits.filter(d => d.status === "PENDING").reduce((sum, d) => sum + Number(d.amount || 0), 0).toFixed(2)}
+                  </div>
+                  <div className="text-xs text-[#4b7a5a] mt-1">
+                    {deposits.filter(d => d.status === "PENDING").length} deposits awaiting statement check
+                  </div>
+                </div>
+
+                <div className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-[#86efac] font-mono">CONFIRMED DEPOSITS</span>
+                    <CheckCircle2 size={16} className="text-[#4ade80]" />
+                  </div>
+                  <div className="text-2xl font-bold font-display text-[#4ade80]">
+                    ৳{deposits.filter(d => d.status === "COMPLETED").reduce((sum, d) => sum + Number(d.amount || 0), 0).toFixed(2)}
+                  </div>
+                  <div className="text-xs text-[#4b7a5a] mt-1">
+                    {deposits.filter(d => d.status === "COMPLETED").length} citizen wallets credited
+                  </div>
+                </div>
+
+                <div className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-[#86efac] font-mono">REJECTED / FAILED</span>
+                    <AlertTriangle size={16} className="text-red-400" />
+                  </div>
+                  <div className="text-2xl font-bold font-display text-red-400">
+                    {deposits.filter(d => d.status === "REJECTED").length}
+                  </div>
+                  <div className="text-xs text-[#4b7a5a] mt-1">
+                    Deposits rejected due to invalid TrxID or mismatch
+                  </div>
+                </div>
+              </div>
+
+              {/* Filter and Search */}
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-[#0d2414] border border-[#1a3d22] rounded-xl p-3">
+                <div className="relative flex-1 min-w-56">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#4b7a5a]" />
+                  <input
+                    value={depositSearch}
+                    onChange={e => setDepositSearch(e.target.value)}
+                    placeholder="Search TrxID, sender phone, or citizen name..."
+                    className="w-full bg-[#061309] border border-[#1a3d22] rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-[#4b7a5a] focus:border-[#4ade80] outline-none"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {["ALL", "PENDING", "COMPLETED", "REJECTED"].map(st => (
+                    <button
+                      key={st}
+                      onClick={() => setDepositFilter(st)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all ${
+                        depositFilter === st
+                          ? "bg-[#16a34a] text-white"
+                          : "bg-[#061309] text-[#86efac] hover:text-white border border-[#1a3d22]"
+                      }`}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Deposits Table */}
+              <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl overflow-hidden shadow-lg">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-[#1a3d22] bg-[#061309] text-[#86efac] font-mono uppercase">
+                        <th className="py-3 px-4">Citizen</th>
+                        <th className="py-3 px-4">Amount</th>
+                        <th className="py-3 px-4">Method & Sender</th>
+                        <th className="py-3 px-4">Transaction ID (TrxID)</th>
+                        <th className="py-3 px-4">Date</th>
+                        <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1a3d22]/50 text-white">
+                      {deposits
+                        .filter(d => !d.isScam)
+                        .filter(d => depositFilter === "ALL" || d.status === depositFilter)
+                        .filter(d => {
+                          const q = depositSearch.toLowerCase();
+                          return (
+                            !q ||
+                            d.trxId?.toLowerCase().includes(q) ||
+                            d.senderNumber?.toLowerCase().includes(q) ||
+                            d.user?.fullName?.toLowerCase().includes(q) ||
+                            d.user?.phone?.toLowerCase().includes(q)
+                          );
+                        })
+                        .map(tx => {
+                          const isPending = tx.status === "PENDING";
+                          const isCompleted = tx.status === "COMPLETED";
+                          const isRejected = tx.status === "REJECTED";
+
+                          return (
+                            <tr key={tx.id} className="hover:bg-[#061309]/60 transition-colors">
+                              <td className="py-3.5 px-4">
+                                <div className="font-semibold text-white">{tx.user?.fullName || "Citizen"}</div>
+                                <div className="text-[#86efac] text-[11px] font-mono">{tx.user?.phone || tx.senderNumber || "N/A"}</div>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span className="font-display font-bold text-sm text-[#4ade80]">
+                                  ৳{Number(tx.amount).toFixed(2)}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <div className="font-mono text-white flex items-center gap-1.5">
+                                  <CreditCard size={12} className="text-[#60a5fa]" />
+                                  <span>{tx.paymentMethod || "Mobile Banking"}</span>
+                                </div>
+                                {tx.senderNumber && (
+                                  <div className="text-[#86efac] text-[11px] font-mono">From: {tx.senderNumber}</div>
+                                )}
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono font-bold bg-[#1a3d22] text-[#4ade80] px-2 py-0.5 rounded border border-[#4ade80]/30 tracking-wider">
+                                    {tx.trxId || "N/A"}
+                                  </span>
+                                  {tx.trxId && (
+                                    <button
+                                      onClick={() => navigator.clipboard.writeText(tx.trxId || "")}
+                                      className="text-[#4b7a5a] hover:text-white"
+                                      title="Copy TrxID"
+                                    >
+                                      <Copy size={12} />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4 text-[#86efac] font-mono text-[11px]">
+                                {new Date(tx.createdAt).toLocaleDateString()} {new Date(tx.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </td>
+                              <td className="py-3.5 px-4">
+                                {isPending && (
+                                  <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-mono text-[10px] font-semibold">
+                                    PENDING
+                                  </span>
+                                )}
+                                {isCompleted && (
+                                  <span className="bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full font-mono text-[10px] font-semibold flex items-center gap-1 w-max">
+                                    <CheckCircle2 size={10} /> CREDITED
+                                  </span>
+                                )}
+                                {isRejected && (
+                                  <span className="bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-mono text-[10px] font-semibold">
+                                    REJECTED
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3.5 px-4 text-right">
+                                {isPending ? (
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      onClick={() => handleConfirmDeposit(tx)}
+                                      disabled={processingDepositId === tx.id}
+                                      className="bg-[#16a34a] hover:bg-[#15803d] text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow transition-all disabled:opacity-50"
+                                    >
+                                      {processingDepositId === tx.id ? (
+                                        <RefreshCw size={12} className="animate-spin" />
+                                      ) : (
+                                        <CheckCircle2 size={14} />
+                                      )}
+                                      <span>Confirm Deposit</span>
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setRejectDepositModal(tx);
+                                        setRejectDepositReason("");
+                                      }}
+                                      disabled={processingDepositId === tx.id}
+                                      className="text-red-400 hover:text-red-300 p-1.5 hover:bg-red-500/10 rounded-lg transition-colors"
+                                      title="Reject deposit"
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-[#4b7a5a] text-[11px] font-mono">
+                                    {isCompleted ? "Verified & Settled" : tx.rejectReason || "Rejected"}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      {deposits.filter(d => !d.isScam).length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="py-12 text-center text-[#4b7a5a]">
+                            <ArrowUpRight size={36} className="mx-auto mb-2 opacity-40 text-[#4ade80]" />
+                            <p className="font-semibold text-white">No deposit requests yet for {ward.name}</p>
+                            <p className="text-xs text-[#86efac] mt-1">When citizens add money to their wallet via bKash/Nagad/Rocket to this ward, they will appear here for verification.</p>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── SUB-TAB 3: SCAM WATCHLIST (ANTI-FRAUD MONITORING) ── */}
+          {cashSubTab === "scam-watchlist" && (
+            <div className="space-y-4">
+              {/* Security Alert Banner */}
+              <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-5 flex items-start gap-3">
+                <ShieldAlert className="text-red-400 shrink-0 mt-0.5" size={22} />
+                <div>
+                  <h3 className="font-display font-bold text-white text-sm">Automated Duplicate TrxID & Scam Watchlist</h3>
+                  <p className="text-xs text-red-300 mt-1 leading-relaxed">
+                    To prevent financial fraud and balance counterfeiting, IntelliWaste cross-references every submitted Transaction ID.
+                    If two users attempt to submit the same Transaction ID or deposit reference, the operation is blocked automatically,
+                    zero balance is credited, and the incident is recorded on this watchlist for security review.
+                  </p>
+                </div>
+              </div>
+
+              {/* Flagged Scam Table */}
+              <div className="bg-[#0d2414] border border-red-500/20 rounded-2xl overflow-hidden shadow-lg">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-[#1a3d22] bg-[#061309] text-red-400 font-mono uppercase">
+                        <th className="py-3 px-4">Offender User</th>
+                        <th className="py-3 px-4">Flagged TrxID</th>
+                        <th className="py-3 px-4">Payment Method</th>
+                        <th className="py-3 px-4">Attempted Amount</th>
+                        <th className="py-3 px-4">Scam Trigger / Reason</th>
+                        <th className="py-3 px-4">Detected At</th>
+                        <th className="py-3 px-4 text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1a3d22]/50 text-white">
+                      {deposits
+                        .filter(d => d.isScam || d.status === "SCAM_FLAGGED")
+                        .map(tx => (
+                          <tr key={tx.id} className="hover:bg-red-500/5 transition-colors">
+                            <td className="py-3.5 px-4">
+                              <div className="font-semibold text-white">{tx.user?.fullName || "Flagged User"}</div>
+                              <div className="text-red-300 text-[11px] font-mono">{tx.user?.phone || tx.senderNumber || "No phone"}</div>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <span className="font-mono font-bold bg-red-500/20 text-red-400 px-2.5 py-1 rounded border border-red-500/40 tracking-wider">
+                                {tx.trxId}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 font-mono text-[#86efac]">
+                              {tx.paymentMethod || "bKash/Nagad"}
+                              {tx.senderNumber && <div className="text-[11px] text-[#4b7a5a]">Sender: {tx.senderNumber}</div>}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <span className="font-display font-bold text-sm text-red-400">
+                                ৳{Number(tx.amount).toFixed(2)}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-red-300 font-mono text-[11px]">
+                              {tx.scamReason || "DUPLICATE_TRX_ID_FRAUD_DETECTED"}
+                            </td>
+                            <td className="py-3.5 px-4 text-[#86efac] font-mono text-[11px]">
+                              {new Date(tx.createdAt).toLocaleDateString()} {new Date(tx.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </td>
+                            <td className="py-3.5 px-4 text-right">
+                              <span className="bg-red-500/20 text-red-400 border border-red-500/40 px-2 py-0.5 rounded-full font-mono text-[10px] font-bold">
+                                BLOCKED & FLAGGED
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      {deposits.filter(d => d.isScam || d.status === "SCAM_FLAGGED").length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="py-12 text-center text-[#4b7a5a]">
+                            <ShieldCheck size={36} className="mx-auto mb-2 text-green-400 opacity-60" />
+                            <p className="font-semibold text-white">No fraudulent attempts detected</p>
+                            <p className="text-xs text-[#86efac] mt-1">Duplicate TrxID detection is active. No scam transactions recorded for {ward.name}.</p>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── PAYMENT DETAILS (Ward Receiving Account Management) ── */}
+      {activeTab === "payments" && (
+        <div className="space-y-5">
+          {paymentConfigSuccess && (
+            <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 flex items-center justify-between text-green-400 text-sm">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={18} />
+                <span>{paymentConfigSuccess}</span>
+              </div>
+              <button onClick={() => setPaymentConfigSuccess("")} className="text-green-300 hover:text-white text-xs font-mono">DISMISS</button>
+            </div>
+          )}
+
+          {paymentConfigError && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between text-red-400 text-sm">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={18} />
+                <span>{paymentConfigError}</span>
+              </div>
+              <button onClick={() => setPaymentConfigError("")} className="text-red-300 hover:text-white text-xs font-mono">DISMISS</button>
+            </div>
+          )}
+
+          {/* Status Banner */}
+          {paymentConfig?.status === "PENDING_APPROVAL" ? (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5 flex items-start gap-3">
+              <Clock className="text-amber-400 shrink-0 mt-0.5" size={22} />
+              <div>
+                <h3 className="font-display font-bold text-white text-sm">Pending City Corporation Admin Approval</h3>
+                <p className="text-xs text-amber-200 mt-1 leading-relaxed">
+                  You have submitted updated payment account numbers. For security, these changes cannot be published to citizens until
+                  approved by the Central City Corporation Administration. Citizens will continue seeing your existing approved accounts in the meantime.
+                </p>
+              </div>
+            </div>
+          ) : paymentConfig?.status === "REJECTED" ? (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-5 flex items-start gap-3">
+              <AlertTriangle className="text-red-400 shrink-0 mt-0.5" size={22} />
+              <div>
+                <h3 className="font-display font-bold text-white text-sm">Previous Submission Rejected by City Admin</h3>
+                <p className="text-xs text-red-300 mt-1 leading-relaxed">
+                  Reason: <strong>{paymentConfig.rejectReason || "Payment account numbers could not be verified."}</strong>.
+                  Please review your account details below and submit again for approval.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-5 flex items-start gap-3">
+              <CheckCircle2 className="text-green-400 shrink-0 mt-0.5" size={22} />
+              <div>
+                <h3 className="font-display font-bold text-white text-sm">Payment Receiving Details Active & Approved</h3>
+                <p className="text-xs text-green-300 mt-1 leading-relaxed">
+                  Citizens depositing cash into {ward.name} are currently presented with these verified accounts.
+                  Any changes submitted below will be queued for City Corporation Admin approval before going live.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Current Active Accounts Overview */}
+          <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-5">
+            <h3 className="font-display font-bold text-white text-base mb-3 flex items-center gap-2">
+              <CreditCard size={18} className="text-[#4ade80]" />
+              <span>Current Live Accounts for Citizens</span>
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-[#061309] border border-[#1a3d22] rounded-xl p-3.5">
+                <span className="text-[11px] font-mono text-[#4ade80] uppercase block">bKash (Personal/Merchant)</span>
+                <span className="text-sm font-bold font-mono text-white mt-1 block">
+                  {paymentConfig?.bkashNumber || "Not configured"}
+                </span>
+              </div>
+              <div className="bg-[#061309] border border-[#1a3d22] rounded-xl p-3.5">
+                <span className="text-[11px] font-mono text-orange-400 uppercase block">Nagad Account</span>
+                <span className="text-sm font-bold font-mono text-white mt-1 block">
+                  {paymentConfig?.nagadNumber || "Not configured"}
+                </span>
+              </div>
+              <div className="bg-[#061309] border border-[#1a3d22] rounded-xl p-3.5">
+                <span className="text-[11px] font-mono text-purple-400 uppercase block">Rocket Account</span>
+                <span className="text-sm font-bold font-mono text-white mt-1 block">
+                  {paymentConfig?.rocketNumber || "Not configured"}
+                </span>
+              </div>
+              <div className="bg-[#061309] border border-[#1a3d22] rounded-xl p-3.5">
+                <span className="text-[11px] font-mono text-[#60a5fa] uppercase block">Bank / Counter</span>
+                <span className="text-xs text-[#86efac] mt-1 block truncate">
+                  {paymentConfig?.bankDetails || "Bank transfer not configured"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Edit Payment Details Form */}
+          <form onSubmit={handleSavePaymentConfig} className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl p-6 shadow-xl space-y-4">
+            <div>
+              <h3 className="font-display font-bold text-white text-base">Configure Receiving Payment Details</h3>
+              <p className="text-xs text-[#4b7a5a] mt-0.5">
+                Enter the official numbers for your Ward Office where citizens transfer money for wallet top-ups.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-mono text-[#86efac] mb-1">
+                  bKash Number (Personal / Merchant)
+                </label>
+                <input
+                  value={paymentForm.bkashNumber}
+                  onChange={e => setPaymentForm(p => ({ ...p, bkashNumber: e.target.value }))}
+                  placeholder="017XXXXXXXX"
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:border-[#4ade80] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[#86efac] mb-1">
+                  Nagad Number
+                </label>
+                <input
+                  value={paymentForm.nagadNumber}
+                  onChange={e => setPaymentForm(p => ({ ...p, nagadNumber: e.target.value }))}
+                  placeholder="018XXXXXXXX"
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:border-[#4ade80] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[#86efac] mb-1">
+                  Rocket Number
+                </label>
+                <input
+                  value={paymentForm.rocketNumber}
+                  onChange={e => setPaymentForm(p => ({ ...p, rocketNumber: e.target.value }))}
+                  placeholder="019XXXXXXXX"
+                  className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:border-[#4ade80] outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-mono text-[#86efac] mb-1">
+                Bank Transfer Details (Bank Name, Account Name, A/C Number, Branch)
+              </label>
+              <textarea
+                rows={2}
+                value={paymentForm.bankDetails}
+                onChange={e => setPaymentForm(p => ({ ...p, bankDetails: e.target.value }))}
+                placeholder="e.g. Eastern Bank Ltd (EBL), A/C Name: IntelliWaste Ward 01, A/C No: 1041010098234, Dhanmondi Branch"
+                className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-[#4ade80] outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-mono text-[#86efac] mb-1">
+                Other Instructions or Counter Address for Citizens
+              </label>
+              <textarea
+                rows={2}
+                value={paymentForm.otherDetails}
+                onChange={e => setPaymentForm(p => ({ ...p, otherDetails: e.target.value }))}
+                placeholder="e.g. You can also visit Ward 01 Councilor Office Room 102 (10 AM – 4 PM) for direct cash deposit."
+                className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-[#4ade80] outline-none"
+              />
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="submit"
+                disabled={isSavingPaymentConfig}
+                className="bg-[#16a34a] hover:bg-[#15803d] text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow transition-all disabled:opacity-50"
+              >
+                {isSavingPaymentConfig ? (
+                  <RefreshCw size={14} className="animate-spin" />
+                ) : (
+                  <Save size={14} />
+                )}
+                <span>Submit for City Admin Approval</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
           {/* ── MY BINS ── */}
           {activeTab === "bins" && (
@@ -2209,6 +2928,85 @@ export default function WardAdminPanel({ wardId, onLogout }: WardAdminPanelProps
                 className="flex-1 py-2.5 rounded-xl bg-[#16a34a] hover:bg-[#15803d] text-white text-xs font-bold transition-colors"
               >
                 Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Reject Citizen Deposit Modal ── */}
+      {rejectDepositModal && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0d2414] border border-red-500/30 rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
+            <button
+              onClick={() => {
+                setRejectDepositModal(null);
+                setRejectDepositReason("");
+              }}
+              className="absolute top-4 right-4 text-[#4b7a5a] hover:text-white"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-white text-base">Reject Deposit Request</h3>
+                <div className="text-xs text-red-300">TrxID: {rejectDepositModal.trxId || "N/A"}</div>
+              </div>
+            </div>
+
+            <div className="bg-[#061309] border border-[#1a3d22] rounded-xl p-3.5 space-y-2 mb-4 text-xs">
+              <div className="flex justify-between">
+                <span className="text-[#4b7a5a]">Citizen:</span>
+                <span className="text-white font-semibold">{rejectDepositModal.user?.fullName || "Citizen"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#4b7a5a]">Claimed Amount:</span>
+                <span className="text-[#4ade80] font-bold">৳{rejectDepositModal.amount} BDT</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#4b7a5a]">Method / Sender:</span>
+                <span className="text-white font-mono">{rejectDepositModal.paymentMethod} ({rejectDepositModal.senderNumber || "N/A"})</span>
+              </div>
+            </div>
+
+            <div className="mb-5">
+              <label className="block text-xs font-mono text-[#86efac] mb-1.5">
+                REASON FOR REJECTION (SHOWN TO CITIZEN)
+              </label>
+              <textarea
+                rows={3}
+                value={rejectDepositReason}
+                onChange={e => setRejectDepositReason(e.target.value)}
+                placeholder="e.g. Transaction ID was not found in our mobile banking SMS/statement, or sender amount did not match."
+                className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl p-3 text-xs text-white focus:border-red-400 outline-none"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setRejectDepositModal(null);
+                  setRejectDepositReason("");
+                }}
+                className="flex-1 py-2.5 rounded-xl border border-[#1a3d22] text-[#86efac] hover:text-white text-xs font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRejectDeposit}
+                disabled={processingDepositId === rejectDepositModal.id}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow transition-all disabled:opacity-50"
+              >
+                {processingDepositId === rejectDepositModal.id ? (
+                  <RefreshCw size={14} className="animate-spin" />
+                ) : (
+                  <X size={14} />
+                )}
+                <span>Confirm Rejection</span>
               </button>
             </div>
           </div>

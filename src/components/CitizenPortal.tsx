@@ -3,7 +3,7 @@ import { Award, Recycle, Camera, MapPin, Calendar, TrendingUp, Gift, Star, Chevr
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import NearbyBinsMap from "./NearbyBinsMap";
 import { addPickupRequest, getPickupRequests, completePickupRequest, type PickupRequest } from "../data/pickupStore";
-import api, { WithdrawalItem, UserProfile, RankTierItem, RewardItem, userStorage, CityCorporationItem, WardItem, PickupScheduleItem, CityWasteItem, WalletTransaction } from "../lib/api";
+import api, { WithdrawalItem, UserProfile, RankTierItem, RewardItem, userStorage, CityCorporationItem, WardItem, PickupScheduleItem, CityWasteItem, WalletTransaction, WardPaymentConfigItem } from "../lib/api";
 import { wards } from "../data/cityData";
 import ForgotPasswordModal from "./ForgotPasswordModal";
 
@@ -64,6 +64,9 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
   const [isDepositing, setIsDepositing] = useState<boolean>(false);
   const [depositSuccessMsg, setDepositSuccessMsg] = useState<string>("");
   const [depositErrorMsg, setDepositErrorMsg] = useState<string>("");
+  const [wardPaymentConfig, setWardPaymentConfig] = useState<WardPaymentConfigItem | null>(null);
+  const [loadingWardPayment, setLoadingWardPayment] = useState<boolean>(false);
+  const [copiedNumber, setCopiedNumber] = useState<string | null>(null);
 
   // City Waste Items (Configured by City Corporation Admin)
   const [customWasteItems, setCustomWasteItems] = useState<CityWasteItem[]>([]);
@@ -289,6 +292,7 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
           setFilteredWards(activeFiltered);
           setSelectedWardId(String(activeFiltered[0].id));
           setSelectedWardData(activeFiltered[0]);
+          fetchActiveWardPayment(String(activeFiltered[0].id));
 
           setPickupFilteredWards(activeFiltered);
           setPickupWardId(String(activeFiltered[0].id));
@@ -297,6 +301,7 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
           setFilteredWards(wardsList);
           setSelectedWardId(String(wardsList[0].id));
           setSelectedWardData(wardsList[0]);
+          fetchActiveWardPayment(String(wardsList[0].id));
 
           setPickupFilteredWards(wardsList);
           setPickupWardId(String(wardsList[0].id));
@@ -388,6 +393,20 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
     );
   };
 
+  const fetchActiveWardPayment = async (targetWardId?: string) => {
+    const wId = targetWardId || selectedWardId;
+    if (!wId) return;
+    setLoadingWardPayment(true);
+    try {
+      const cfg = await api.wardPayment.getForWard(String(wId));
+      if (cfg) setWardPaymentConfig(cfg);
+    } catch {
+      // fallback
+    } finally {
+      setLoadingWardPayment(false);
+    }
+  };
+
   const handleDepositSubmit = async () => {
     const amt = Number(depositAmount);
     if (!amt || amt < 50) {
@@ -405,21 +424,24 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
       const res = await api.wallet.deposit({
         amount: amt,
         paymentMethod: depositMethod,
-        trxId: depositTrxId || `TX-${Date.now().toString().slice(-8)}`,
+        trxId: depositTrxId.trim() || `TX-${Date.now().toString().slice(-8)}`,
         senderNumber: depositSenderNumber || citizenPhone,
-        note: `Deposit via ${depositMethod}`,
+        wardId: selectedWardId || undefined,
+        description: `Deposit via ${depositMethod}`,
       });
       if (res?.success) {
-        setWalletBalance(res.walletBalance);
+        if (typeof res.walletBalance === "number") {
+          setWalletBalance(res.walletBalance);
+        }
         if (res.transaction) {
           setWalletTransactions(prev => [res.transaction, ...prev]);
         }
-        setDepositSuccessMsg(`৳${amt} deposited successfully to your account!`);
+        setDepositSuccessMsg(res.message || `Deposit request submitted for ৳${amt}. Awaiting Ward Admin verification.`);
         setTimeout(() => {
           setDepositModalOpen(false);
           setDepositSuccessMsg("");
           setDepositTrxId("");
-        }, 1500);
+        }, 2200);
       }
     } catch (err: any) {
       setDepositErrorMsg(err?.message || "Failed to process deposit. Please try again.");
@@ -430,6 +452,7 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
 
   const handleWardChange = (wardId: string) => {
     setSelectedWardId(wardId);
+    fetchActiveWardPayment(wardId);
     const found = allWards.find(w => String(w.id) === String(wardId)) || null;
     setSelectedWardData(found);
   };
@@ -745,7 +768,10 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setDepositModalOpen(true)}
+                onClick={() => {
+                  setDepositModalOpen(true);
+                  fetchActiveWardPayment();
+                }}
                 className="bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 rounded-xl px-2.5 sm:px-3 py-1.5 flex items-center gap-1.5 text-emerald-300 hover:text-white transition-all cursor-pointer shadow-xs"
                 title="Wallet Balance & Deposit Money"
               >
@@ -2319,6 +2345,27 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
               </div>
             </div>
 
+            {/* Target Ward for Deposit */}
+            <div className="mb-4 bg-[#f8fdf9] border border-[#e2f5e9] rounded-xl p-3">
+              <label className="block text-[11px] font-semibold text-[#052e16] mb-1">
+                Target Ward Office for Deposit:
+              </label>
+              <select
+                value={selectedWardId}
+                onChange={e => handleWardChange(e.target.value)}
+                className="w-full bg-white border border-[#e2f5e9] rounded-lg px-3 py-2 text-xs text-[#052e16] outline-none focus:border-[#16a34a]"
+              >
+                {allWards.map(w => (
+                  <option key={w.id} value={w.id}>
+                    {w.name} ({w.area})
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-[#4b7a5a] mt-1">
+                Your deposit is verified directly by this Ward Administrator.
+              </p>
+            </div>
+
             {/* Sub-form based on method */}
             {(depositMethod === "BKASH" || depositMethod === "NAGAD" || depositMethod === "ROCKET") && (
               <div className="space-y-3 bg-[#f8fdf9] border border-[#e2f5e9] rounded-xl p-3.5 mb-4">
@@ -2338,11 +2385,50 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
                     </button>
                   ))}
                 </div>
-                <div className="text-xs text-[#4b7a5a]">
-                  Send <strong>৳{depositAmount || "0"}</strong> to IntelliWaste Merchant Number: <strong className="text-[#052e16] font-mono">01700-112233</strong>
+
+                {/* Active Ward Receiving Details */}
+                <div className="bg-white border border-[#16a34a]/30 rounded-xl p-3 text-xs space-y-1.5 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#4b7a5a] font-mono text-[11px]">
+                      {depositMethod === "BKASH" ? "bKash Receiving Number" : depositMethod === "NAGAD" ? "Nagad Receiving Number" : "Rocket Receiving Number"}
+                    </span>
+                    <span className="bg-[#16a34a]/15 text-[#16a34a] text-[10px] font-bold px-1.5 py-0.2 rounded font-mono">
+                      Ward {selectedWardData?.name || "Admin"} Verified
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono font-bold text-sm text-[#052e16]">
+                      {depositMethod === "BKASH"
+                        ? wardPaymentConfig?.bkashNumber || "01700-112233"
+                        : depositMethod === "NAGAD"
+                        ? wardPaymentConfig?.nagadNumber || "01800-223344"
+                        : wardPaymentConfig?.rocketNumber || "01900-334455"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const num = depositMethod === "BKASH"
+                          ? wardPaymentConfig?.bkashNumber || "01700-112233"
+                          : depositMethod === "NAGAD"
+                          ? wardPaymentConfig?.nagadNumber || "01800-223344"
+                          : wardPaymentConfig?.rocketNumber || "01900-334455";
+                        navigator.clipboard.writeText(num);
+                        setCopiedNumber(num);
+                        setTimeout(() => setCopiedNumber(null), 2000);
+                      }}
+                      className="text-xs font-semibold text-[#16a34a] hover:underline flex items-center gap-1"
+                    >
+                      <Copy size={12} />
+                      {copiedNumber ? "Copied!" : "Copy Number"}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-[#4b7a5a]">
+                    Send <strong>৳{depositAmount || "0"}</strong> to the number above, then enter your sender number and TrxID below for Ward Admin confirmation.
+                  </p>
                 </div>
+
                 <div>
-                  <label className="block text-[11px] font-semibold text-[#052e16] mb-1">Your Mobile Number</label>
+                  <label className="block text-[11px] font-semibold text-[#052e16] mb-1">Your Mobile Number (Sender)</label>
                   <input
                     value={depositSenderNumber}
                     onChange={e => setDepositSenderNumber(e.target.value)}
@@ -2358,6 +2444,9 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
                     placeholder="e.g. 9J3K82LA7Q"
                     className="w-full bg-white border border-[#e2f5e9] rounded-lg px-3 py-2 text-xs font-mono uppercase text-[#052e16] outline-none focus:border-[#16a34a]"
                   />
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    TrxID is verified against statements to prevent duplicate submission scams.
+                  </p>
                 </div>
               </div>
             )}
@@ -2409,6 +2498,12 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
 
             {depositMethod === "BANK" && (
               <div className="space-y-3 bg-[#f8fdf9] border border-[#e2f5e9] rounded-xl p-3.5 mb-4">
+                <div className="bg-white border border-[#16a34a]/30 rounded-xl p-3 text-xs space-y-1">
+                  <span className="text-[#4b7a5a] font-mono text-[11px] block">Official Ward Bank Details:</span>
+                  <p className="text-[#052e16] font-semibold">
+                    {wardPaymentConfig?.bankDetails || "Eastern Bank Limited (EBL), A/C Name: IntelliWaste Operations, A/C: 1041010098234, Dhaka"}
+                  </p>
+                </div>
                 <div>
                   <label className="block text-[11px] font-semibold text-[#052e16] mb-1">Select Bank</label>
                   <select
@@ -2416,15 +2511,15 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
                     onChange={e => setDepositBankDetails(b => ({ ...b, bankName: e.target.value }))}
                     className="w-full bg-white border border-[#e2f5e9] rounded-lg px-3 py-2 text-xs text-[#052e16] outline-none focus:border-[#16a34a]"
                   >
+                    <option>Eastern Bank Limited (EBL)</option>
                     <option>City Bank Limited</option>
                     <option>BRAC Bank PLC</option>
                     <option>Islami Bank Bangladesh</option>
                     <option>Dutch-Bangla Bank (DBBL)</option>
-                    <option>Eastern Bank Limited (EBL)</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-[#052e16] mb-1">Account Number / Reference</label>
+                  <label className="block text-[11px] font-semibold text-[#052e16] mb-1">Deposit Slip / Reference Number</label>
                   <input
                     value={depositBankDetails.accNumber}
                     onChange={e => setDepositBankDetails(b => ({ ...b, accNumber: e.target.value }))}
@@ -2458,15 +2553,45 @@ export default function CitizenPortal({ onNavigate }: CitizenPortalProps) {
             {walletTransactions.length > 0 && (
               <div className="mt-5 pt-4 border-t border-[#e2f5e9]">
                 <h4 className="text-xs font-semibold text-[#052e16] mb-2">Recent Wallet Transactions</h4>
-                <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                  {walletTransactions.slice(0, 5).map(tx => (
-                    <div key={tx.id} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 text-xs">
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {walletTransactions.slice(0, 6).map(tx => (
+                    <div key={tx.id} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 text-xs">
                       <div>
-                        <span className="font-semibold text-[#052e16]">{tx.type}</span>
-                        <span className="text-[#4b7a5a] text-[11px] ml-1.5">({tx.paymentMethod || "Direct"})</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-semibold text-[#052e16]">{tx.type}</span>
+                          <span className="text-[#4b7a5a] text-[11px]">({tx.paymentMethod || "Direct"})</span>
+                          {tx.status === "PENDING" && (
+                            <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.2 rounded font-mono font-semibold">
+                              Pending Verification
+                            </span>
+                          )}
+                          {tx.status === "COMPLETED" && (
+                            <span className="bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.2 rounded font-mono font-semibold">
+                              Credited
+                            </span>
+                          )}
+                          {tx.status === "REJECTED" && (
+                            <span className="bg-red-100 text-red-800 text-[10px] px-1.5 py-0.2 rounded font-mono font-semibold" title={tx.rejectReason || "Rejected"}>
+                              Deposit Failed
+                            </span>
+                          )}
+                          {tx.status === "SCAM_FLAGGED" && (
+                            <span className="bg-red-100 text-red-800 text-[10px] px-1.5 py-0.2 rounded font-mono font-semibold">
+                              Flagged
+                            </span>
+                          )}
+                        </div>
+                        {tx.trxId && <div className="text-[10px] font-mono text-slate-500 mt-0.5">TrxID: {tx.trxId}</div>}
                       </div>
-                      <div className="font-mono font-bold text-emerald-700">
-                        +৳{tx.amount.toFixed(2)}
+                      <div className="text-right">
+                        <div className="font-mono font-bold text-emerald-700">
+                          +৳{tx.amount.toFixed(2)}
+                        </div>
+                        {tx.rejectReason && tx.status === "REJECTED" && (
+                          <div className="text-[10px] text-red-600 max-w-[140px] truncate" title={tx.rejectReason}>
+                            {tx.rejectReason}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

@@ -192,9 +192,38 @@ export interface StoredWalletTransaction {
   amount: number;
   paymentMethod?: string | null;
   trxId?: string | null;
-  status: string;
+  senderNumber?: string | null;
+  wardId?: string | null;
+  status: "PENDING" | "COMPLETED" | "REJECTED" | "SCAM_FLAGGED";
   description?: string | null;
+  processedById?: string | null;
+  rejectReason?: string | null;
+  isScam?: boolean;
+  scamReason?: string | null;
   createdAt: string;
+  updatedAt?: string;
+  user?: any;
+}
+
+export interface StoredWardPaymentConfig {
+  id: string;
+  wardId: string;
+  bkashNumber?: string | null;
+  nagadNumber?: string | null;
+  rocketNumber?: string | null;
+  bankDetails?: string | null;
+  otherDetails?: string | null;
+  pendingBkash?: string | null;
+  pendingNagad?: string | null;
+  pendingRocket?: string | null;
+  pendingBank?: string | null;
+  pendingOther?: string | null;
+  status: "APPROVED" | "PENDING_APPROVAL" | "REJECTED";
+  rejectReason?: string | null;
+  approvedById?: string | null;
+  approvedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface StoredRankTier {
@@ -250,6 +279,7 @@ if (!g.__intelliwaste_store) {
     wasteReports: [] as StoredWasteReport[],
     cityWasteItems: [] as StoredCityWasteItem[],
     walletTransactions: [] as StoredWalletTransaction[],
+    wardPaymentConfigs: [] as StoredWardPaymentConfig[],
     reportTypes: [
       { id: "rt-1", type: "Illegal Dumping", pts: 150, icon: "⚠️" },
       { id: "rt-2", type: "Hazardous Waste", pts: 200, icon: "☢️" },

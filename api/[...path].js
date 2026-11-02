@@ -5939,6 +5939,7 @@ if (!g.__intelliwaste_store) {
     wasteReports: [],
     cityWasteItems: [],
     walletTransactions: [],
+    wardPaymentConfigs: [],
     reportTypes: [
       { id: "rt-1", type: "Illegal Dumping", pts: 150, icon: "\u26A0\uFE0F" },
       { id: "rt-2", type: "Hazardous Waste", pts: 200, icon: "\u2622\uFE0F" },
@@ -8942,18 +8943,35 @@ var id_default6 = apiHandler(
       const rawStatus = req.body?.status || (req.body?.action === "pay" ? "paid" : req.body?.action === "reject" ? "rejected" : void 0);
       const status = rawStatus || "paid";
       if (withdrawal.status === "paid" && status === "paid") {
-        return res.status(400).json({ error: "This cash withdrawal request has already been paid out and settled" });
+        return res.status(400).json({ error: "This cash withdrawal request has already been paid out and settled." });
       }
+      if (status === "paid") {
+        const inputCode = (req.body?.secretCode || req.body?.verificationCode || "").toString().trim().toUpperCase();
+        const expectedCode = (withdrawal.verificationCode || "").toString().trim().toUpperCase();
+        if (!inputCode) {
+          return res.status(400).json({
+            error: "Secret verification code is required. Please ask the citizen to show their cashout voucher code from their app."
+          });
+        }
+        if (inputCode !== expectedCode) {
+          return res.status(400).json({
+            error: `Invalid secret verification code ("${inputCode}"). Please verify the voucher code shown on the citizen's screen.`
+          });
+        }
+      }
+      const rejectReason = req.body?.rejectReason || req.body?.reason || (status === "rejected" ? "Cancelled or rejected at ward counter" : null);
       withdrawal.status = status;
       withdrawal.paidAt = status === "paid" ? (/* @__PURE__ */ new Date()).toISOString() : null;
       withdrawal.processedById = currentUser?.userId || null;
+      if (rejectReason) withdrawal.notes = withdrawal.notes ? `${withdrawal.notes} | Rejected: ${rejectReason}` : `Rejected: ${rejectReason}`;
       try {
         await prisma_default.withdrawalRequest.update({
           where: { id },
           data: {
             status,
             paidAt: status === "paid" ? /* @__PURE__ */ new Date() : null,
-            processedById: currentUser?.userId || null
+            processedById: currentUser?.userId || null,
+            notes: withdrawal.notes
           }
         }).catch(() => null);
         if (status === "paid" && withdrawal.citizenId && withdrawal.points > 0) {
@@ -8973,11 +8991,11 @@ var id_default6 = apiHandler(
         userId: currentUser?.userId || null,
         action: `WITHDRAWAL_${status.toUpperCase()}`,
         resource: "withdrawals",
-        details: `Withdrawal code ${withdrawal.verificationCode} (${withdrawal.points} pts = \u09F3${withdrawal.amount}) marked as ${status} by ${currentUser?.username || "admin"}`,
+        details: `Withdrawal code ${withdrawal.verificationCode} (${withdrawal.points} pts = \u09F3${withdrawal.amount}) marked as ${status} by ${currentUser?.username || "admin"}${rejectReason ? `. Reason: ${rejectReason}` : ""}`,
         ipAddress: req.headers["x-forwarded-for"] || req.socket?.remoteAddress
       });
       return res.status(200).json({
-        message: `Withdrawal successfully marked as ${status}`,
+        message: status === "paid" ? `Cash out of \u09F3${withdrawal.amount} verified and paid successfully!` : `Withdrawal request marked as ${status}.`,
         withdrawal
       });
     }
@@ -11073,10 +11091,68 @@ var waste_types_default = apiHandler(
 var wallet_default = apiHandler(
   async (req, res, currentUser) => {
     const targetUserId = currentUser?.userId || req.query.userId || req.body?.userId;
-    if (!targetUserId) {
+    if (!currentUser && !targetUserId) {
       return res.status(401).json({ error: "Authentication required for wallet operations" });
     }
+    const isWardAdmin = currentUser?.role === "WARD_ADMIN";
+    const isCityAdmin = currentUser?.role === "CITY_ADMIN";
+    const isSuperAdmin = currentUser?.role === "SUPER_ADMIN";
     if (req.method === "GET") {
+      const { wardId, status, scamOnly, limit = 50 } = req.query;
+      if ((isWardAdmin || isCityAdmin || isSuperAdmin) && req.query.adminView === "true") {
+        const whereClause = {};
+        if (isWardAdmin && currentUser.wardId) {
+          whereClause.wardId = currentUser.wardId;
+        } else if (isCityAdmin && currentUser.cityCorpId) {
+          whereClause.user = { cityCorpId: currentUser.cityCorpId };
+          if (wardId) whereClause.wardId = wardId;
+        } else if (wardId) {
+          whereClause.wardId = wardId;
+        }
+        if (scamOnly === "true") {
+          whereClause.isScam = true;
+        } else if (status && status !== "ALL") {
+          whereClause.status = status;
+        }
+        try {
+          const transactions = await prisma_default.walletTransaction.findMany({
+            where: whereClause,
+            include: {
+              user: {
+                select: { id: true, fullName: true, username: true, phone: true, email: true }
+              }
+            },
+            orderBy: { createdAt: "desc" },
+            take: Number(limit)
+          });
+          const pendingCount2 = await prisma_default.walletTransaction.count({
+            where: { ...whereClause.wardId ? { wardId: whereClause.wardId } : {}, status: "PENDING" }
+          });
+          const scamCount2 = await prisma_default.walletTransaction.count({
+            where: { ...whereClause.wardId ? { wardId: whereClause.wardId } : {}, isScam: true }
+          });
+          return res.status(200).json({
+            transactions: transactions || [],
+            stats: { pendingCount: pendingCount2, scamCount: scamCount2 }
+          });
+        } catch (e) {
+          console.warn("[Wallet Admin GET Warning] Falling back to memory:", e.message);
+        }
+        let list = memoryDb.walletTransactions || [];
+        const activeWard = isWardAdmin ? currentUser.wardId : wardId;
+        if (activeWard) list = list.filter((t) => t.wardId === activeWard);
+        if (scamOnly === "true") {
+          list = list.filter((t) => t.isScam);
+        } else if (status && status !== "ALL") {
+          list = list.filter((t) => t.status === status);
+        }
+        const pendingCount = (memoryDb.walletTransactions || []).filter((t) => t.status === "PENDING" && (!activeWard || t.wardId === activeWard)).length;
+        const scamCount = (memoryDb.walletTransactions || []).filter((t) => t.isScam && (!activeWard || t.wardId === activeWard)).length;
+        return res.status(200).json({
+          transactions: list.slice().reverse(),
+          stats: { pendingCount, scamCount }
+        });
+      }
       try {
         const user = await prisma_default.user.findUnique({
           where: { id: targetUserId },
@@ -11102,43 +11178,133 @@ var wallet_default = apiHandler(
       });
     }
     if (req.method === "POST") {
-      const { amount, paymentMethod = "bKash", trxId, accountNumber, description } = req.body || {};
+      const {
+        amount,
+        paymentMethod = "bKash",
+        trxId,
+        senderNumber,
+        accountNumber,
+        wardId,
+        description
+      } = req.body || {};
       const depositAmount = Number(amount);
-      if (isNaN(depositAmount) || depositAmount <= 0) {
-        return res.status(400).json({ error: "Please enter a valid deposit amount greater than 0" });
+      if (isNaN(depositAmount) || depositAmount < 50) {
+        return res.status(400).json({ error: "Minimum deposit amount is \u09F350." });
       }
-      const generatedTrxId = trxId || `TRX-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
-      const note = description || `Deposit via ${paymentMethod} (${accountNumber ? `A/C: ${accountNumber}` : "Instant Gateway"})`;
+      const cleanTrxId = String(trxId || "").trim().toUpperCase();
+      const cleanSender = String(senderNumber || accountNumber || "").trim();
+      if (!cleanTrxId) {
+        return res.status(400).json({ error: "Transaction ID (TrxID) is required." });
+      }
+      let isDuplicate = false;
+      let scamReason = "";
       try {
-        const updatedUser = await prisma_default.user.update({
-          where: { id: targetUserId },
-          data: { walletBalance: { increment: depositAmount } },
-          select: { id: true, fullName: true, username: true, walletBalance: true }
+        const existingTx = await prisma_default.walletTransaction.findFirst({
+          where: {
+            trxId: cleanTrxId
+          },
+          include: {
+            user: { select: { username: true, fullName: true } }
+          }
         });
+        if (existingTx) {
+          isDuplicate = true;
+          scamReason = `Duplicate Transaction ID (${cleanTrxId}) previously submitted by user @${existingTx.user?.username || "unknown"}`;
+        }
+      } catch (e) {
+        const memExisting = (memoryDb.walletTransactions || []).find(
+          (t) => t.trxId && t.trxId.toUpperCase() === cleanTrxId
+        );
+        if (memExisting) {
+          isDuplicate = true;
+          scamReason = `Duplicate Transaction ID (${cleanTrxId}) already recorded in system.`;
+        }
+      }
+      const targetWardId = wardId || currentUser?.wardId || null;
+      if (isDuplicate) {
+        try {
+          const scamTx = await prisma_default.walletTransaction.create({
+            data: {
+              userId: targetUserId,
+              type: "DEPOSIT",
+              amount: depositAmount,
+              paymentMethod,
+              trxId: cleanTrxId,
+              senderNumber: cleanSender,
+              wardId: targetWardId,
+              status: "SCAM_FLAGGED",
+              isScam: true,
+              scamReason,
+              description: `[SCAM ATTEMPT] ${description || scamReason}`
+            }
+          });
+          await logAudit({
+            userId: targetUserId,
+            action: "WALLET_SCAM_FLAGGED",
+            resource: "wallet",
+            details: `Fraud attempt flagged for user ${currentUser?.username || targetUserId}. Reason: ${scamReason}`,
+            ipAddress: req.headers["x-forwarded-for"] || req.socket?.remoteAddress
+          });
+          return res.status(400).json({
+            error: "Security Alert: This Transaction ID has already been submitted. This attempt has been logged into the Security Fraud Watchlist.",
+            isScam: true,
+            transaction: scamTx
+          });
+        } catch (err) {
+          const memScamTx = {
+            id: `trx-${Date.now()}`,
+            userId: targetUserId,
+            type: "DEPOSIT",
+            amount: depositAmount,
+            paymentMethod,
+            trxId: cleanTrxId,
+            senderNumber: cleanSender,
+            wardId: targetWardId,
+            status: "SCAM_FLAGGED",
+            isScam: true,
+            scamReason,
+            description: `[SCAM ATTEMPT] ${description || scamReason}`,
+            createdAt: (/* @__PURE__ */ new Date()).toISOString()
+          };
+          if (!memoryDb.walletTransactions) memoryDb.walletTransactions = [];
+          memoryDb.walletTransactions.push(memScamTx);
+          return res.status(400).json({
+            error: "Security Alert: Duplicate Transaction ID detected and flagged for administrative inspection.",
+            isScam: true,
+            transaction: memScamTx
+          });
+        }
+      }
+      const note = description || `Deposit via ${paymentMethod} (${cleanSender ? `Sender: ${cleanSender}` : "Manual Payment"})`;
+      try {
         const transaction = await prisma_default.walletTransaction.create({
           data: {
             userId: targetUserId,
             type: "DEPOSIT",
             amount: depositAmount,
             paymentMethod,
-            trxId: generatedTrxId,
-            status: "COMPLETED",
+            trxId: cleanTrxId,
+            senderNumber: cleanSender,
+            wardId: targetWardId,
+            status: "PENDING",
+            isScam: false,
             description: note
           }
         });
+        await logAudit({
+          userId: targetUserId,
+          action: "WALLET_DEPOSIT_REQUEST",
+          resource: "wallet",
+          details: `User ${currentUser?.username || targetUserId} requested deposit of \u09F3${depositAmount} via ${paymentMethod} (TrxID: ${cleanTrxId})`,
+          ipAddress: req.headers["x-forwarded-for"] || req.socket?.remoteAddress
+        });
         return res.status(200).json({
           success: true,
-          message: `Successfully deposited \u09F3${depositAmount.toFixed(2)} to your wallet!`,
-          walletBalance: updatedUser.walletBalance,
+          message: `Deposit request for \u09F3${depositAmount.toFixed(2)} submitted successfully! Please wait for Ward Admin verification.`,
           transaction
         });
       } catch (e) {
         console.warn("[Wallet POST Notice] Falling back to memory store:", e.message);
-      }
-      const memUser = (memoryDb.users || []).find((u) => u.id === targetUserId);
-      const newBalance = (memUser?.walletBalance || 0) + depositAmount;
-      if (memUser) {
-        memUser.walletBalance = newBalance;
       }
       const memTrx = {
         id: `trx-${Date.now()}`,
@@ -11146,8 +11312,11 @@ var wallet_default = apiHandler(
         type: "DEPOSIT",
         amount: depositAmount,
         paymentMethod,
-        trxId: generatedTrxId,
-        status: "COMPLETED",
+        trxId: cleanTrxId,
+        senderNumber: cleanSender,
+        wardId: targetWardId,
+        status: "PENDING",
+        isScam: false,
         description: note,
         createdAt: (/* @__PURE__ */ new Date()).toISOString()
       };
@@ -11155,14 +11324,123 @@ var wallet_default = apiHandler(
       memoryDb.walletTransactions.push(memTrx);
       return res.status(200).json({
         success: true,
-        message: `Successfully deposited \u09F3${depositAmount.toFixed(2)} to your wallet!`,
-        walletBalance: newBalance,
+        message: `Deposit request for \u09F3${depositAmount.toFixed(2)} submitted successfully! Please wait for Ward Admin verification.`,
         transaction: memTrx
       });
     }
+    if (req.method === "PUT") {
+      if (!isWardAdmin && !isCityAdmin && !isSuperAdmin) {
+        return res.status(403).json({ error: "Forbidden: Only authorized Ward Administrators can verify cash-in deposits." });
+      }
+      const { transactionId, action, rejectReason } = req.body || {};
+      if (!transactionId) {
+        return res.status(400).json({ error: "Transaction ID is required." });
+      }
+      if (action !== "approve" && action !== "reject") {
+        return res.status(400).json({ error: "Action must be either 'approve' or 'reject'." });
+      }
+      let tx = null;
+      try {
+        tx = await prisma_default.walletTransaction.findUnique({
+          where: { id: transactionId },
+          include: { user: true }
+        });
+      } catch (e) {
+      }
+      if (!tx) {
+        tx = (memoryDb.walletTransactions || []).find((t) => t.id === transactionId);
+      }
+      if (!tx) {
+        return res.status(404).json({ error: "Transaction record not found." });
+      }
+      if (tx.status === "COMPLETED") {
+        return res.status(400).json({ error: "This deposit has already been approved and credited." });
+      }
+      if (isWardAdmin && currentUser.wardId && tx.wardId && tx.wardId !== currentUser.wardId) {
+        return res.status(403).json({ error: "Forbidden: You can only verify transactions belonging to your assigned Ward." });
+      }
+      if (action === "approve") {
+        try {
+          const updatedUser = await prisma_default.user.update({
+            where: { id: tx.userId },
+            data: { walletBalance: { increment: tx.amount } },
+            select: { id: true, username: true, walletBalance: true }
+          });
+          const updatedTx = await prisma_default.walletTransaction.update({
+            where: { id: transactionId },
+            data: {
+              status: "COMPLETED",
+              processedById: currentUser.userId
+            }
+          });
+          await logAudit({
+            userId: currentUser.userId,
+            action: "WALLET_DEPOSIT_CONFIRMED",
+            resource: "wallet",
+            details: `Ward Admin confirmed deposit of \u09F3${tx.amount} (TrxID: ${tx.trxId}) for user ${tx.user?.username || tx.userId}.`,
+            ipAddress: req.headers["x-forwarded-for"] || req.socket?.remoteAddress
+          });
+          return res.status(200).json({
+            success: true,
+            message: `Deposit of \u09F3${tx.amount.toFixed(2)} confirmed and credited to citizen's wallet!`,
+            walletBalance: updatedUser.walletBalance,
+            transaction: updatedTx
+          });
+        } catch (e) {
+          console.warn("[Wallet PUT Approve DB Warning]:", e.message);
+        }
+        tx.status = "COMPLETED";
+        tx.processedById = currentUser.userId;
+        const memCitizen = (memoryDb.users || []).find((u) => u.id === tx.userId);
+        if (memCitizen) {
+          memCitizen.walletBalance = (memCitizen.walletBalance || 0) + tx.amount;
+        }
+        return res.status(200).json({
+          success: true,
+          message: `Deposit of \u09F3${tx.amount.toFixed(2)} confirmed and credited to citizen's wallet!`,
+          walletBalance: memCitizen?.walletBalance || tx.amount,
+          transaction: tx
+        });
+      }
+      if (action === "reject") {
+        const reason = rejectReason || "Transaction ID could not be verified on mobile banking statement.";
+        try {
+          const updatedTx = await prisma_default.walletTransaction.update({
+            where: { id: transactionId },
+            data: {
+              status: "REJECTED",
+              rejectReason: reason,
+              processedById: currentUser.userId
+            }
+          });
+          await logAudit({
+            userId: currentUser.userId,
+            action: "WALLET_DEPOSIT_REJECTED",
+            resource: "wallet",
+            details: `Deposit of \u09F3${tx.amount} (TrxID: ${tx.trxId}) rejected. Reason: ${reason}`,
+            ipAddress: req.headers["x-forwarded-for"] || req.socket?.remoteAddress
+          });
+          return res.status(200).json({
+            success: true,
+            message: "Deposit request has been rejected.",
+            transaction: updatedTx
+          });
+        } catch (e) {
+          console.warn("[Wallet PUT Reject DB Warning]:", e.message);
+        }
+        tx.status = "REJECTED";
+        tx.rejectReason = reason;
+        tx.processedById = currentUser.userId;
+        return res.status(200).json({
+          success: true,
+          message: "Deposit request has been rejected.",
+          transaction: tx
+        });
+      }
+    }
     return res.status(405).json({ error: "Method not allowed" });
   },
-  { allowedMethods: ["GET", "POST"] }
+  { allowedMethods: ["GET", "POST", "PUT"] }
 );
 
 // lib/driverScope.ts
@@ -12087,6 +12365,342 @@ var routes_default = apiHandler(
   { allowedMethods: ["GET", "POST"] }
 );
 
+// lib/handlers/ward-payment/index.ts
+var ward_payment_default = apiHandler(
+  async (req, res, currentUser) => {
+    const isWardAdmin = currentUser?.role === "WARD_ADMIN";
+    const isCityAdmin = currentUser?.role === "CITY_ADMIN";
+    const isSuperAdmin = currentUser?.role === "SUPER_ADMIN";
+    if (req.method === "GET") {
+      const { wardId, cityCorpId, status } = req.query;
+      if ((isCityAdmin || isSuperAdmin) && req.query.listAll === "true") {
+        try {
+          const whereClause = {};
+          if (isCityAdmin && currentUser.cityCorpId) {
+            whereClause.ward = { cityCorpId: currentUser.cityCorpId };
+          } else if (cityCorpId) {
+            whereClause.ward = { cityCorpId };
+          }
+          if (status && status !== "ALL") {
+            whereClause.status = status;
+          }
+          const configs = await prisma_default.wardPaymentConfig.findMany({
+            where: whereClause,
+            include: {
+              ward: {
+                select: {
+                  id: true,
+                  name: true,
+                  area: true,
+                  cityCorpId: true,
+                  cityCorp: { select: { id: true, name: true, code: true } }
+                }
+              }
+            },
+            orderBy: { updatedAt: "desc" }
+          });
+          return res.status(200).json(configs || []);
+        } catch (e) {
+          console.warn("[Ward Payment listAll DB Warning]:", e.message);
+        }
+        let list = memoryDb.wardPaymentConfigs || [];
+        if (status && status !== "ALL") {
+          list = list.filter((c) => c.status === status);
+        }
+        return res.status(200).json(list);
+      }
+      const targetWardId = wardId || (isWardAdmin ? currentUser?.wardId : void 0);
+      if (!targetWardId) {
+        return res.status(400).json({ error: "Ward ID is required to fetch payment details." });
+      }
+      let config = null;
+      try {
+        config = await prisma_default.wardPaymentConfig.findUnique({
+          where: { wardId: targetWardId },
+          include: {
+            ward: {
+              select: {
+                id: true,
+                name: true,
+                area: true,
+                cityCorp: { select: { id: true, name: true, code: true } }
+              }
+            }
+          }
+        });
+      } catch (e) {
+        console.warn("[Ward Payment GET DB Warning]:", e.message);
+      }
+      if (!config) {
+        config = (memoryDb.wardPaymentConfigs || []).find((c) => c.wardId === targetWardId);
+      }
+      if (!isWardAdmin && !isCityAdmin && !isSuperAdmin) {
+        if (!config || config.status !== "APPROVED") {
+          return res.status(200).json({
+            wardId: targetWardId,
+            configured: false,
+            bkashNumber: null,
+            nagadNumber: null,
+            rocketNumber: null,
+            bankDetails: null,
+            otherDetails: null
+          });
+        }
+        return res.status(200).json({
+          wardId: targetWardId,
+          configured: true,
+          bkashNumber: config.bkashNumber,
+          nagadNumber: config.nagadNumber,
+          rocketNumber: config.rocketNumber,
+          bankDetails: config.bankDetails,
+          otherDetails: config.otherDetails
+        });
+      }
+      if (!config) {
+        return res.status(200).json({
+          wardId: targetWardId,
+          status: "NOT_CONFIGURED",
+          bkashNumber: "",
+          nagadNumber: "",
+          rocketNumber: "",
+          bankDetails: "",
+          otherDetails: "",
+          pendingBkash: "",
+          pendingNagad: "",
+          pendingRocket: "",
+          pendingBank: "",
+          pendingOther: ""
+        });
+      }
+      return res.status(200).json(config);
+    }
+    if (req.method === "POST") {
+      if (!isWardAdmin && !isSuperAdmin) {
+        return res.status(403).json({ error: "Forbidden: Only Ward Administrators can configure payment receiving details." });
+      }
+      const {
+        wardId,
+        bkashNumber,
+        nagadNumber,
+        rocketNumber,
+        bankDetails,
+        otherDetails
+      } = req.body || {};
+      const targetWardId = isWardAdmin ? currentUser?.wardId : wardId || currentUser?.wardId;
+      if (!targetWardId) {
+        return res.status(400).json({ error: "Ward ID is required to configure payment details." });
+      }
+      try {
+        const updatedConfig = await prisma_default.wardPaymentConfig.upsert({
+          where: { wardId: targetWardId },
+          create: {
+            wardId: targetWardId,
+            status: "PENDING_APPROVAL",
+            pendingBkash: bkashNumber || null,
+            pendingNagad: nagadNumber || null,
+            pendingRocket: rocketNumber || null,
+            pendingBank: bankDetails || null,
+            pendingOther: otherDetails || null,
+            rejectReason: null
+          },
+          update: {
+            status: "PENDING_APPROVAL",
+            pendingBkash: bkashNumber || null,
+            pendingNagad: nagadNumber || null,
+            pendingRocket: rocketNumber || null,
+            pendingBank: bankDetails || null,
+            pendingOther: otherDetails || null,
+            rejectReason: null
+          },
+          include: {
+            ward: {
+              select: { id: true, name: true, area: true }
+            }
+          }
+        });
+        await logAudit({
+          userId: currentUser.userId,
+          action: "WARD_PAYMENT_CONFIG_SUBMITTED",
+          resource: "ward_payment",
+          details: `Ward Admin for Ward ${targetWardId} submitted payment details update for City Corporation approval.`,
+          ipAddress: req.headers["x-forwarded-for"] || req.socket?.remoteAddress
+        });
+        return res.status(200).json({
+          success: true,
+          message: "Payment details submitted! Changes are pending approval from City Corporation Administration.",
+          config: updatedConfig
+        });
+      } catch (e) {
+        console.warn("[Ward Payment POST DB Warning]:", e.message);
+      }
+      let memConfig = (memoryDb.wardPaymentConfigs || []).find((c) => c.wardId === targetWardId);
+      if (!memConfig) {
+        memConfig = {
+          id: `wpc-${Date.now()}`,
+          wardId: targetWardId,
+          status: "PENDING_APPROVAL",
+          pendingBkash: bkashNumber || null,
+          pendingNagad: nagadNumber || null,
+          pendingRocket: rocketNumber || null,
+          pendingBank: bankDetails || null,
+          pendingOther: otherDetails || null,
+          rejectReason: null,
+          createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+          updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+        };
+        if (!memoryDb.wardPaymentConfigs) memoryDb.wardPaymentConfigs = [];
+        memoryDb.wardPaymentConfigs.push(memConfig);
+      } else {
+        memConfig.status = "PENDING_APPROVAL";
+        memConfig.pendingBkash = bkashNumber || null;
+        memConfig.pendingNagad = nagadNumber || null;
+        memConfig.pendingRocket = rocketNumber || null;
+        memConfig.pendingBank = bankDetails || null;
+        memConfig.pendingOther = otherDetails || null;
+        memConfig.rejectReason = null;
+        memConfig.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+      }
+      return res.status(200).json({
+        success: true,
+        message: "Payment details submitted! Changes are pending approval from City Corporation Administration.",
+        config: memConfig
+      });
+    }
+    if (req.method === "PUT") {
+      if (!isCityAdmin && !isSuperAdmin) {
+        return res.status(403).json({ error: "Forbidden: Only City Corporation Administrators or Super Admins can review Ward payment configurations." });
+      }
+      const { wardId, action, rejectReason } = req.body || {};
+      if (!wardId) {
+        return res.status(400).json({ error: "Ward ID is required." });
+      }
+      if (action !== "approve" && action !== "reject") {
+        return res.status(400).json({ error: "Action must be either 'approve' or 'reject'." });
+      }
+      let existingConfig = null;
+      try {
+        existingConfig = await prisma_default.wardPaymentConfig.findUnique({
+          where: { wardId },
+          include: { ward: true }
+        });
+      } catch (e) {
+      }
+      if (!existingConfig) {
+        existingConfig = (memoryDb.wardPaymentConfigs || []).find((c) => c.wardId === wardId);
+      }
+      if (!existingConfig) {
+        return res.status(404).json({ error: "Payment configuration not found for this Ward." });
+      }
+      if (isCityAdmin && currentUser.cityCorpId && existingConfig.ward?.cityCorpId && existingConfig.ward.cityCorpId !== currentUser.cityCorpId) {
+        return res.status(403).json({ error: "Forbidden: You can only approve payment details for Wards inside your City Corporation." });
+      }
+      if (action === "approve") {
+        try {
+          const approved = await prisma_default.wardPaymentConfig.update({
+            where: { wardId },
+            data: {
+              bkashNumber: existingConfig.pendingBkash || existingConfig.bkashNumber,
+              nagadNumber: existingConfig.pendingNagad || existingConfig.nagadNumber,
+              rocketNumber: existingConfig.pendingRocket || existingConfig.rocketNumber,
+              bankDetails: existingConfig.pendingBank || existingConfig.bankDetails,
+              otherDetails: existingConfig.pendingOther || existingConfig.otherDetails,
+              pendingBkash: null,
+              pendingNagad: null,
+              pendingRocket: null,
+              pendingBank: null,
+              pendingOther: null,
+              status: "APPROVED",
+              rejectReason: null,
+              approvedById: currentUser.userId,
+              approvedAt: /* @__PURE__ */ new Date()
+            },
+            include: { ward: { select: { id: true, name: true, area: true } } }
+          });
+          await logAudit({
+            userId: currentUser.userId,
+            action: "WARD_PAYMENT_CONFIG_APPROVED",
+            resource: "ward_payment",
+            details: `City Admin approved payment details for Ward ${wardId}. Live accounts are now updated.`,
+            ipAddress: req.headers["x-forwarded-for"] || req.socket?.remoteAddress
+          });
+          return res.status(200).json({
+            success: true,
+            message: "Ward payment details approved successfully and activated for citizen deposits!",
+            config: approved
+          });
+        } catch (e) {
+          console.warn("[Ward Payment Approve DB Warning]:", e.message);
+        }
+        existingConfig.bkashNumber = existingConfig.pendingBkash || existingConfig.bkashNumber;
+        existingConfig.nagadNumber = existingConfig.pendingNagad || existingConfig.nagadNumber;
+        existingConfig.rocketNumber = existingConfig.pendingRocket || existingConfig.rocketNumber;
+        existingConfig.bankDetails = existingConfig.pendingBank || existingConfig.bankDetails;
+        existingConfig.otherDetails = existingConfig.pendingOther || existingConfig.otherDetails;
+        existingConfig.pendingBkash = null;
+        existingConfig.pendingNagad = null;
+        existingConfig.pendingRocket = null;
+        existingConfig.pendingBank = null;
+        existingConfig.pendingOther = null;
+        existingConfig.status = "APPROVED";
+        existingConfig.rejectReason = null;
+        existingConfig.approvedById = currentUser.userId;
+        existingConfig.approvedAt = (/* @__PURE__ */ new Date()).toISOString();
+        return res.status(200).json({
+          success: true,
+          message: "Ward payment details approved successfully and activated for citizen deposits!",
+          config: existingConfig
+        });
+      }
+      if (action === "reject") {
+        const reason = rejectReason || "Payment account numbers could not be verified by City Corporation Administration.";
+        try {
+          const rejected = await prisma_default.wardPaymentConfig.update({
+            where: { wardId },
+            data: {
+              status: "REJECTED",
+              rejectReason: reason,
+              pendingBkash: null,
+              pendingNagad: null,
+              pendingRocket: null,
+              pendingBank: null,
+              pendingOther: null
+            },
+            include: { ward: { select: { id: true, name: true, area: true } } }
+          });
+          await logAudit({
+            userId: currentUser.userId,
+            action: "WARD_PAYMENT_CONFIG_REJECTED",
+            resource: "ward_payment",
+            details: `City Admin rejected payment details update for Ward ${wardId}. Reason: ${reason}`,
+            ipAddress: req.headers["x-forwarded-for"] || req.socket?.remoteAddress
+          });
+          return res.status(200).json({
+            success: true,
+            message: "Ward payment details request rejected.",
+            config: rejected
+          });
+        } catch (e) {
+          console.warn("[Ward Payment Reject DB Warning]:", e.message);
+        }
+        existingConfig.status = "REJECTED";
+        existingConfig.rejectReason = reason;
+        existingConfig.pendingBkash = null;
+        existingConfig.pendingNagad = null;
+        existingConfig.pendingRocket = null;
+        existingConfig.pendingBank = null;
+        existingConfig.pendingOther = null;
+        return res.status(200).json({
+          success: true,
+          message: "Ward payment details request rejected.",
+          config: existingConfig
+        });
+      }
+    }
+    return res.status(405).json({ error: "Method not allowed" });
+  },
+  { allowedMethods: ["GET", "POST", "PUT"] }
+);
+
 // api-src/[...path].ts
 async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -12205,6 +12819,9 @@ async function handler(req, res) {
     if (resource === "routes") {
       req.query.action = subResource || req.query.action || "current";
       return routes_default(req, res);
+    }
+    if (resource === "ward-payment") {
+      return ward_payment_default(req, res);
     }
     return res.status(200).json({ status: "healthy", endpoint: segments.join("/") });
   } catch (err) {

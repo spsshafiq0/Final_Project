@@ -99,6 +99,7 @@ model Ward {
   wasteReports WasteReport[]
   pickups      PickupRequest[]
   schedules    PickupSchedule[]
+  paymentConfig WardPaymentConfig?
 
   @@index([cityCorpId])
   @@map("wards")
@@ -463,12 +464,55 @@ model WalletTransaction {
   amount        Float
   paymentMethod String?  // "bKash" | "Nagad" | "Rocket" | "Card" | "Bank"
   trxId         String?  // Transaction reference / Gateway Trx ID
-  status        String   @default("COMPLETED")
+  senderNumber  String?  // Citizen deposit phone number
+  wardId        String?  // Assigned ward
+  status        String   @default("PENDING") // "PENDING" | "COMPLETED" | "REJECTED" | "SCAM_FLAGGED"
   description   String?
+  processedById String?  // Admin who confirmed or rejected
+  rejectReason  String?
+  isScam        Boolean  @default(false)
+  scamReason    String?
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
 
   @@index([userId])
+  @@index([trxId])
+  @@index([wardId])
+  @@index([status])
   @@map("wallet_transactions")
 }
+
+// ─── Ward Payment Configuration (Receiving accounts approved by City Admin) ─
+model WardPaymentConfig {
+  id              String   @id @default(cuid())
+  wardId          String   @unique
+  ward            Ward     @relation(fields: [wardId], references: [id], onDelete: Cascade)
+
+  // Live Approved Payment Methods
+  bkashNumber     String?
+  nagadNumber     String?
+  rocketNumber    String?
+  bankDetails     String?
+  otherDetails    String?
+
+  // Pending Changes awaiting City Corporation Admin Approval
+  pendingBkash    String?
+  pendingNagad    String?
+  pendingRocket   String?
+  pendingBank     String?
+  pendingOther    String?
+
+  status          String   @default("APPROVED") // "APPROVED" | "PENDING_APPROVAL" | "REJECTED"
+  rejectReason    String?
+
+  approvedById    String?
+  approvedAt      DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
+
+  @@map("ward_payment_configs")
+}
+
 
 

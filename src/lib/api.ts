@@ -131,9 +131,39 @@ export interface WalletTransaction {
   amount: number;
   paymentMethod?: string | null;
   trxId?: string | null;
-  status: string;
+  senderNumber?: string | null;
+  wardId?: string | null;
+  status: "PENDING" | "COMPLETED" | "REJECTED" | "SCAM_FLAGGED" | string;
   description?: string | null;
+  processedById?: string | null;
+  rejectReason?: string | null;
+  isScam?: boolean;
+  scamReason?: string | null;
+  user?: { id: string; fullName: string; username: string; phone?: string | null; email?: string | null };
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface WardPaymentConfigItem {
+  id: string;
+  wardId: string;
+  bkashNumber?: string | null;
+  nagadNumber?: string | null;
+  rocketNumber?: string | null;
+  bankDetails?: string | null;
+  otherDetails?: string | null;
+  pendingBkash?: string | null;
+  pendingNagad?: string | null;
+  pendingRocket?: string | null;
+  pendingBank?: string | null;
+  pendingOther?: string | null;
+  status: "APPROVED" | "PENDING_APPROVAL" | "REJECTED" | "NOT_CONFIGURED" | string;
+  rejectReason?: string | null;
+  approvedById?: string | null;
+  approvedAt?: string | null;
+  ward?: { id: string; name: string; area: string; cityCorpId?: string; cityCorp?: { id: string; name: string; code: string } };
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface PickupItem {
@@ -624,11 +654,11 @@ export const api = {
       }),
     process: (
       id: string,
-      actionOrData: "pay" | "reject" | { status: "paid" | "rejected" | "approved"; verificationCode?: string; notes?: string },
-      verificationCode?: string
+      actionOrData: "pay" | "reject" | { status: "paid" | "rejected" | "approved"; secretCode?: string; verificationCode?: string; rejectReason?: string; notes?: string },
+      secretCode?: string
     ) => {
       const body = typeof actionOrData === "string"
-        ? { status: actionOrData === "pay" ? "paid" : "rejected", verificationCode }
+        ? { status: actionOrData === "pay" ? "paid" : "rejected", secretCode }
         : actionOrData;
       return request<{ message: string; withdrawal: WithdrawalItem }>(`/withdrawals/${id}`, {
         method: "PUT",
@@ -824,10 +854,46 @@ export const api = {
   // Citizen & Business Wallet & Deposits (bKash, Nagad, Rocket, Card, Bank)
   wallet: {
     get: () => request<{ walletBalance: number; transactions: WalletTransaction[] }>("/wallet"),
-    deposit: (data: { amount: number; paymentMethod: string; trxId?: string; senderNumber?: string; note?: string }) =>
+    deposit: (data: { amount: number; paymentMethod: string; trxId?: string; senderNumber?: string; wardId?: string; description?: string; note?: string }) =>
       request<{ success: boolean; message: string; walletBalance: number; transaction: WalletTransaction }>("/wallet", {
         method: "POST",
         body: JSON.stringify(data),
+      }),
+    adminGetAll: (filters?: { wardId?: string; status?: string; scamOnly?: boolean }) => {
+      const params = new URLSearchParams({ adminView: "true" });
+      if (filters?.wardId) params.append("wardId", filters.wardId);
+      if (filters?.status) params.append("status", filters.status);
+      if (filters?.scamOnly) params.append("scamOnly", "true");
+      return request<{ transactions: WalletTransaction[]; stats: { pendingCount: number; scamCount: number } }>(`/wallet?${params.toString()}`);
+    },
+    reviewDeposit: (transactionId: string, action: "approve" | "reject", rejectReason?: string) =>
+      request<{ success: boolean; message: string; walletBalance?: number; transaction: WalletTransaction }>("/wallet", {
+        method: "PUT",
+        body: JSON.stringify({ transactionId, action, rejectReason }),
+      }),
+  },
+
+  // Ward Payment Receiving Configurations & City Corporation Approvals
+  wardPayment: {
+    getForWard: (wardId?: string) => {
+      const query = wardId ? `?wardId=${wardId}` : "";
+      return request<WardPaymentConfigItem>(`/ward-payment${query}`);
+    },
+    listAll: (filters?: { cityCorpId?: string; status?: string }) => {
+      const params = new URLSearchParams({ listAll: "true" });
+      if (filters?.cityCorpId) params.append("cityCorpId", filters.cityCorpId);
+      if (filters?.status) params.append("status", filters.status);
+      return request<WardPaymentConfigItem[]>(`/ward-payment?${params.toString()}`);
+    },
+    update: (data: { wardId?: string; bkashNumber?: string; nagadNumber?: string; rocketNumber?: string; bankDetails?: string; otherDetails?: string }) =>
+      request<{ success: boolean; message: string; config: WardPaymentConfigItem }>("/ward-payment", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    review: (wardId: string, action: "approve" | "reject", rejectReason?: string) =>
+      request<{ success: boolean; message: string; config: WardPaymentConfigItem }>("/ward-payment", {
+        method: "PUT",
+        body: JSON.stringify({ wardId, action, rejectReason }),
       }),
   },
 

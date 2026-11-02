@@ -8,10 +8,11 @@ import {
   Globe, LogOut, Plus, Edit3, Trash, Search, Download, RefreshCw,
   Users, MapPin, Flame, Wind, X, ChevronRight, Eye, EyeOff, Save, Package,
   Navigation, ExternalLink, ClipboardList, Loader2, Coins, Wallet,
-  Calendar, UserCheck, CheckCircle2, Clock, Compass
+  Calendar, UserCheck, CheckCircle2, Clock, Compass,
+  CreditCard, ShieldAlert, ShieldCheck, Check, ArrowRight
 } from "lucide-react";
 import { type Ward, type Bin, type Track } from "../data/cityData";
-import api, { CityCorporationItem, WardItem, BinItem, TrackItem, UserProfile, WithdrawalItem, ReportItem, AlertItem, PickupScheduleItem, CityWasteItem, userStorage } from "../lib/api";
+import api, { CityCorporationItem, WardItem, BinItem, TrackItem, UserProfile, WithdrawalItem, ReportItem, AlertItem, PickupScheduleItem, CityWasteItem, userStorage, WardPaymentConfigItem, WalletTransaction } from "../lib/api";
 
 interface MainAdminPanelProps {
   onLogout: () => void;
@@ -27,17 +28,18 @@ interface SidebarItem {
 }
 
 const SIDEBAR: SidebarItem[] = [
-  { id: "overview",    icon: BarChart2, label: "City Overview" },
-  { id: "wards",       icon: Globe,     label: "Ward Management" },
-  { id: "rewards",     icon: Coins,     label: "Points & Cash Policy" },
-  { id: "waste-types", icon: Package,   label: "Waste Items & Pricing" },
-  { id: "bins",        icon: Trash2,    label: "All Bins" },
-  { id: "tracks",      icon: Truck,     label: "All Tracks" },
-  { id: "schedules",   icon: Calendar,  label: "Pickup Schedules" },
-  { id: "subadmins",   icon: Users,     label: "Sub-Admins" },
-  { id: "waste",       icon: ClipboardList, label: "Waste Reports" },
-  { id: "alerts",      icon: Bell,      label: "Alerts" },
-  { id: "compliance",  icon: Shield,    label: "Compliance" },
+  { id: "overview",     icon: BarChart2,     label: "City Overview" },
+  { id: "wards",        icon: Globe,         label: "Ward Management" },
+  { id: "city-payment", icon: CreditCard,    label: "CityPayment" },
+  { id: "rewards",      icon: Coins,         label: "Points & Cash Policy" },
+  { id: "waste-types",  icon: Package,       label: "Waste Items & Pricing" },
+  { id: "bins",         icon: Trash2,        label: "All Bins" },
+  { id: "tracks",       icon: Truck,         label: "All Tracks" },
+  { id: "schedules",    icon: Calendar,      label: "Pickup Schedules" },
+  { id: "subadmins",    icon: Users,         label: "Sub-Admins" },
+  { id: "waste",        icon: ClipboardList, label: "Waste Reports" },
+  { id: "alerts",       icon: Bell,          label: "Alerts" },
+  { id: "compliance",   icon: Shield,        label: "Compliance" },
 ];
 
 const weeklyData = [
@@ -1010,6 +1012,73 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
   });
   const [savingWasteItem, setSavingWasteItem] = useState<boolean>(false);
 
+  // CityPayment (Ward Receiving Account Approvals) State
+  const [wardPaymentConfigs, setWardPaymentConfigs] = useState<WardPaymentConfigItem[]>([]);
+  const [loadingWardPayments, setLoadingWardPayments] = useState<boolean>(false);
+  const [paymentFilter, setPaymentFilter] = useState<string>("ALL");
+  const [paymentSearch, setPaymentSearch] = useState<string>("");
+  const [reviewingWardId, setReviewingWardId] = useState<string | null>(null);
+  const [paymentReviewSuccess, setPaymentReviewSuccess] = useState<string>("");
+  const [paymentReviewError, setPaymentReviewError] = useState<string>("");
+  const [rejectPaymentModal, setRejectPaymentModal] = useState<WardPaymentConfigItem | null>(null);
+  const [rejectPaymentReason, setRejectPaymentReason] = useState<string>("");
+  const [scamAlertTransactions, setScamAlertTransactions] = useState<WalletTransaction[]>([]);
+
+  const fetchCityPayments = async () => {
+    setLoadingWardPayments(true);
+    try {
+      const [configs, scams] = await Promise.all([
+        api.wardPayment.listAll({ cityCorpId: cityCorpId || currentUser?.cityCorpId || undefined }),
+        api.wallet.adminGetAll({ scamOnly: true }).catch(() => ({ transactions: [] })),
+      ]);
+      if (Array.isArray(configs)) setWardPaymentConfigs(configs);
+      if (scams && Array.isArray(scams.transactions)) setScamAlertTransactions(scams.transactions);
+    } catch {
+      // fallback
+    } finally {
+      setLoadingWardPayments(false);
+    }
+  };
+
+  const handleApprovePaymentConfig = async (cfg: WardPaymentConfigItem) => {
+    setReviewingWardId(cfg.wardId);
+    setPaymentReviewSuccess("");
+    setPaymentReviewError("");
+    try {
+      const res = await api.wardPayment.review(cfg.wardId, "approve");
+      if (res?.success) {
+        setPaymentReviewSuccess(res.message || "Payment details approved successfully!");
+        fetchCityPayments();
+      }
+    } catch (err: any) {
+      setPaymentReviewError(err?.message || "Failed to approve payment details.");
+    } finally {
+      setReviewingWardId(null);
+    }
+  };
+
+  const handleRejectPaymentConfig = async () => {
+    if (!rejectPaymentModal) return;
+    setReviewingWardId(rejectPaymentModal.wardId);
+    try {
+      const res = await api.wardPayment.review(
+        rejectPaymentModal.wardId,
+        "reject",
+        rejectPaymentReason.trim() || "Payment account numbers could not be verified by City Administration."
+      );
+      if (res?.success) {
+        setPaymentReviewSuccess(res.message || "Payment details rejected.");
+        setRejectPaymentModal(null);
+        setRejectPaymentReason("");
+        fetchCityPayments();
+      }
+    } catch (err: any) {
+      setPaymentReviewError(err?.message || "Failed to reject payment details.");
+    } finally {
+      setReviewingWardId(null);
+    }
+  };
+
   const loadWasteItems = async () => {
     setLoadingWasteItems(true);
     try {
@@ -1186,6 +1255,7 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
       }
     }
     fetchData();
+    fetchCityPayments();
   }, [cityCorpId]);
 
   const handleAssignDriver = async (trackId: string, driverId: string | null, truckType: "NORMAL" | "HAZARDOUS") => {
@@ -1651,6 +1721,11 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
               <item.icon size={16} />
               <span className="flex-1 text-left">{item.label}</span>
               {item.badge && <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{item.badge}</span>}
+              {item.id === "city-payment" && wardPaymentConfigs.filter(c => c.status === "PENDING_APPROVAL").length > 0 && (
+                <span className="bg-amber-400 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full font-mono">
+                  {wardPaymentConfigs.filter(c => c.status === "PENDING_APPROVAL").length}
+                </span>
+              )}
               {item.id === "alerts" && localAlerts.length > 0 && (
                 <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-mono font-bold animate-pulse">
                   {localAlerts.length}
@@ -2851,6 +2926,429 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
               </div>
             </div>
           )}
+
+          {/* ── CITYPAYMENT: WARD RECEIVING ACCOUNT APPROVALS & ANTI-FRAUD ── */}
+          {activeTab === "city-payment" && (
+            <div className="space-y-6">
+              {paymentReviewSuccess && (
+                <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 flex items-center justify-between text-green-400 text-sm">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={18} />
+                    <span>{paymentReviewSuccess}</span>
+                  </div>
+                  <button onClick={() => setPaymentReviewSuccess("")} className="text-green-300 hover:text-white text-xs font-mono">DISMISS</button>
+                </div>
+              )}
+
+              {paymentReviewError && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between text-red-400 text-sm">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={18} />
+                    <span>{paymentReviewError}</span>
+                  </div>
+                  <button onClick={() => setPaymentReviewError("")} className="text-red-300 hover:text-white text-xs font-mono">DISMISS</button>
+                </div>
+              )}
+
+              {/* Header Info */}
+              <div className="bg-gradient-to-r from-[#0d2414] to-[#081b0f] border border-[#1a3d22] rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="text-[#4ade80]" size={22} />
+                    <h2 className="font-display font-bold text-lg text-white">CityPayment Desk — Ward Account Approvals</h2>
+                    <span className="bg-[#16a34a]/20 text-[#4ade80] text-xs px-2.5 py-0.5 rounded-full font-mono font-semibold">
+                      {cityTitle}
+                    </span>
+                  </div>
+                  <p className="text-[#86efac] text-xs mt-1">
+                    Central authority to approve or reject Ward payment numbers (bKash, Nagad, Rocket, Bank) before citizens can see them.
+                  </p>
+                </div>
+                <button
+                  onClick={fetchCityPayments}
+                  disabled={loadingWardPayments}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#1a3d22] bg-[#061309] text-xs text-[#86efac] hover:text-white hover:border-[#4ade80] transition-colors"
+                >
+                  <RefreshCw size={12} className={loadingWardPayments ? "animate-spin" : ""} />
+                  <span>Refresh Accounts</span>
+                </button>
+              </div>
+
+              {/* KPI Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-[#86efac] font-mono">PENDING APPROVAL</span>
+                    <Clock size={16} className="text-amber-400" />
+                  </div>
+                  <div className="text-2xl font-bold font-display text-amber-400">
+                    {wardPaymentConfigs.filter(c => c.status === "PENDING_APPROVAL").length}
+                  </div>
+                  <div className="text-xs text-[#4b7a5a] mt-1">Wards awaiting account verification</div>
+                </div>
+
+                <div className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-[#86efac] font-mono">APPROVED & ACTIVE</span>
+                    <CheckCircle2 size={16} className="text-[#4ade80]" />
+                  </div>
+                  <div className="text-2xl font-bold font-display text-[#4ade80]">
+                    {wardPaymentConfigs.filter(c => c.status === "APPROVED").length}
+                  </div>
+                  <div className="text-xs text-[#4b7a5a] mt-1">Wards with live deposit accounts</div>
+                </div>
+
+                <div className="bg-[#0d2414] border border-[#1a3d22] rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-[#86efac] font-mono">REJECTED CONFIGS</span>
+                    <X size={16} className="text-red-400" />
+                  </div>
+                  <div className="text-2xl font-bold font-display text-red-400">
+                    {wardPaymentConfigs.filter(c => c.status === "REJECTED").length}
+                  </div>
+                  <div className="text-xs text-[#4b7a5a] mt-1">Submissions sent back for review</div>
+                </div>
+
+                <div className="bg-[#0d2414] border border-red-500/20 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-red-400 font-mono">SCAMS INTERCEPTED</span>
+                    <ShieldAlert size={16} className="text-red-400" />
+                  </div>
+                  <div className="text-2xl font-bold font-display text-red-400">
+                    {scamAlertTransactions.length}
+                  </div>
+                  <div className="text-xs text-red-300 mt-1">Duplicate TrxID attempts blocked</div>
+                </div>
+              </div>
+
+              {/* ── PRIORITY: PENDING APPROVAL QUEUE ── */}
+              {wardPaymentConfigs.filter(c => c.status === "PENDING_APPROVAL").length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
+                    <h3 className="font-display font-bold text-white text-base">
+                      Pending Approvals Queue ({wardPaymentConfigs.filter(c => c.status === "PENDING_APPROVAL").length})
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    {wardPaymentConfigs
+                      .filter(c => c.status === "PENDING_APPROVAL")
+                      .map(cfg => {
+                        const wardInfo = cfg.ward || localWards.find(w => String(w.id) === String(cfg.wardId));
+
+                        return (
+                          <div key={cfg.id || cfg.wardId} className="bg-[#0d2414] border border-amber-500/40 rounded-2xl p-5 shadow-lg space-y-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1a3d22] pb-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold">
+                                  {wardInfo?.name?.[0] || "W"}
+                                </div>
+                                <div>
+                                  <div className="font-display font-bold text-white text-base">
+                                    {wardInfo?.name || `Ward ${cfg.wardId}`}
+                                  </div>
+                                  <div className="text-xs text-[#86efac] font-mono">
+                                    {wardInfo?.area || "Ward Locality"} · Submitted: {new Date(cfg.updatedAt || cfg.createdAt || Date.now()).toLocaleDateString()}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleApprovePaymentConfig(cfg)}
+                                  disabled={reviewingWardId === cfg.wardId}
+                                  className="bg-[#16a34a] hover:bg-[#15803d] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow transition-all disabled:opacity-50"
+                                >
+                                  {reviewingWardId === cfg.wardId ? (
+                                    <RefreshCw size={14} className="animate-spin" />
+                                  ) : (
+                                    <Check size={14} />
+                                  )}
+                                  <span>Approve & Activate Accounts</span>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setRejectPaymentModal(cfg);
+                                    setRejectPaymentReason("");
+                                  }}
+                                  disabled={reviewingWardId === cfg.wardId}
+                                  className="border border-red-500/40 text-red-400 hover:bg-red-500/10 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                                >
+                                  <X size={14} />
+                                  <span>Reject</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Comparison: Current Live vs Requested Pending */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* Current Live Accounts */}
+                              <div className="bg-[#061309] border border-[#1a3d22] rounded-xl p-4 space-y-2">
+                                <span className="text-[10px] font-mono text-[#4b7a5a] uppercase font-bold tracking-wider block">
+                                  CURRENT LIVE NUMBERS (BEFORE UPDATE)
+                                </span>
+                                <div className="text-xs space-y-1.5">
+                                  <div className="flex justify-between">
+                                    <span className="text-[#4b7a5a]">bKash:</span>
+                                    <span className="text-white font-mono">{cfg.bkashNumber || "None"}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-[#4b7a5a]">Nagad:</span>
+                                    <span className="text-white font-mono">{cfg.nagadNumber || "None"}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-[#4b7a5a]">Rocket:</span>
+                                    <span className="text-white font-mono">{cfg.rocketNumber || "None"}</span>
+                                  </div>
+                                  <div className="pt-1 border-t border-[#1a3d22]/50 text-[#86efac] text-[11px] truncate">
+                                    Bank: {cfg.bankDetails || "None"}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Requested New Changes */}
+                              <div className="bg-amber-500/5 border border-amber-500/30 rounded-xl p-4 space-y-2">
+                                <span className="text-[10px] font-mono text-amber-400 uppercase font-bold tracking-wider block flex items-center gap-1">
+                                  <ArrowRight size={12} /> REQUESTED NEW NUMBERS (AWAITING APPROVAL)
+                                </span>
+                                <div className="text-xs space-y-1.5">
+                                  <div className="flex justify-between">
+                                    <span className="text-amber-200">New bKash:</span>
+                                    <span className="text-white font-mono font-bold bg-[#1a3d22] px-2 py-0.5 rounded text-[11px]">
+                                      {cfg.pendingBkash || cfg.bkashNumber || "N/A"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-amber-200">New Nagad:</span>
+                                    <span className="text-white font-mono font-bold bg-[#1a3d22] px-2 py-0.5 rounded text-[11px]">
+                                      {cfg.pendingNagad || cfg.nagadNumber || "N/A"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-amber-200">New Rocket:</span>
+                                    <span className="text-white font-mono font-bold bg-[#1a3d22] px-2 py-0.5 rounded text-[11px]">
+                                      {cfg.pendingRocket || cfg.rocketNumber || "N/A"}
+                                    </span>
+                                  </div>
+                                  <div className="pt-1 border-t border-amber-500/20 text-white text-[11px]">
+                                    <strong className="text-amber-300">New Bank / Instructions:</strong> {cfg.pendingBank || cfg.bankDetails || "N/A"}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+
+              {/* ── ALL WARD PAYMENT CONFIGURATIONS TABLE ── */}
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 bg-[#0d2414] border border-[#1a3d22] rounded-xl p-3">
+                  <div className="relative flex-1 min-w-56">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#4b7a5a]" />
+                    <input
+                      value={paymentSearch}
+                      onChange={e => setPaymentSearch(e.target.value)}
+                      placeholder="Search ward name, bKash, or Nagad number..."
+                      className="w-full bg-[#061309] border border-[#1a3d22] rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-[#4b7a5a] focus:border-[#4ade80] outline-none"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {["ALL", "PENDING_APPROVAL", "APPROVED", "REJECTED"].map(st => (
+                      <button
+                        key={st}
+                        onClick={() => setPaymentFilter(st)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all ${
+                          paymentFilter === st
+                            ? "bg-[#16a34a] text-white"
+                            : "bg-[#061309] text-[#86efac] hover:text-white border border-[#1a3d22]"
+                        }`}
+                      >
+                        {st.replace("_", " ")}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-[#0d2414] border border-[#1a3d22] rounded-2xl overflow-hidden shadow-lg">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-[#1a3d22] bg-[#061309] text-[#86efac] font-mono uppercase">
+                          <th className="py-3 px-4">Ward</th>
+                          <th className="py-3 px-4">Live bKash</th>
+                          <th className="py-3 px-4">Live Nagad</th>
+                          <th className="py-3 px-4">Live Rocket</th>
+                          <th className="py-3 px-4">Bank Details</th>
+                          <th className="py-3 px-4">Status</th>
+                          <th className="py-3 px-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#1a3d22]/50 text-white">
+                        {wardPaymentConfigs
+                          .filter(c => paymentFilter === "ALL" || c.status === paymentFilter)
+                          .filter(c => {
+                            const q = paymentSearch.toLowerCase();
+                            const wardName = c.ward?.name || `Ward ${c.wardId}`;
+                            return (
+                              !q ||
+                              wardName.toLowerCase().includes(q) ||
+                              c.bkashNumber?.toLowerCase().includes(q) ||
+                              c.nagadNumber?.toLowerCase().includes(q) ||
+                              c.pendingBkash?.toLowerCase().includes(q)
+                            );
+                          })
+                          .map(cfg => {
+                            const isPending = cfg.status === "PENDING_APPROVAL";
+                            const isApproved = cfg.status === "APPROVED";
+                            const isRejected = cfg.status === "REJECTED";
+                            const wardName = cfg.ward?.name || `Ward ${cfg.wardId}`;
+
+                            return (
+                              <tr key={cfg.id || cfg.wardId} className="hover:bg-[#061309]/60 transition-colors">
+                                <td className="py-3.5 px-4">
+                                  <div className="font-semibold text-white">{wardName}</div>
+                                  <div className="text-[#86efac] text-[11px] font-mono">{cfg.ward?.area || "Central"}</div>
+                                </td>
+                                <td className="py-3.5 px-4 font-mono">
+                                  {cfg.bkashNumber ? (
+                                    <span className="text-[#4ade80]">{cfg.bkashNumber}</span>
+                                  ) : (
+                                    <span className="text-[#4b7a5a]">Not configured</span>
+                                  )}
+                                  {cfg.pendingBkash && (
+                                    <div className="text-amber-300 text-[10px]">Pending: {cfg.pendingBkash}</div>
+                                  )}
+                                </td>
+                                <td className="py-3.5 px-4 font-mono">
+                                  {cfg.nagadNumber ? (
+                                    <span className="text-orange-400">{cfg.nagadNumber}</span>
+                                  ) : (
+                                    <span className="text-[#4b7a5a]">Not configured</span>
+                                  )}
+                                </td>
+                                <td className="py-3.5 px-4 font-mono">
+                                  {cfg.rocketNumber ? (
+                                    <span className="text-purple-400">{cfg.rocketNumber}</span>
+                                  ) : (
+                                    <span className="text-[#4b7a5a]">Not configured</span>
+                                  )}
+                                </td>
+                                <td className="py-3.5 px-4 text-[#86efac] text-[11px] max-w-xs truncate">
+                                  {cfg.bankDetails || "Counter only"}
+                                </td>
+                                <td className="py-3.5 px-4">
+                                  {isPending && (
+                                    <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-mono text-[10px] font-semibold">
+                                      PENDING APPROVAL
+                                    </span>
+                                  )}
+                                  {isApproved && (
+                                    <span className="bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full font-mono text-[10px] font-semibold flex items-center gap-1 w-max">
+                                      <CheckCircle2 size={10} /> APPROVED
+                                    </span>
+                                  )}
+                                  {isRejected && (
+                                    <span className="bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-mono text-[10px] font-semibold">
+                                      REJECTED
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-3.5 px-4 text-right">
+                                  {isPending ? (
+                                    <button
+                                      onClick={() => handleApprovePaymentConfig(cfg)}
+                                      disabled={reviewingWardId === cfg.wardId}
+                                      className="bg-[#16a34a] hover:bg-[#15803d] text-white px-3 py-1 rounded-lg text-xs font-semibold ml-auto transition-colors"
+                                    >
+                                      Approve
+                                    </button>
+                                  ) : (
+                                    <span className="text-[#4b7a5a] text-[11px] font-mono">
+                                      {isApproved ? "Active" : cfg.rejectReason || "Rejected"}
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        {wardPaymentConfigs.length === 0 && (
+                          <tr>
+                            <td colSpan={7} className="py-12 text-center text-[#4b7a5a]">
+                              <CreditCard size={36} className="mx-auto mb-2 opacity-40 text-[#4ade80]" />
+                              <p className="font-semibold text-white">No Ward Payment Details Submitted Yet</p>
+                              <p className="text-xs text-[#86efac] mt-1">When Ward Admins configure their receiving payment accounts, they will appear here for Central Admin approval.</p>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── CENTRAL SCAM MONITORING SECTION ── */}
+              {scamAlertTransactions.length > 0 && (
+                <div className="space-y-4 pt-4 border-t border-[#1a3d22]">
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert size={18} className="text-red-400" />
+                    <h3 className="font-display font-bold text-white text-base">
+                      City Corporation Anti-Scam Interceptions ({scamAlertTransactions.length})
+                    </h3>
+                  </div>
+
+                  <div className="bg-[#0d2414] border border-red-500/30 rounded-2xl overflow-hidden shadow-lg">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-[#1a3d22] bg-[#061309] text-red-400 font-mono uppercase">
+                            <th className="py-3 px-4">Offender Citizen</th>
+                            <th className="py-3 px-4">Flagged TrxID</th>
+                            <th className="py-3 px-4">Amount</th>
+                            <th className="py-3 px-4">Sender Number</th>
+                            <th className="py-3 px-4">Scam Trigger</th>
+                            <th className="py-3 px-4 text-right">Protection Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#1a3d22]/50 text-white">
+                          {scamAlertTransactions.map(tx => (
+                            <tr key={tx.id} className="hover:bg-red-500/5 transition-colors">
+                              <td className="py-3 px-4">
+                                <div className="font-semibold text-white">{tx.user?.fullName || "User"}</div>
+                                <div className="text-red-300 text-[11px] font-mono">{tx.user?.phone || tx.senderNumber || "N/A"}</div>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="font-mono font-bold bg-red-500/20 text-red-400 px-2.5 py-1 rounded border border-red-500/40 tracking-wider">
+                                  {tx.trxId}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 font-display font-bold text-red-400">
+                                ৳{tx.amount}
+                              </td>
+                              <td className="py-3 px-4 font-mono text-[#86efac]">
+                                {tx.senderNumber || "N/A"}
+                              </td>
+                              <td className="py-3 px-4 text-red-300 font-mono text-[11px]">
+                                {tx.scamReason || "DUPLICATE_TRX_ID_FRAUD_DETECTED"}
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <span className="bg-red-500/20 text-red-400 border border-red-500/40 px-2 py-0.5 rounded-full font-mono text-[10px] font-bold">
+                                  BLOCKED & NOT CREDITED
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </main>
       </div>
 
@@ -2872,6 +3370,73 @@ export default function MainAdminPanel({ onLogout, onNavigateWard, cityCorpId }:
           onClose={() => setAssigningTrack(null)}
           onAssign={handleAssignDriver}
         />
+      )}
+
+      {/* Reject Ward Payment Config Modal */}
+      {rejectPaymentModal && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0d2414] border border-red-500/40 rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
+            <button
+              onClick={() => {
+                setRejectPaymentModal(null);
+                setRejectPaymentReason("");
+              }}
+              className="absolute top-4 right-4 text-[#4b7a5a] hover:text-white"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-white text-base">Reject Payment Details</h3>
+                <div className="text-xs text-[#86efac]">
+                  Ward: {rejectPaymentModal.ward?.name || `Ward ${rejectPaymentModal.wardId}`}
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-[#86efac] mb-3">
+              Please enter the reason for rejection so the Ward Administrator can correct the account numbers and re-submit:
+            </p>
+
+            <div className="mb-5">
+              <textarea
+                rows={3}
+                value={rejectPaymentReason}
+                onChange={e => setRejectPaymentReason(e.target.value)}
+                placeholder="e.g. Account number could not be verified with bKash/Nagad merchant registry, or invalid bank routing."
+                className="w-full bg-[#061309] border border-[#1a3d22] rounded-xl p-3 text-xs text-white focus:border-red-400 outline-none"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setRejectPaymentModal(null);
+                  setRejectPaymentReason("");
+                }}
+                className="flex-1 py-2.5 rounded-xl border border-[#1a3d22] text-[#86efac] hover:text-white text-xs font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRejectPaymentConfig}
+                disabled={reviewingWardId === rejectPaymentModal.wardId}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow transition-all disabled:opacity-50"
+              >
+                {reviewingWardId === rejectPaymentModal.wardId ? (
+                  <RefreshCw size={14} className="animate-spin" />
+                ) : (
+                  <X size={14} />
+                )}
+                <span>Confirm Rejection</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Create Confirmed Schedule Modal */}

@@ -55,12 +55,39 @@ export default apiHandler(
 
       // If already paid, prevent double payout
       if (withdrawal.status === "paid" && status === "paid") {
-        return res.status(400).json({ error: "This cash withdrawal request has already been paid out and settled" });
+        return res.status(400).json({ error: "This cash withdrawal request has already been paid out and settled." });
       }
+
+      // Secret verification code enforcement for physical Cash Out payout
+      if (status === "paid") {
+        const inputCode = (req.body?.secretCode || req.body?.verificationCode || "")
+          .toString()
+          .trim()
+          .toUpperCase();
+        const expectedCode = (withdrawal.verificationCode || "")
+          .toString()
+          .trim()
+          .toUpperCase();
+
+        if (!inputCode) {
+          return res.status(400).json({
+            error: "Secret verification code is required. Please ask the citizen to show their cashout voucher code from their app.",
+          });
+        }
+
+        if (inputCode !== expectedCode) {
+          return res.status(400).json({
+            error: `Invalid secret verification code ("${inputCode}"). Please verify the voucher code shown on the citizen's screen.`,
+          });
+        }
+      }
+
+      const rejectReason = req.body?.rejectReason || req.body?.reason || (status === "rejected" ? "Cancelled or rejected at ward counter" : null);
 
       withdrawal.status = status;
       withdrawal.paidAt = status === "paid" ? new Date().toISOString() : null;
       withdrawal.processedById = currentUser?.userId || null;
+      if (rejectReason) withdrawal.notes = withdrawal.notes ? `${withdrawal.notes} | Rejected: ${rejectReason}` : `Rejected: ${rejectReason}`;
 
       try {
         await prisma.withdrawalRequest.update({
@@ -69,6 +96,7 @@ export default apiHandler(
             status,
             paidAt: status === "paid" ? new Date() : null,
             processedById: currentUser?.userId || null,
+            notes: withdrawal.notes,
           },
         }).catch(() => null);
 
@@ -93,12 +121,14 @@ export default apiHandler(
         userId: currentUser?.userId || null,
         action: `WITHDRAWAL_${status.toUpperCase()}`,
         resource: "withdrawals",
-        details: `Withdrawal code ${withdrawal.verificationCode} (${withdrawal.points} pts = ৳${withdrawal.amount}) marked as ${status} by ${currentUser?.username || "admin"}`,
+        details: `Withdrawal code ${withdrawal.verificationCode} (${withdrawal.points} pts = ৳${withdrawal.amount}) marked as ${status} by ${currentUser?.username || "admin"}${rejectReason ? `. Reason: ${rejectReason}` : ""}`,
         ipAddress: (req.headers["x-forwarded-for"] as string) || (req.socket?.remoteAddress as string),
       });
 
       return res.status(200).json({
-        message: `Withdrawal successfully marked as ${status}`,
+        message: status === "paid" 
+          ? `Cash out of ৳${withdrawal.amount} verified and paid successfully!` 
+          : `Withdrawal request marked as ${status}.`,
         withdrawal,
       });
     }
